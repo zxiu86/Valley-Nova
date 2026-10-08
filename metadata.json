@@ -1,0 +1,7 @@
+{
+  "name": "روايات MTX - منصة القراءة والنشر الذكية",
+  "description": "موقع إلكتروني لقراءة ونشر الروايات بتقنية MTX لضغط النصوص بنسبة تتجاوز 75% مع فك تشفير فائق السرعة وخريطة ترميز ديناميكية.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

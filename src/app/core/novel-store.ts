@@ -1,0 +1,447 @@
+import { Injectable, computed, signal } from '@angular/core';
+import { ChapterSummary, Novel, ReaderSettings } from './novel-models';
+import { SAMPLE_NOVELS } from './sample-novels';
+import {
+  base64ToUint8Array,
+  compressToMtx,
+  decompressFromMtx,
+  downloadMtxFile,
+  MtxDecompressionResult,
+  uint8ArrayToBase64,
+} from './mtx-codec';
+
+const STORAGE_KEY_NOVELS = 'mtx_novels_catalog_v1';
+const STORAGE_KEY_SETTINGS = 'mtx_reader_settings_v1';
+
+const DEFAULT_SETTINGS: ReaderSettings = {
+  theme: 'dark',
+  fontFamily: 'amiri',
+  fontSize: 20,
+  lineHeight: 2.1,
+  pageWidth: 'normal',
+  highlightTashkeel: false,
+  showDiagnostics: true,
+};
+
+@Injectable({
+  providedIn: 'root',
+})
+export class NovelStore {
+  // State Signals
+  readonly novels = signal<Novel[]>([]);
+  readonly selectedNovel = signal<Novel | null>(null);
+  readonly selectedChapter = signal<ChapterSummary | null>(null);
+  readonly currentChapterText = signal<string>('');
+  readonly currentChapterDecompressResult = signal<MtxDecompressionResult | null>(null);
+  readonly readerSettings = signal<ReaderSettings>(DEFAULT_SETTINGS);
+
+  readonly isDecoding = signal<boolean>(false);
+  readonly isEncoding = signal<boolean>(false);
+  readonly isInitialized = signal<boolean>(false);
+
+  // Computed global statistics
+  readonly globalStats = computed(() => {
+    const allNovels = this.novels();
+    let totalChapters = 0;
+    let totalUtf8 = 0;
+    let totalMtx = 0;
+    let totalWords = 0;
+
+    for (const n of allNovels) {
+      for (const ch of n.chapters) {
+        totalChapters++;
+        totalUtf8 += ch.utf8Bytes;
+        totalMtx += ch.mtxBytes;
+        totalWords += ch.wordCount;
+      }
+    }
+
+    const savedBytes = Math.max(0, totalUtf8 - totalMtx);
+    const savingsPercent = totalUtf8 > 0 ? Math.round((savedBytes / totalUtf8) * 1000) / 10 : 0;
+
+    return {
+      totalNovels: allNovels.length,
+      totalChapters,
+      totalWords,
+      totalUtf8Bytes: totalUtf8,
+      totalMtxBytes: totalMtx,
+      savedBytes,
+      savingsPercent,
+    };
+  });
+
+  constructor() {
+    this.init();
+  }
+
+  async init(): Promise<void> {
+    if (typeof window === 'undefined') return;
+
+    // Load reader settings
+    try {
+      const savedSettings = localStorage.getItem(STORAGE_KEY_SETTINGS);
+      if (savedSettings) {
+        this.readerSettings.set({ ...DEFAULT_SETTINGS, ...JSON.parse(savedSettings) });
+      }
+    } catch {
+      // ignore
+    }
+
+    // Load novels
+    try {
+      const savedNovels = localStorage.getItem(STORAGE_KEY_NOVELS);
+      if (savedNovels) {
+        const parsed: Novel[] = JSON.parse(savedNovels);
+        if (parsed && parsed.length > 0) {
+          this.novels.set(parsed);
+          this.isInitialized.set(true);
+          return;
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    // If no saved novels, build the initial catalog by encoding sample novels into MTX
+    await this.seedSampleNovels();
+    this.isInitialized.set(true);
+  }
+
+  private async seedSampleNovels(): Promise<void> {
+    const generatedNovels: Novel[] = [];
+
+    for (const raw of SAMPLE_NOVELS) {
+      const chapters: ChapterSummary[] = [];
+
+      for (const rawCh of raw.chapters) {
+        const compression = await compressToMtx(rawCh.content, {
+          title: raw.title,
+          author: raw.author,
+          chapterTitle: rawCh.title,
+          chapterIndex: rawCh.chapterIndex,
+        });
+
+        // Count Tashkeel marks
+        const diacriticsCount = (rawCh.content.match(/[\u064B-\u065F\u0670]/g) || []).length;
+
+        chapters.push({
+          id: `ch-${raw.id}-${rawCh.chapterIndex}`,
+          chapterIndex: rawCh.chapterIndex,
+          title: rawCh.title,
+          wordCount: rawCh.content.trim().split(/\s+/).filter(Boolean).length,
+          utf8Bytes: compression.originalUtf8Bytes,
+          mtxBytes: compression.compressedBytes,
+          savingsPercent: compression.savingsPercent,
+          mtxBase64: uint8ArrayToBase64(compression.mtxBytes),
+          decodingDurationMs: compression.decodingDurationMs,
+          isLossless: compression.isLossless,
+          diacriticsCount,
+        });
+      }
+
+      generatedNovels.push({
+        id: raw.id,
+        title: raw.title,
+        author: raw.author,
+        category: raw.category,
+        description: raw.description,
+        coverGradient: raw.coverGradient,
+        accentColor: raw.accentColor,
+        chapters,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isPreloaded: true,
+      });
+    }
+
+    this.novels.set(generatedNovels);
+    this.persistNovels(generatedNovels);
+  }
+
+  private persistNovels(list: Novel[]): void {
+    if (typeof window === 'undefined') return;
+    try {
+      localStorage.setItem(STORAGE_KEY_NOVELS, JSON.stringify(list));
+    } catch (err) {
+      console.warn('Could not persist novels to localStorage:', err);
+    }
+  }
+
+  updateReaderSettings(partial: Partial<ReaderSettings>): void {
+    const updated = { ...this.readerSettings(), ...partial };
+    this.readerSettings.set(updated);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(updated));
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  selectNovel(novelId: string): void {
+    const novel = this.novels().find(n => n.id === novelId) || null;
+    this.selectedNovel.set(novel);
+    if (novel && novel.chapters.length > 0) {
+      this.selectChapter(novel.id, novel.chapters[0].id);
+    } else {
+      this.selectedChapter.set(null);
+      this.currentChapterText.set('');
+      this.currentChapterDecompressResult.set(null);
+    }
+  }
+
+  async selectChapter(novelId: string, chapterId: string): Promise<void> {
+    const novel = this.novels().find(n => n.id === novelId);
+    if (!novel) return;
+
+    this.selectedNovel.set(novel);
+    const chapter = novel.chapters.find(c => c.id === chapterId);
+    if (!chapter) return;
+
+    this.selectedChapter.set(chapter);
+    this.isDecoding.set(true);
+
+    try {
+      // Decode from stored MTX base64 binary
+      const mtxBytes = base64ToUint8Array(chapter.mtxBase64);
+      const decompressed = await decompressFromMtx(mtxBytes);
+
+      this.currentChapterText.set(decompressed.text);
+      this.currentChapterDecompressResult.set(decompressed);
+    } catch (err) {
+      console.error('Error decompressing chapter MTX:', err);
+      this.currentChapterText.set('تعذر فك ضغط الفصل: صيغة MTX غير صالحة.');
+    } finally {
+      this.isDecoding.set(false);
+    }
+  }
+
+  goToNextChapter(): void {
+    const novel = this.selectedNovel();
+    const current = this.selectedChapter();
+    if (!novel || !current) return;
+
+    const currentIndex = novel.chapters.findIndex(c => c.id === current.id);
+    if (currentIndex >= 0 && currentIndex < novel.chapters.length - 1) {
+      const nextChapter = novel.chapters[currentIndex + 1];
+      this.selectChapter(novel.id, nextChapter.id);
+    }
+  }
+
+  goToPrevChapter(): void {
+    const novel = this.selectedNovel();
+    const current = this.selectedChapter();
+    if (!novel || !current) return;
+
+    const currentIndex = novel.chapters.findIndex(c => c.id === current.id);
+    if (currentIndex > 0) {
+      const prevChapter = novel.chapters[currentIndex - 1];
+      this.selectChapter(novel.id, prevChapter.id);
+    }
+  }
+
+  /**
+   * Publishes or updates a chapter directly in local storage.
+   */
+  async publishChapter(
+    novelId: string,
+    chapterTitle: string,
+    content: string,
+    novelMeta?: { title: string; author: string; category: string; description: string }
+  ): Promise<{ novel: Novel; chapter: ChapterSummary }> {
+    this.isEncoding.set(true);
+
+    try {
+      let novel = this.novels().find(n => n.id === novelId);
+
+      if (!novel) {
+        // Create new novel if doesn't exist
+        novel = {
+          id: novelId || `novel-${Date.now()}`,
+          title: novelMeta?.title || 'رواية جديدة',
+          author: novelMeta?.author || 'كاتب مجهول',
+          category: novelMeta?.category || 'أدب عام',
+          description: novelMeta?.description || 'رواية مضغوطة ومنشورة بصيغة MTX.',
+          coverGradient: 'from-amber-900 via-stone-900 to-emerald-950',
+          accentColor: '#d97706',
+          chapters: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+      }
+
+      const chapterIndex = novel.chapters.length + 1;
+
+      // Compress to MTX
+      const result = await compressToMtx(content, {
+        title: novel.title,
+        author: novel.author,
+        chapterTitle: chapterTitle.trim() || `الفصل ${chapterIndex}`,
+        chapterIndex,
+      });
+
+      const diacriticsCount = (content.match(/[\u064B-\u065F\u0670]/g) || []).length;
+
+      const newChapter: ChapterSummary = {
+        id: `ch-${novel.id}-${Date.now()}`,
+        chapterIndex,
+        title: chapterTitle.trim() || `الفصل ${chapterIndex}`,
+        wordCount: content.trim().split(/\s+/).filter(Boolean).length,
+        utf8Bytes: result.originalUtf8Bytes,
+        mtxBytes: result.compressedBytes,
+        savingsPercent: result.savingsPercent,
+        mtxBase64: uint8ArrayToBase64(result.mtxBytes),
+        decodingDurationMs: result.decodingDurationMs,
+        isLossless: result.isLossless,
+        diacriticsCount,
+      };
+
+      const updatedChapters = [...novel.chapters, newChapter];
+      const updatedNovel: Novel = {
+        ...novel,
+        chapters: updatedChapters,
+        updatedAt: new Date().toISOString(),
+      };
+
+      const currentNovels = this.novels();
+      const existingIdx = currentNovels.findIndex(n => n.id === updatedNovel.id);
+      let newNovelsList: Novel[];
+
+      if (existingIdx >= 0) {
+        newNovelsList = [...currentNovels];
+        newNovelsList[existingIdx] = updatedNovel;
+      } else {
+        newNovelsList = [updatedNovel, ...currentNovels];
+      }
+
+      this.novels.set(newNovelsList);
+      this.persistNovels(newNovelsList);
+
+      this.selectedNovel.set(updatedNovel);
+      this.selectedChapter.set(newChapter);
+      this.currentChapterText.set(content);
+
+      return { novel: updatedNovel, chapter: newChapter };
+    } finally {
+      this.isEncoding.set(false);
+    }
+  }
+
+  /**
+   * Imports an external .mtx file into the library.
+   */
+  async importMtxFile(bytes: Uint8Array, fileName: string): Promise<{ novel: Novel; chapter: ChapterSummary }> {
+    const decompressed = await decompressFromMtx(bytes);
+
+    const title = decompressed.metadata.title || fileName.replace(/\.mtx$/i, '');
+    const author = decompressed.metadata.author || 'كاتب غير محدد';
+    const chapterTitle = decompressed.metadata.chapterTitle || 'فصل مستورد';
+
+    // Check if novel with this title already exists
+    let novel = this.novels().find(n => n.title.trim() === title.trim());
+
+    if (!novel) {
+      novel = {
+        id: `novel-import-${Date.now()}`,
+        title,
+        author,
+        category: 'روايات مستوردة (MTX)',
+        description: 'رواية تم استيرادها وفك تشفيرها بنجاح من ملف بصيغة MTX.',
+        coverGradient: 'from-emerald-950 via-stone-900 to-amber-950',
+        accentColor: '#10b981',
+        chapters: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+    }
+
+    const diacriticsCount = (decompressed.text.match(/[\u064B-\u065F\u0670]/g) || []).length;
+    const chapterIndex = novel.chapters.length + 1;
+
+    const chapter: ChapterSummary = {
+      id: `ch-import-${Date.now()}`,
+      chapterIndex,
+      title: chapterTitle,
+      wordCount: decompressed.text.trim().split(/\s+/).filter(Boolean).length,
+      utf8Bytes: decompressed.originalUtf8Bytes,
+      mtxBytes: decompressed.compressedBytes,
+      savingsPercent: decompressed.savingsPercent,
+      mtxBase64: uint8ArrayToBase64(bytes),
+      decodingDurationMs: decompressed.decodingDurationMs,
+      isLossless: decompressed.isLossless,
+      diacriticsCount,
+    };
+
+    const updatedNovel: Novel = {
+      ...novel,
+      chapters: [...novel.chapters, chapter],
+      updatedAt: new Date().toISOString(),
+    };
+
+    const currentNovels = this.novels();
+    const existingIdx = currentNovels.findIndex(n => n.id === updatedNovel.id);
+    let newNovelsList: Novel[];
+
+    if (existingIdx >= 0) {
+      newNovelsList = [...currentNovels];
+      newNovelsList[existingIdx] = updatedNovel;
+    } else {
+      newNovelsList = [updatedNovel, ...currentNovels];
+    }
+
+    this.novels.set(newNovelsList);
+    this.persistNovels(newNovelsList);
+
+    this.selectNovel(updatedNovel.id);
+    this.selectChapter(updatedNovel.id, chapter.id);
+
+    return { novel: updatedNovel, chapter };
+  }
+
+  /**
+   * Downloads current chapter as .mtx file.
+   */
+  downloadCurrentChapter(): void {
+    const chapter = this.selectedChapter();
+    const novel = this.selectedNovel();
+    if (!chapter) return;
+
+    const bytes = base64ToUint8Array(chapter.mtxBase64);
+    const filename = `${novel?.title || 'رواية'}_${chapter.title}`.replace(/[/\\?%*:|"<>]/g, '_');
+    downloadMtxFile(bytes, filename);
+  }
+
+  /**
+   * Deletes a novel from catalog.
+   */
+  deleteNovel(novelId: string): void {
+    const filtered = this.novels().filter(n => n.id !== novelId);
+    this.novels.set(filtered);
+    this.persistNovels(filtered);
+
+    if (this.selectedNovel()?.id === novelId) {
+      if (filtered.length > 0) {
+        this.selectNovel(filtered[0].id);
+      } else {
+        this.selectedNovel.set(null);
+        this.selectedChapter.set(null);
+        this.currentChapterText.set('');
+        this.currentChapterDecompressResult.set(null);
+      }
+    }
+  }
+
+  /**
+   * Resets and re-seeds sample data.
+   */
+  async resetToDefault(): Promise<void> {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(STORAGE_KEY_NOVELS);
+    }
+    await this.seedSampleNovels();
+    if (this.novels().length > 0) {
+      this.selectNovel(this.novels()[0].id);
+    }
+  }
+}
