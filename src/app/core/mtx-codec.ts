@@ -395,18 +395,34 @@ export async function decompressFromMtx(mtxBytes: Uint8Array): Promise<MtxDecomp
   const pDv = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
   let off = 0;
 
+  if (payload.length < 7) {
+    throw new Error('الملف تالف: حجم الحمولة أصغر من الحد الأدنى.');
+  }
+
   // Metadata
   const metaLen = pDv.getUint16(off, false);
   off += 2;
+  if (off + metaLen > payload.length) {
+    throw new Error('الملف تالف: بيانات الوصف غير صالحة.');
+  }
   const metaStr = decoder.decode(payload.subarray(off, off + metaLen));
   off += metaLen;
   const metadata = JSON.parse(metaStr) as MtxMetadata;
 
   // Dynamic merges
+  if (off >= payload.length) {
+    throw new Error('الملف تالف: جدول المقاطع مفقود.');
+  }
   const dynCount = payload[off++];
+  if (dynCount < 0 || dynCount > 255) {
+    throw new Error('الملف تالف: حجم القاموس غير صالح.');
+  }
+
   const dynamicMerged: string[] = new Array(dynCount);
   for (let i = 0; i < dynCount; i++) {
+    if (off >= payload.length) throw new Error('الملف تالف: مقاطع القاموس مقطوعة.');
     const len = payload[off++];
+    if (off + len > payload.length) throw new Error('الملف تالف: طول المقطع غير صالح.');
     dynamicMerged[i] = decoder.decode(payload.subarray(off, off + len));
     off += len;
   }
@@ -415,8 +431,16 @@ export async function decompressFromMtx(mtxBytes: Uint8Array): Promise<MtxDecomp
   const fullVocabulary = [...STATIC_BASE_CHARS, ...dynamicMerged];
 
   // Token sequence
+  if (off + 4 > payload.length) {
+    throw new Error('الملف تالف: تيار الرموز مفقود.');
+  }
   const tokenCount = pDv.getUint32(off, false);
   off += 4;
+
+  if (tokenCount < 0 || tokenCount > 10000000 || off + tokenCount > payload.length) {
+    throw new Error('الملف تالف: عدد الرموز غير متوافق.');
+  }
+
   const stream = payload.subarray(off, off + tokenCount);
 
   // 5. High-speed String Reassembly

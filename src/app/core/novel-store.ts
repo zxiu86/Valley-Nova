@@ -10,8 +10,8 @@ import {
   uint8ArrayToBase64,
 } from './mtx-codec';
 
-const STORAGE_KEY_NOVELS = 'mtx_novels_catalog_v2';
-const STORAGE_KEY_SETTINGS = 'mtx_reader_settings_v2';
+const STORAGE_KEY_NOVELS = 'mtx_novels_catalog_v5';
+const STORAGE_KEY_SETTINGS = 'mtx_reader_settings_v5';
 
 const DEFAULT_SETTINGS: ReaderSettings = {
   theme: 'dark',
@@ -92,18 +92,27 @@ export class NovelStore {
       const savedNovels = localStorage.getItem(STORAGE_KEY_NOVELS);
       if (savedNovels) {
         const parsed: Novel[] = JSON.parse(savedNovels);
-        if (parsed && parsed.length > 0) {
+        if (parsed && parsed.length > 0 && parsed[0].chapters.length > 0) {
+          // Verify that the cached chapters can decode cleanly with the current engine
+          const testBytes = base64ToUint8Array(parsed[0].chapters[0].mtxBase64);
+          await decompressFromMtx(testBytes);
+
           this.novels.set(parsed);
           this.selectNovel(parsed[0].id);
           this.isInitialized.set(true);
           return;
         }
       }
-    } catch {
-      // ignore
+    } catch (e) {
+      console.warn('Cached novel catalog was outdated or incompatible, auto-resetting:', e);
+      try {
+        localStorage.removeItem(STORAGE_KEY_NOVELS);
+      } catch {
+        // ignore
+      }
     }
 
-    // If no saved novels, build the initial catalog by encoding sample novels into MTX
+    // If no saved novels or cached were incompatible, re-seed fresh catalog
     await this.seedSampleNovels();
     this.isInitialized.set(true);
   }
@@ -214,8 +223,12 @@ export class NovelStore {
       this.currentChapterText.set(decompressed.text);
       this.currentChapterDecompressResult.set(decompressed);
     } catch (err) {
-      console.error('Error decompressing chapter MTX:', err);
-      this.currentChapterText.set('تعذر فك ضغط الفصل: صيغة MTX غير صالحة.');
+      console.warn('Error decompressing chapter MTX, attempting auto-heal:', err);
+      if (novel.isPreloaded) {
+        await this.resetToDefault();
+      } else {
+        this.currentChapterText.set('تعذر فك ضغط الفصل: صيغة MTX غير صالحة.');
+      }
     } finally {
       this.isDecoding.set(false);
     }
