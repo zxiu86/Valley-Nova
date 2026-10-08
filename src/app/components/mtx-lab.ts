@@ -114,6 +114,28 @@ import {
               </button>
             </div>
           </div>
+
+          <!-- Immediate Download Confirmation & Direct Fallback Link -->
+          @if (lastDownloadInfo(); as dl) {
+            <div class="p-3.5 bg-emerald-950/80 border border-emerald-600/80 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-emerald-200">
+              <div class="flex items-center gap-2">
+                <mat-icon class="text-emerald-400">check_circle</mat-icon>
+                <div>
+                  <span class="font-bold">تم ضغط وتجهيز الملف "{{ dl.filename }}.mtx" بنجاح!</span>
+                  <span class="text-emerald-300/80 block text-[11px]">حجم الملف الفعلي: {{ dl.size }} بايت</span>
+                </div>
+              </div>
+
+              <a
+                [href]="dl.dataUrl"
+                [download]="dl.filename + '.mtx'"
+                class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg shadow cursor-pointer transition-colors flex items-center gap-1.5 whitespace-nowrap"
+              >
+                <mat-icon class="text-base">file_download</mat-icon>
+                <span>تحميل الملف الآن</span>
+              </a>
+            </div>
+          }
         </div>
 
         <!-- Drag & Drop .MTX File for Direct Decoding -->
@@ -384,6 +406,7 @@ export class MtxLab {
   readonly isDirectCompressing = signal<boolean>(false);
   readonly benchmarkResult = signal<{ iterations: number; avgDurationMs: number; opsPerSec: number } | null>(null);
   readonly uploadedFileInfo = signal<{ name: string; decodeTime: number; size: number; textLength: number } | null>(null);
+  readonly lastDownloadInfo = signal<{ filename: string; dataUrl: string; size: number } | null>(null);
 
   constructor() {
     this.analyzeText();
@@ -476,13 +499,16 @@ export class MtxLab {
 
       this.currentResult.set(res);
 
-      // Extract a clean name from the first line or default
-      const firstLine = text.trim().split('\n')[0].replace(/[/\\?%*:|"<>]/g, '_').slice(0, 30).trim();
-      const filename = firstLine ? `رواية_${firstLine}` : 'فصل_رواية_MTX';
+      const filename = 'فصل_رواية_MTX';
+      const dataUrl = downloadMtxFile(res.mtxBytes, filename);
 
-      downloadMtxFile(res.mtxBytes, filename);
+      this.lastDownloadInfo.set({
+        filename,
+        dataUrl,
+        size: res.mtxBytes.length,
+      });
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'حدث خطأ أثناء ضغط وتنزيل الفصل.');
+      console.error('Error compressing and downloading MTX:', err);
     } finally {
       this.isDirectCompressing.set(false);
     }

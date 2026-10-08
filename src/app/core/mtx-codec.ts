@@ -435,18 +435,70 @@ export async function decompressFromMtx(mtxBytes: Uint8Array): Promise<MtxDecomp
 }
 
 /**
+ * Generates a direct data URI for the MTX binary buffer.
+ */
+export function createMtxDownloadDataUrl(bytes: Uint8Array): string {
+  const base64 = uint8ArrayToBase64(bytes);
+  return `data:application/octet-stream;base64,${base64}`;
+}
+
+/**
  * Triggers a browser download for the compressed .mtx file.
  */
-export function downloadMtxFile(bytes: Uint8Array, filename: string): void {
-  const blob = new Blob([bytes as unknown as BlobPart], { type: 'application/octet-stream' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename.endsWith('.mtx') ? filename : `${filename}.mtx`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+export function downloadMtxFile(bytes: Uint8Array, filename: string): string {
+  // Ensure safe filename without forbidden characters
+  const cleanBase = filename
+    .replace(/[^\w\u0621-\u064A\-_]/g, '_')
+    .replace(/_{2,}/g, '_')
+    .trim() || 'chapter';
+  const finalFilename = cleanBase.endsWith('.mtx') ? cleanBase : `${cleanBase}.mtx`;
+
+  const dataUrl = createMtxDownloadDataUrl(bytes);
+
+  try {
+    const blob = new Blob([bytes as unknown as BlobPart], { type: 'application/octet-stream' });
+    const blobUrl = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = blobUrl;
+    a.setAttribute('download', finalFilename);
+    document.body.appendChild(a);
+
+    // Trigger download
+    a.click();
+
+    // Remove element and revoke after 60 seconds (prevents canceling download)
+    setTimeout(() => {
+      try {
+        if (a.parentNode) {
+          document.body.removeChild(a);
+        }
+        URL.revokeObjectURL(blobUrl);
+      } catch {
+        // ignore
+      }
+    }, 60000);
+  } catch {
+    // Fallback directly to data URL
+    const a = document.createElement('a');
+    a.style.display = 'none';
+    a.href = dataUrl;
+    a.setAttribute('download', finalFilename);
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      try {
+        if (a.parentNode) {
+          document.body.removeChild(a);
+        }
+      } catch {
+        // ignore
+      }
+    }, 5000);
+  }
+
+  return dataUrl;
 }
 
 /**
