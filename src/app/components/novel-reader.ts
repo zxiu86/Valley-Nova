@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { NovelStore } from '../core/novel-store';
@@ -345,6 +345,22 @@ export class NovelReader {
 
   readonly showSettings = signal<boolean>(false);
   readonly settings = this.store.readerSettings;
+
+  constructor() {
+    effect(() => {
+      const novels = this.store.novels();
+      if (!this.store.selectedNovel() && novels.length > 0) {
+        this.store.selectNovel(novels[0].id);
+      }
+    });
+  }
+
+  loadFirstNovel(): void {
+    const list = this.store.novels();
+    if (list.length > 0) {
+      this.store.selectNovel(list[0].id);
+    }
+  }
 
   readonly chapterParagraphs = computed(() => {
     const raw = this.store.currentChapterText();

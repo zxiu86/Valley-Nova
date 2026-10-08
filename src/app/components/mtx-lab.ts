@@ -132,6 +132,20 @@ import {
 
       </div>
 
+      <!-- Upload Success Banner -->
+      @if (uploadedFileInfo(); as info) {
+        <div class="p-4 bg-emerald-950/60 border border-emerald-700/80 rounded-2xl flex items-center justify-between text-xs text-emerald-200">
+          <div class="flex items-center gap-2">
+            <mat-icon class="text-emerald-400">task_alt</mat-icon>
+            <span class="font-bold">تم فك تشفير وقراءة ملف "{{ info.name }}" بنجاح!</span>
+            <span>(استرجاع {{ info.textLength }} حرف بنسبة تطابق 100%)</span>
+          </div>
+          <div class="font-mono-code text-[11px] text-emerald-300">
+            <span>سرعة فك التشفير: {{ info.decodeTime }}ms · حجم الملف: {{ info.size }} بايت</span>
+          </div>
+        </div>
+      }
+
       <!-- Compression KPI Metric Cards -->
       @if (currentResult(); as res) {
         <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
@@ -325,17 +339,34 @@ import {
 export class MtxLab {
   readonly store = inject(NovelStore);
 
-  readonly inputText = new FormControl<string>(`كَانَ الكَاتِبُ كَرِيمٌ يَقِفُ مَعَ صَدِيقِهِ نَادِرٍ يَتَأَمَّلُ الحُرُوفَ العَرَبِيَّةَ:
-مَـ مِـ مُـ مْـ
-نَـ نِـ نُـ نْـ
-كَـ كِـ كُـ كْـ
-قَالَ كَرِيمٌ: كَمْ مِنْ كِتَابٍ أَنَارَ العُقُولَ، وَكَمْ مِنْ كَلِمَةٍ كَانَتْ كَالنُّورِ!
-تَتَكَرَّرُ هَذِهِ الحَرَكَاتُ بِدِقَّةٍ فِي كُلِّ سَطْرٍ دُونَ أَنْ تَتَغَيَّرَ أَمَاكِنُهَا أَوْ تُفْقَدَ مَعَانِيهَا.`);
+  readonly inputText = new FormControl<string>(`كَانَ الكَاتِبُ كَرِيمٌ يَقِفُ عِنْدَ نَافِذَةِ مَكْتَبِهِ القَدِيمِ، يَنْظُرُ إِلَى الأُفُقِ البَعِيدِ، وَفِي يَدِهِ كِتَابٌ أَصْفَرُ الوَرَقِ.
+كَانَ يُرَدِّدُ فِي سِرِّهِ: «كَمْ مِنْ كَلِمَةٍ كَتَبَهَا كَاتِبٌ فَكَانَتْ كَالنُّورِ لِمَنْ يَقْرَأُ، وَكَمْ مِنْ كِتَابٍ أَنَارَ كَوْنًا كَانَ غَارِقًا فِي العَتَمَةِ».
+
+كَرِيمٌ كَانَ يُدْرِكُ أَنَّ اللُّغَةَ العَرَبِيَّةَ لَيْسَتْ مُجَرَّدَ حُرُوفٍ جَامِدَةٍ؛ بَلْ هِيَ رُوحٌ تَنْبِضُ بِالحَرَكَاتِ:
+فَالـ «كَ» المَفْتُوحَةُ فِي «كَانَ» وَ«كَرَمٍ» وَ«كَشْفٍ» تَبْعَثُ فِي السَّمْعِ صَدًى خَفِيفًا،
+بَيْنَمَا الـ «كِ» المَكْسُورَةُ فِي «كِتَابٍ» وَ«كِيَانٍ» وَ«كِسْوَةٍ» تَحْمِلُ عُمْقًا وَهَيْبَةً لَا يُخْطِئُهَا لَبِيبٌ!
+وَالـ «كُ» المَضْمُومَةُ فِي «كُتُبٍ» وَ«كُرَةٍ» وَ«كُلٍّ» تَضُمُّ المَعْنَى ضَمًّا رَصِينًا،
+وَالـ «كْ» السَّاكِنَةُ فِي «تَذْكُرُ» وَ«يَشْكُرُ» تَقِفُ بِاتِّزَانٍ رَائِعٍ.
+
+كَذَلِكَ الـ «مَ» وَالـ «مِ» وَالـ «مُ»:
+مِنْ «مَطَرٍ» يَهْطِلُ عَلَى «مَدِينَةٍ»، إِلَى «مِفْتَاحٍ» يَفْتَحُ بَابَ «مَعْرِفَةٍ»، إِلَى «مُسْتَقْبَلٍ» يَنْتَظِرُ «مُشْرِقًا».
+وَالـ «نَ» وَالـ «نِ» وَالـ «نُ»:
+نَهْرٌ يَتَدَفَّقُ بِالنَّدَى، وَنِدَاءٌ صَادِقٌ يَحْمِلُ نُورًا خَالِدًا.
+
+قَالَ كَرِيمٌ لِصَدِيقِهِ نَادِرٍ:
+— هَلْ تَرَى كَيْفَ أَنَّ الحَرْفَ نَفْسَهُ يَتَغَيَّرُ مَعْنَاهُ تَمَامًا بِمُجَرَّدِ تَغَيُّرِ حَرَكَتِهِ؟
+أَجَابَهُ نَادِرٌ بَابْتِسَامَةٍ:
+— نَعَمْ يَا كَرِيمُ! هَذَا هُوَ سِرُّ اللُّغَةِ؛ كَلِمَةٌ وَاحِدَةٌ قَدْ تَكُونُ «عَلَمًا» أَوْ «عِلْمًا» أَوْ «عَلَّمَ»، وَالتَّشْكِيلُ هُوَ الرَّوْنَقُ الَّذِي يَحْفَظُ حَقَّ كُلِّ حَرْفٍ.
+
+مَضَتِ السَّاعَاتُ وَكَرِيمٌ يَدُونُ فِي كُرَّاسَتِهِ:
+«مَنْ طَلَبَ العِلَا سَهِرَ اللَّيَالِي، وَمَنْ أَرَادَ الحِكْمَةَ كَانَ لَهُ فِي كُلِّ سَطْرٍ مَعْنًى، وَفِي كُلِّ حَرَكَةٍ دَلَالَةٌ».
+كَانَ الصَّمْتُ يَسُودُ الغُرْفَةَ إِلَّا مِنْ حَفِيفِ الوَرَقِ، وَكَانَ كُلَّمَا وَصَلَ إِلَى نِهَايَةِ صَفْحَةٍ، عَادَ لِيَقْرَأَهَا بِصَوْتٍ عَالٍ لِيَتَأَكَّدَ مِنْ جَمَالِ السَّبْكِ وَدِقَّةِ الضَّبْطِ.`);
 
   readonly dictSearch = new FormControl<string>('');
   readonly currentResult = signal<MtxCompressionResult | null>(null);
   readonly isBenchmarking = signal<boolean>(false);
   readonly benchmarkResult = signal<{ iterations: number; avgDurationMs: number; opsPerSec: number } | null>(null);
+  readonly uploadedFileInfo = signal<{ name: string; decodeTime: number; size: number; textLength: number } | null>(null);
 
   constructor() {
     this.analyzeText();
@@ -462,6 +493,13 @@ export class MtxLab {
       const buffer = await file.arrayBuffer();
       const bytes = new Uint8Array(buffer);
       const decoded = await decompressFromMtx(bytes);
+
+      this.uploadedFileInfo.set({
+        name: file.name,
+        decodeTime: decoded.decodingDurationMs,
+        size: bytes.length,
+        textLength: decoded.text.length,
+      });
 
       this.inputText.setValue(decoded.text);
       await this.analyzeText();

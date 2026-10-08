@@ -10,8 +10,8 @@ import {
   uint8ArrayToBase64,
 } from './mtx-codec';
 
-const STORAGE_KEY_NOVELS = 'mtx_novels_catalog_v1';
-const STORAGE_KEY_SETTINGS = 'mtx_reader_settings_v1';
+const STORAGE_KEY_NOVELS = 'mtx_novels_catalog_v2';
+const STORAGE_KEY_SETTINGS = 'mtx_reader_settings_v2';
 
 const DEFAULT_SETTINGS: ReaderSettings = {
   theme: 'dark',
@@ -94,6 +94,7 @@ export class NovelStore {
         const parsed: Novel[] = JSON.parse(savedNovels);
         if (parsed && parsed.length > 0) {
           this.novels.set(parsed);
+          this.selectNovel(parsed[0].id);
           this.isInitialized.set(true);
           return;
         }
@@ -156,6 +157,9 @@ export class NovelStore {
 
     this.novels.set(generatedNovels);
     this.persistNovels(generatedNovels);
+    if (generatedNovels.length > 0) {
+      this.selectNovel(generatedNovels[0].id);
+    }
   }
 
   private persistNovels(list: Novel[]): void {
