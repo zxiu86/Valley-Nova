@@ -406,14 +406,14 @@ export class NovelStore {
   /**
    * Downloads current chapter as .mtx file.
    */
-  downloadCurrentChapter(): void {
+  async downloadCurrentChapter(): Promise<void> {
     const chapter = this.selectedChapter();
     const novel = this.selectedNovel();
     if (!chapter) return;
 
     const bytes = base64ToUint8Array(chapter.mtxBase64);
     const filename = `${novel?.title || 'رواية'}_${chapter.title}`.replace(/[/\\?%*:|"<>]/g, '_');
-    downloadMtxFile(bytes, filename);
+    await downloadMtxFile(bytes, filename);
   }
 
   /**

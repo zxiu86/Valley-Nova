@@ -500,11 +500,11 @@ export class MtxLab {
       this.currentResult.set(res);
 
       const filename = 'فصل_رواية_MTX';
-      const dataUrl = downloadMtxFile(res.mtxBytes, filename);
+      const dlResult = await downloadMtxFile(res.mtxBytes, filename);
 
       this.lastDownloadInfo.set({
-        filename,
-        dataUrl,
+        filename: dlResult.filename,
+        dataUrl: dlResult.dataUrl,
         size: res.mtxBytes.length,
       });
     } catch (err) {

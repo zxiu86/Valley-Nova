@@ -381,13 +381,13 @@ export class NovelEditor {
     return `${(bytes / 1024).toFixed(1)} KB`;
   }
 
-  downloadCurrentMtx(): void {
+  async downloadCurrentMtx(): Promise<void> {
     const res = this.liveResult();
     if (!res) return;
 
     const title = this.editorForm.get('chapterTitle')?.value || 'فصل';
     const filename = `${title}_MTX`.replace(/[/\\?%*:|"<>]/g, '_');
-    downloadMtxFile(res.mtxBytes, filename);
+    await downloadMtxFile(res.mtxBytes, filename);
   }
 
   async publishChapter(): Promise<void> {
