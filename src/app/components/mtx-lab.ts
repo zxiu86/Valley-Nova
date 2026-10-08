@@ -54,14 +54,15 @@ import {
             <span>قياس سرعة 100 دورة</span>
           </button>
 
-          <!-- Download MTX Button -->
+          <!-- Direct Compress and Download MTX Button -->
           <button
-            (click)="downloadResultMtx()"
-            [disabled]="!currentResult()"
-            class="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white text-xs font-bold shadow-sm transition-colors cursor-pointer"
+            type="button"
+            (click)="compressAndDownloadDirectly()"
+            [disabled]="isDirectCompressing()"
+            class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold shadow-md transition-all cursor-pointer"
           >
-            <mat-icon class="text-sm">file_download</mat-icon>
-            <span>تنزيل ملف .mtx</span>
+            <mat-icon class="text-base">file_download</mat-icon>
+            <span>{{ isDirectCompressing() ? 'جاري الضغط والتنزيل...' : 'ضغط الفصل وتنزيل .mtx مباشرة' }}</span>
           </button>
         </div>
       </div>
@@ -89,14 +90,29 @@ import {
             class="w-full bg-stone-950 border border-stone-800 rounded-xl p-4 text-stone-100 font-amiri text-base leading-relaxed focus:border-amber-500 focus:outline-none resize-none shadow-inner"
           ></textarea>
 
-          <div class="flex items-center justify-between text-xs pt-1">
-            <span class="text-stone-400">يدعم كافة الحركات (كَ، كِ، كُ، كْ، تنوين، شدة) والمفردات المكررة.</span>
-            <button
-              (click)="analyzeText()"
-              class="px-4 py-1.5 bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold rounded-lg cursor-pointer transition-colors"
-            >
-              إعادة التحليل والضغط
-            </button>
+          <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+            <span class="text-xs text-stone-400">يدعم كافة الحركات (كَ، كِ، كُ، كْ، تنوين، شدة) والمفردات المكررة.</span>
+            
+            <div class="flex items-center gap-2 w-full sm:w-auto">
+              <button
+                type="button"
+                (click)="analyzeText()"
+                class="px-3.5 py-2.5 bg-stone-800 hover:bg-stone-700 text-stone-200 font-bold rounded-xl text-xs cursor-pointer transition-colors"
+              >
+                تحديث الإحصائيات
+              </button>
+
+              <!-- DIRECT DOWNLOAD BUTTON (Prominent) -->
+              <button
+                type="button"
+                (click)="compressAndDownloadDirectly()"
+                [disabled]="isDirectCompressing()"
+                class="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold rounded-xl text-xs sm:text-sm shadow-md transition-all cursor-pointer ring-2 ring-emerald-500/20"
+              >
+                <mat-icon class="text-base">file_download</mat-icon>
+                <span>{{ isDirectCompressing() ? 'جاري الضغط والتنزيل...' : 'ضغط الفصل وتنزيل ملف .mtx فوراً' }}</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -365,6 +381,7 @@ export class MtxLab {
   readonly dictSearch = new FormControl<string>('');
   readonly currentResult = signal<MtxCompressionResult | null>(null);
   readonly isBenchmarking = signal<boolean>(false);
+  readonly isDirectCompressing = signal<boolean>(false);
   readonly benchmarkResult = signal<{ iterations: number; avgDurationMs: number; opsPerSec: number } | null>(null);
   readonly uploadedFileInfo = signal<{ name: string; decodeTime: number; size: number; textLength: number } | null>(null);
 
@@ -437,6 +454,38 @@ export class MtxLab {
     });
 
     this.isBenchmarking.set(false);
+  }
+
+  /**
+   * Direct 1-click chapter compression and .mtx file download
+   */
+  async compressAndDownloadDirectly(): Promise<void> {
+    const text = this.inputText.value || '';
+    if (!text.trim()) {
+      return;
+    }
+
+    this.isDirectCompressing.set(true);
+
+    try {
+      const res = await compressToMtx(text, {
+        title: 'فصل_رواية_مضغوط',
+        author: 'مؤلف_روايات_MTX',
+        chapterTitle: 'فصل_مضغوط_بصيغة_MTX',
+      });
+
+      this.currentResult.set(res);
+
+      // Extract a clean name from the first line or default
+      const firstLine = text.trim().split('\n')[0].replace(/[/\\?%*:|"<>]/g, '_').slice(0, 30).trim();
+      const filename = firstLine ? `رواية_${firstLine}` : 'فصل_رواية_MTX';
+
+      downloadMtxFile(res.mtxBytes, filename);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'حدث خطأ أثناء ضغط وتنزيل الفصل.');
+    } finally {
+      this.isDirectCompressing.set(false);
+    }
   }
 
   downloadResultMtx(): void {
