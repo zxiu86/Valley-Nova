@@ -10,8 +10,8 @@ import {
   uint8ArrayToBase64,
 } from './mtx-codec';
 
-const STORAGE_KEY_NOVELS = 'mtx_novels_catalog_v5';
-const STORAGE_KEY_SETTINGS = 'mtx_reader_settings_v5';
+const STORAGE_KEY_NOVELS = 'mtx_novels_catalog_v6';
+const STORAGE_KEY_SETTINGS = 'mtx_reader_settings_v6';
 
 const DEFAULT_SETTINGS: ReaderSettings = {
   theme: 'dark',

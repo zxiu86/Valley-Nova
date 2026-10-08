@@ -526,17 +526,25 @@ export class MtxLab {
 
   getEntryTypeLabel(type: MtxDictionaryEntry['type']): string {
     switch (type) {
+      case 'prefix': return 'سابقة شائعة (الـ، وبـ، كالـ)';
+      case 'suffix': return 'لاحقة شائعة (ـهم، ـين، ـات)';
+      case 'novel': return 'مفردة روائية شائعة';
+      case 'fusion': return 'دمج ترقيم ومسافة (، . —)';
       case 'letter': return 'حرف أساسي (مورفيم)';
       case 'grapheme': return 'حرف مشكل (كَ، كِ)';
       case 'word': return 'كلمة كاملة';
       case 'whitespace': return 'مسافة / سطر';
       case 'punctuation': return 'علامة ترقيم';
-      case 'ngram': return 'مقطع متكرر';
+      case 'ngram': return 'مقطع مدمج خاص';
     }
   }
 
   getEntryTypeBadge(type: MtxDictionaryEntry['type']): string {
     switch (type) {
+      case 'prefix': return 'px-2 py-0.5 rounded bg-violet-950 text-violet-300 border border-violet-800 text-[10px] font-bold';
+      case 'suffix': return 'px-2 py-0.5 rounded bg-fuchsia-950 text-fuchsia-300 border border-fuchsia-800 text-[10px] font-bold';
+      case 'novel': return 'px-2 py-0.5 rounded bg-teal-950 text-teal-300 border border-teal-800 text-[10px] font-bold';
+      case 'fusion': return 'px-2 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800 text-[10px] font-bold';
       case 'letter': return 'px-2 py-0.5 rounded bg-blue-950 text-blue-400 border border-blue-800 text-[10px] font-bold';
       case 'grapheme': return 'px-2 py-0.5 rounded bg-amber-950 text-amber-400 border border-amber-800 text-[10px] font-bold';
       case 'word': return 'px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 text-[10px] font-bold';
