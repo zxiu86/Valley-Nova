@@ -5,10 +5,10 @@ import { NovelEditor } from './components/novel-editor';
 import { MtxLab } from './components/mtx-lab';
 
 export const routes: Routes = [
-  { path: '', redirectTo: 'library', pathMatch: 'full' },
+  { path: '', component: NovelLibrary },
   { path: 'library', component: NovelLibrary },
   { path: 'reader', component: NovelReader },
   { path: 'editor', component: NovelEditor },
   { path: 'lab', component: MtxLab },
-  { path: '**', redirectTo: 'library' },
+  { path: '**', redirectTo: '' },
 ];
