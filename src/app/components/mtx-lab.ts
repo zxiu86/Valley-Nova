@@ -526,8 +526,9 @@ export class MtxLab {
 
   getEntryTypeLabel(type: MtxDictionaryEntry['type']): string {
     switch (type) {
+      case 'letter': return 'حرف أساسي (مورفيم)';
+      case 'grapheme': return 'حرف مشكل (كَ، كِ)';
       case 'word': return 'كلمة كاملة';
-      case 'grapheme': return 'حرف مشكل';
       case 'whitespace': return 'مسافة / سطر';
       case 'punctuation': return 'علامة ترقيم';
       case 'ngram': return 'مقطع متكرر';
@@ -536,11 +537,12 @@ export class MtxLab {
 
   getEntryTypeBadge(type: MtxDictionaryEntry['type']): string {
     switch (type) {
-      case 'word': return 'px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 text-[10px]';
-      case 'grapheme': return 'px-2 py-0.5 rounded bg-amber-950 text-amber-400 border border-amber-800 text-[10px]';
+      case 'letter': return 'px-2 py-0.5 rounded bg-blue-950 text-blue-400 border border-blue-800 text-[10px] font-bold';
+      case 'grapheme': return 'px-2 py-0.5 rounded bg-amber-950 text-amber-400 border border-amber-800 text-[10px] font-bold';
+      case 'word': return 'px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800 text-[10px] font-bold';
       case 'whitespace': return 'px-2 py-0.5 rounded bg-stone-800 text-stone-400 text-[10px]';
       case 'punctuation': return 'px-2 py-0.5 rounded bg-sky-950 text-sky-400 border border-sky-800 text-[10px]';
-      case 'ngram': return 'px-2 py-0.5 rounded bg-indigo-950 text-indigo-400 text-[10px]';
+      case 'ngram': return 'px-2 py-0.5 rounded bg-indigo-950 text-indigo-400 border border-indigo-800 text-[10px]';
     }
   }
 
