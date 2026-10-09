@@ -13,6 +13,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db, handleFirestoreError, OperationType, testFirestoreConnection } from './firebase';
+import firebaseConfig from './firebase-applet-config.json';
 
 export interface UserProfileData {
   id: string;
@@ -29,11 +30,16 @@ export interface UserProfileData {
 export class AuthStore {
   private readonly router = inject(Router);
 
+  // Firebase project configuration metadata
+  readonly projectId = firebaseConfig.projectId || 'bamboo-year-kn2tx';
+  readonly firebaseSettingsUrl = `https://console.firebase.google.com/project/${this.projectId}/authentication/settings`;
+
   // Signals
   readonly user = signal<User | null>(null);
   readonly isLoading = signal<boolean>(true);
   readonly authError = signal<string | null>(null);
   readonly actionNotice = signal<string | null>(null);
+  readonly unauthorizedDomain = signal<string | null>(null);
 
   // Derived state
   readonly isAuthenticated = computed<boolean>(() => !!this.user());
@@ -125,6 +131,7 @@ export class AuthStore {
   async loginWithGoogle(): Promise<boolean> {
     this.isLoading.set(true);
     this.authError.set(null);
+    this.unauthorizedDomain.set(null);
 
     try {
       const provider = new GoogleAuthProvider();
@@ -238,6 +245,7 @@ export class AuthStore {
   clearErrors(): void {
     this.authError.set(null);
     this.actionNotice.set(null);
+    this.unauthorizedDomain.set(null);
   }
 
   /**
@@ -245,6 +253,15 @@ export class AuthStore {
    */
   private mapAuthErrorMessage(error: unknown): string {
     const code = (error as { code?: string })?.code || '';
+    const message = (error as Error)?.message || '';
+
+    // Handle Firebase unauthorized domain for OAuth / Google sign-in
+    if (code === 'auth/unauthorized-domain' || message.includes('unauthorized-domain')) {
+      const currentHost = typeof window !== 'undefined' ? (window.location.hostname || window.location.host) : '';
+      this.unauthorizedDomain.set(currentHost);
+      return `نطاق الاستضافة الحالي (${currentHost}) غير مدرج في النطاقات المصرح بها (Authorized Domains) في Firebase Console. يمكنك استخدام البريد الإلكتروني وكلمة المرور فوراً، أو إضافة النطاق في إعدادات فايربيس.`;
+    }
+
     switch (code) {
       case 'auth/user-not-found':
       case 'auth/wrong-password':
@@ -265,7 +282,7 @@ export class AuthStore {
       case 'auth/network-request-failed':
         return 'تعذر الاتصال بالشبكة. يرجى التحقق من اتصال الإنترنت.';
       default:
-        return 'حدث خطأ أثناء المصادقة: ' + ((error as Error)?.message || 'يرجى المحاولة مجدداً');
+        return 'حدث خطأ أثناء المصادقة: ' + (message || 'يرجى المحاولة مجدداً');
     }
   }
 }
