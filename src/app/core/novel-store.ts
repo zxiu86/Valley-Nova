@@ -668,6 +668,16 @@ export class NovelStore {
   }
 
   /**
+   * Clear all reading history
+   */
+  clearReadHistory(): void {
+    this.readHistory.set([]);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(STORAGE_KEY_HISTORY);
+    }
+  }
+
+  /**
    * Load comments for a specific chapter
    */
   async loadChapterComments(chapterId: string): Promise<void> {

@@ -44,17 +44,24 @@ export class AuthStore {
   readonly authError = signal<string | null>(null);
   readonly actionNotice = signal<string | null>(null);
   readonly unauthorizedDomain = signal<string | null>(null);
-  readonly coverURL = signal<string>(DEFAULT_COVER_URL);
-  readonly customAvatarURL = signal<string>('');
+  readonly guestDisplayName = signal<string>(
+    typeof window !== 'undefined' ? localStorage.getItem('muqatil_guest_name') || 'قارئ مقاتل' : 'قارئ مقاتل'
+  );
+  readonly coverURL = signal<string>(
+    typeof window !== 'undefined' ? localStorage.getItem('muqatil_guest_cover') || DEFAULT_COVER_URL : DEFAULT_COVER_URL
+  );
+  readonly customAvatarURL = signal<string>(
+    typeof window !== 'undefined' ? localStorage.getItem('muqatil_guest_avatar') || '' : ''
+  );
 
   // Derived state
   readonly isAuthenticated = computed<boolean>(() => !!this.user());
   readonly displayName = computed<string>(() => {
     const u = this.user();
-    if (!u) return '';
-    return u.displayName || u.email?.split('@')[0] || 'قارئ';
+    if (!u) return this.guestDisplayName();
+    return u.displayName || u.email?.split('@')[0] || this.guestDisplayName();
   });
-  readonly userEmail = computed<string>(() => this.user()?.email || '');
+  readonly userEmail = computed<string>(() => this.user()?.email || 'غير مسجل (وضع زائر)');
   readonly photoURL = computed<string>(() => this.customAvatarURL() || this.user()?.photoURL || '');
 
   constructor() {
@@ -151,7 +158,25 @@ export class AuthStore {
    */
   async updateProfileData(params: { displayName?: string; photoURL?: string; coverURL?: string }): Promise<boolean> {
     const u = this.user();
-    if (!u) return false;
+
+    // If guest mode (not authenticated), save preferences locally so users can test & customize freely
+    if (!u) {
+      if (params.displayName !== undefined && params.displayName.trim()) {
+        this.guestDisplayName.set(params.displayName.trim());
+        if (typeof window !== 'undefined') localStorage.setItem('muqatil_guest_name', params.displayName.trim());
+      }
+      if (params.photoURL !== undefined) {
+        this.customAvatarURL.set(params.photoURL);
+        if (typeof window !== 'undefined') localStorage.setItem('muqatil_guest_avatar', params.photoURL);
+      }
+      if (params.coverURL !== undefined) {
+        this.coverURL.set(params.coverURL);
+        if (typeof window !== 'undefined') localStorage.setItem('muqatil_guest_cover', params.coverURL);
+      }
+      this.actionNotice.set('تم حفظ بيانات المظهر بنجاح على هذا المتصفح!');
+      setTimeout(() => this.actionNotice.set(null), 3500);
+      return true;
+    }
 
     this.isLoading.set(true);
     this.authError.set(null);
