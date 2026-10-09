@@ -54,6 +54,10 @@ const DEFAULT_SETTINGS: ReaderSettings = {
   showDiagnostics: false,
   textAlign: 'justify',
   paragraphSpacing: 'normal',
+  fontWeight: 'normal',
+  indentParagraphs: true,
+  screenDimmer: 0,
+  readingRuler: false,
 };
 
 @Injectable({
@@ -153,13 +157,32 @@ export class NovelStore {
       const savedNovels = localStorage.getItem(STORAGE_KEY_NOVELS);
       if (savedNovels) {
         const parsed: Novel[] = JSON.parse(savedNovels);
-        if (parsed && parsed.length > 0 && parsed[0].chapters.length > 0) {
+        if (parsed && parsed.length >= SAMPLE_NOVELS.length && parsed[0].chapters.length > 0) {
           // Verify that the cached chapters can decode cleanly with the current engine
           const testBytes = base64ToUint8Array(parsed[0].chapters[0].mtxBase64);
           await decompressFromMtx(testBytes);
 
-          this.novels.set(parsed);
-          this.selectNovel(parsed[0].id);
+          // Merge sample publisher/creator details into cached items if missing
+          const enriched = parsed.map(n => {
+            const raw = SAMPLE_NOVELS.find(s => s.id === n.id);
+            if (raw) {
+              return {
+                ...n,
+                authorAvatar: n.authorAvatar || raw.authorAvatar,
+                authorCover: n.authorCover || raw.authorCover,
+                authorBio: n.authorBio || raw.authorBio,
+                translator: n.translator || raw.translator || 'الأصل العربي',
+                translatorAvatar: n.translatorAvatar || raw.translatorAvatar,
+                translatorCover: n.translatorCover || raw.translatorCover,
+                translatorBio: n.translatorBio || raw.translatorBio,
+                ratingCount: n.ratingCount || raw.ratingCount || 1420,
+              };
+            }
+            return n;
+          });
+
+          this.novels.set(enriched);
+          this.selectNovel(enriched[0].id);
           this.isInitialized.set(true);
           return;
         }
@@ -234,12 +257,19 @@ export class NovelStore {
         id: raw.id,
         title: raw.title,
         author: raw.author,
+        authorAvatar: raw.authorAvatar,
+        authorCover: raw.authorCover,
+        authorBio: raw.authorBio,
         translator: raw.translator || 'فريق مقاتل الروايات',
+        translatorAvatar: raw.translatorAvatar,
+        translatorCover: raw.translatorCover,
+        translatorBio: raw.translatorBio,
         category: raw.category,
         description: raw.description,
         coverGradient: raw.coverGradient,
         accentColor: raw.accentColor,
         rating: raw.rating ?? 4.9,
+        ratingCount: raw.ratingCount ?? 1420,
         views: raw.views ?? '100K',
         badge: raw.badge,
         section: raw.section,
@@ -380,8 +410,17 @@ export class NovelStore {
   }
 
   rateNovel(novelId: string, rating: number): void {
-    const ratings = { ...this.userRatings(), [novelId]: rating };
+    const previousRatings = this.userRatings();
+    const oldRating = previousRatings[novelId];
+
+    // If exact same rating clicked again, do not re-calculate
+    if (oldRating === rating) {
+      return;
+    }
+
+    const ratings = { ...previousRatings, [novelId]: rating };
     this.userRatings.set(ratings);
+
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem(STORAGE_KEY_RATINGS, JSON.stringify(ratings));
@@ -401,12 +440,25 @@ export class NovelStore {
       }
     }
 
-    // Update novel average rating
+    // Update novel average rating accurately (only once per user, avoiding infinite stacking!)
     this.novels.update(list => list.map(n => {
       if (n.id === novelId) {
-        const base = n.rating ?? 4.8;
-        const newRating = Math.round(((base * 10 + rating) / 11) * 100) / 100;
-        return { ...n, rating: newRating };
+        const count = n.ratingCount || 1420;
+        const currentAvg = n.rating ?? 4.8;
+        let newRating = currentAvg;
+        let newCount = count;
+
+        if (oldRating !== undefined) {
+          // User changed their previous vote: replace old rating with new
+          newRating = Math.round(((currentAvg * count - oldRating + rating) / count) * 100) / 100;
+        } else {
+          // First-time vote from this user: increment count by 1
+          newCount = count + 1;
+          newRating = Math.round(((currentAvg * count + rating) / newCount) * 100) / 100;
+        }
+
+        newRating = Math.min(5, Math.max(1, newRating));
+        return { ...n, rating: newRating, ratingCount: newCount };
       }
       return n;
     }));
@@ -414,9 +466,20 @@ export class NovelStore {
     if (this.selectedNovel()?.id === novelId) {
       const current = this.selectedNovel();
       if (current) {
-        const base = current.rating ?? 4.8;
-        const newRating = Math.round(((base * 10 + rating) / 11) * 100) / 100;
-        this.selectedNovel.set({ ...current, rating: newRating });
+        const count = current.ratingCount || 1420;
+        const currentAvg = current.rating ?? 4.8;
+        let newRating = currentAvg;
+        let newCount = count;
+
+        if (oldRating !== undefined) {
+          newRating = Math.round(((currentAvg * count - oldRating + rating) / count) * 100) / 100;
+        } else {
+          newCount = count + 1;
+          newRating = Math.round(((currentAvg * count + rating) / newCount) * 100) / 100;
+        }
+
+        newRating = Math.min(5, Math.max(1, newRating));
+        this.selectedNovel.set({ ...current, rating: newRating, ratingCount: newCount });
       }
     }
   }

@@ -13,7 +13,15 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { NovelStore } from '../core/novel-store';
 import { AuthStore } from '../core/auth-store';
-import { ChapterSummary, ReaderFont, ReaderTheme, ReaderWidth } from '../core/novel-models';
+import {
+  ChapterSummary,
+  ParagraphSpacing,
+  ReaderAlign,
+  ReaderFont,
+  ReaderTheme,
+  ReaderWeight,
+  ReaderWidth,
+} from '../core/novel-models';
 
 type AutoScrollSpeed = 1 | 2 | 3;
 
@@ -24,28 +32,37 @@ type AutoScrollSpeed = 1 | 2 | 3;
   template: `
     <div
       [class]="'min-h-screen transition-colors duration-300 relative selection:bg-rose-500/30 ' + getThemeContainerClass()"
+      (mousemove)="onMouseMove($event)"
     >
-      <!-- Top Scroll Progress Indicator Bar -->
-      <div class="fixed top-0 left-0 right-0 z-50 h-[3px] bg-black/10 dark:bg-white/5 pointer-events-none">
+      <!-- Optional Eye Comfort Dimmer Overlay -->
+      @if (settings().screenDimmer && (settings().screenDimmer ?? 0) > 0) {
         <div
-          class="h-full bg-gradient-to-l from-rose-600 via-rose-500 to-amber-500 transition-all duration-150"
-          [style.width.%]="scrollProgress()"
+          class="fixed inset-0 z-30 pointer-events-none bg-black transition-opacity duration-300"
+          [style.opacity]="(settings().screenDimmer ?? 0) / 100"
         ></div>
-      </div>
+      }
 
-      <!-- MAIN READER TOP NAVIGATION BAR (Header) -->
+      <!-- Optional Reading Focus Ruler Guide -->
+      @if (settings().readingRuler && rulerY() > 0) {
+        <div
+          class="fixed left-0 right-0 z-20 pointer-events-none h-10 border-y border-rose-500/25 bg-rose-500/5 transition-transform duration-75"
+          [style.top.px]="rulerY() - 20"
+        ></div>
+      }
+
+      <!-- COMPACT REFINED TOP READER BAR (No clutters, compressed tools) -->
       @if (!isZenMode()) {
         <header
-          [class]="'sticky top-0 z-40 border-b backdrop-blur-xl px-3 sm:px-6 py-2.5 transition-all duration-300 ' + getNavbarThemeClass()"
+          [class]="'sticky top-0 z-40 border-b backdrop-blur-xl px-3 sm:px-6 py-2 sm:py-2.5 transition-all duration-300 ' + getNavbarThemeClass()"
         >
           <div class="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
             
-            <!-- RIGHT (RTL First): Novel Info & Back Navigation -->
+            <!-- RIGHT (RTL First): Back Navigation & Novel/Chapter Info -->
             <div class="flex items-center gap-2 sm:gap-3 min-w-0">
               <button
                 (click)="backToNovelDetails()"
                 title="العودة لتفاصيل الرواية"
-                class="p-2 rounded-xl transition-all cursor-pointer flex items-center justify-center shrink-0 border border-transparent hover:border-rose-500/30 hover:bg-rose-500/10 active:scale-95 text-inherit"
+                class="p-2 rounded-xl transition-all cursor-pointer flex items-center justify-center shrink-0 border border-transparent hover:border-current/20 hover:bg-current/10 active:scale-95 text-inherit"
                 aria-label="العودة لتفاصيل الرواية"
               >
                 <mat-icon class="text-xl">arrow_forward</mat-icon>
@@ -55,116 +72,217 @@ type AutoScrollSpeed = 1 | 2 | 3;
                 <div class="flex items-center gap-2">
                   <a
                     [routerLink]="['/novel', currentNovel()?.id]"
-                    class="text-xs sm:text-sm font-bold truncate hover:text-rose-400 transition-colors font-amiri"
+                    class="text-xs sm:text-sm font-bold truncate hover:text-rose-500 transition-colors font-amiri"
                     title="{{ currentNovel()?.title }}"
                   >
                     {{ currentNovel()?.title || 'مقاتل الروايات' }}
                   </a>
                   @if (currentNovel()?.author) {
                     <span class="text-[11px] opacity-60 hidden md:inline truncate">
-                      · بقلم {{ currentNovel()?.author }}
+                      · {{ currentNovel()?.author }}
                     </span>
                   }
                 </div>
 
-                <div class="flex items-center gap-2 text-[11px] opacity-75">
+                <div class="flex items-center gap-2 text-[11px] opacity-80 truncate">
                   <span class="font-medium text-rose-500 truncate">
-                    الفصل {{ currentChapter()?.chapterIndex || 1 }}: {{ currentChapter()?.title }}
+                    فصل {{ currentChapter()?.chapterIndex || 1 }}: {{ currentChapter()?.title }}
                   </span>
-                  <span class="hidden sm:inline">·</span>
-                  <span class="hidden sm:inline">{{ readingTimeMinutes() }} دقائق قراءة</span>
+                  <span class="hidden sm:inline opacity-50">·</span>
+                  <span class="hidden sm:inline text-[10px] opacity-70">{{ readingTimeMinutes() }} د قراءة</span>
                 </div>
               </div>
             </div>
 
-            <!-- LEFT: Action Controls & Customization Buttons -->
-            <div class="flex items-center gap-1 sm:gap-2 shrink-0">
+            <!-- LEFT: Compressed Reader Controls (Prev/Next, Index, Appearance, Compressed Tools) -->
+            <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
               
-              <!-- Quick Prev / Next Buttons in Header -->
-              <div class="hidden sm:flex items-center gap-1 border border-current/10 rounded-xl p-0.5">
+              <!-- Quick Compact Prev / Next Chevrons -->
+              <div class="flex items-center border border-current/15 rounded-xl p-0.5">
                 <button
                   (click)="goToPrevChapter()"
                   [disabled]="isFirstChapter()"
-                  title="الفصل السابق (السهم الأيمن)"
-                  class="p-1.5 rounded-lg disabled:opacity-25 disabled:cursor-not-allowed hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer text-xs flex items-center gap-1"
+                  title="الفصل السابق"
+                  class="p-1 sm:p-1.5 rounded-lg disabled:opacity-25 disabled:cursor-not-allowed hover:bg-current/10 transition-colors cursor-pointer text-xs flex items-center"
                 >
-                  <mat-icon class="text-base">chevron_right</mat-icon>
-                  <span class="hidden lg:inline">السابق</span>
+                  <mat-icon class="text-base sm:text-lg">chevron_right</mat-icon>
+                  <span class="hidden xl:inline text-[11px] font-sans pr-0.5">السابق</span>
                 </button>
+
+                <span class="w-px h-3.5 bg-current/15 mx-0.5"></span>
 
                 <button
                   (click)="goToNextChapter()"
                   [disabled]="isLastChapter()"
-                  title="الفصل التالي (السهم الأيسر)"
-                  class="p-1.5 rounded-lg disabled:opacity-25 disabled:cursor-not-allowed hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer text-xs flex items-center gap-1"
+                  title="الفصل التالي"
+                  class="p-1 sm:p-1.5 rounded-lg disabled:opacity-25 disabled:cursor-not-allowed hover:bg-current/10 transition-colors cursor-pointer text-xs flex items-center"
                 >
-                  <span class="hidden lg:inline">التالي</span>
-                  <mat-icon class="text-base">chevron_left</mat-icon>
+                  <span class="hidden xl:inline text-[11px] font-sans pl-0.5">التالي</span>
+                  <mat-icon class="text-base sm:text-lg">chevron_left</mat-icon>
                 </button>
               </div>
 
-              <!-- Chapter Drawer Toggle -->
+              <!-- Chapter Index Drawer Toggle -->
               <button
                 (click)="toggleChapterDrawer()"
-                [class]="showChapterDrawer() ? 'bg-rose-600 text-white shadow-sm' : 'hover:bg-black/10 dark:hover:bg-white/10 border border-current/10'"
-                title="فهرس الفصول"
-                class="px-2.5 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 text-xs font-medium"
+                [class]="showChapterDrawer() ? 'bg-rose-600 text-white shadow-sm' : 'hover:bg-current/10 border border-current/15 text-inherit'"
+                title="فهرس فصول الرواية"
+                class="px-2 sm:px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 text-xs font-medium"
               >
                 <mat-icon class="text-base">format_list_numbered_rtl</mat-icon>
-                <span class="hidden md:inline">الفهرس</span>
+                <span class="hidden md:inline text-xs">الفهرس</span>
               </button>
 
               <!-- Reader Appearance Settings Toggle -->
               <button
                 (click)="toggleSettingsDrawer()"
-                [class]="showSettingsDrawer() ? 'bg-rose-600 text-white shadow-sm' : 'hover:bg-black/10 dark:hover:bg-white/10 border border-current/10'"
-                title="تخصيص مظهر وخط القراءة"
-                class="px-2.5 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 text-xs font-medium"
+                [class]="showSettingsDrawer() ? 'bg-rose-600 text-white shadow-sm' : 'hover:bg-current/10 border border-current/15 text-inherit'"
+                title="تخصيص الخط والمظهر والقراءة"
+                class="px-2 sm:px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 text-xs font-medium"
               >
                 <mat-icon class="text-base">tune</mat-icon>
-                <span class="hidden md:inline">المظهر</span>
+                <span class="hidden md:inline text-xs">المظهر</span>
               </button>
 
-              <!-- Auto-Scroll Button -->
-              <button
-                (click)="toggleAutoScroll()"
-                [class]="isAutoScrolling() ? 'bg-amber-600 text-stone-950 font-bold animate-pulse' : 'hover:bg-black/10 dark:hover:bg-white/10 border border-current/10 opacity-80 hover:opacity-100'"
-                title="{{ isAutoScrolling() ? 'إيقاف التمرير التلقائي' : 'تشغيل التمرير التلقائي' }}"
-                class="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1 text-xs"
-              >
-                <mat-icon class="text-base">swap_vert</mat-icon>
-                <span class="hidden lg:inline">{{ isAutoScrolling() ? autoScrollSpeed() + 'x' : 'تمرير تلقائي' }}</span>
-              </button>
+              <!-- COMPRESSED TOOLS TOGGLE (Hides auto-scroll, TTS, bookmark, etc. behind clean menu) -->
+              <div class="relative">
+                <button
+                  (click)="toggleToolsMenu()"
+                  [class]="showToolsMenu() || isAutoScrolling() || isSpeaking()
+                    ? 'bg-rose-600 text-white shadow-sm'
+                    : 'hover:bg-current/10 border border-current/15 text-inherit'"
+                  title="أدوات القراءة والميزات الإضافية"
+                  class="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 text-xs font-medium relative"
+                >
+                  <mat-icon class="text-base">more_horiz</mat-icon>
+                  <span class="hidden lg:inline text-xs">الأدوات</span>
+                  @if (isAutoScrolling() || isSpeaking() || isBookmarked()) {
+                    <span class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-rose-500 ring-2 ring-stone-900 animate-pulse"></span>
+                  }
+                </button>
 
-              <!-- Audio Voice Reader (TTS) -->
-              <button
-                (click)="toggleTts()"
-                [class]="isSpeaking() ? 'bg-emerald-600 text-white animate-pulse' : 'hover:bg-black/10 dark:hover:bg-white/10 border border-current/10 opacity-80 hover:opacity-100'"
-                title="{{ isSpeaking() ? 'إيقاف القراءة الصوتية' : 'استمع للفصل صوتياً (ذكاء نطق)' }}"
-                class="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1 text-xs"
-              >
-                <mat-icon class="text-base">{{ isSpeaking() ? 'volume_up' : 'volume_mute' }}</mat-icon>
-                <span class="hidden xl:inline">{{ isSpeaking() ? 'استماع...' : 'استمع' }}</span>
-              </button>
+                <!-- Tools Popover Menu (Compressed cleanly) -->
+                @if (showToolsMenu()) {
+                  <div
+                    class="absolute left-0 mt-2 w-64 rounded-2xl bg-stone-900 text-stone-100 border border-white/10 shadow-2xl p-2.5 space-y-1.5 z-50 animate-in fade-in slide-in-from-top-2"
+                  >
+                    <div class="px-2.5 py-1.5 border-b border-white/10 flex items-center justify-between">
+                      <span class="text-[11px] font-bold text-stone-300">أدوات القراءة الذكية</span>
+                      <button (click)="closeToolsMenu()" class="text-stone-400 hover:text-white p-0.5 rounded cursor-pointer">
+                        <mat-icon class="text-sm">close</mat-icon>
+                      </button>
+                    </div>
 
-              <!-- Bookmark Toggle -->
-              <button
-                (click)="toggleBookmark()"
-                [class]="isBookmarked() ? 'text-amber-400 bg-amber-400/10 border-amber-400/30' : 'hover:bg-black/10 dark:hover:bg-white/10 border border-current/10 text-inherit opacity-80 hover:opacity-100'"
-                title="{{ isBookmarked() ? 'محفوظ في المفضلة' : 'حفظ في المفضلة' }}"
-                class="p-1.5 sm:p-2 rounded-xl border transition-all cursor-pointer flex items-center justify-center"
-              >
-                <mat-icon class="text-base">{{ isBookmarked() ? 'bookmark' : 'bookmark_border' }}</mat-icon>
-              </button>
+                    <!-- Auto Scroll Toggle & Speed in Tools -->
+                    <div class="p-2 rounded-xl bg-stone-950/60 border border-white/5 space-y-2">
+                      <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                          <mat-icon class="text-sm text-amber-400">swap_vert</mat-icon>
+                          <span class="text-xs font-medium">التمرير التلقائي</span>
+                        </div>
+                        <button
+                          (click)="toggleAutoScroll()"
+                          [class]="isAutoScrolling() ? 'bg-amber-500 text-stone-950 font-bold' : 'bg-white/10 text-stone-300'"
+                          class="px-2.5 py-1 rounded-lg text-[11px] transition-colors cursor-pointer"
+                        >
+                          {{ isAutoScrolling() ? 'تشغيل (' + autoScrollSpeed() + 'x)' : 'معطل' }}
+                        </button>
+                      </div>
 
-              <!-- Zen / Focus Mode Toggle -->
-              <button
-                (click)="toggleZenMode()"
-                title="وضع التركيز الخالص (إخفاء الأشرطة)"
-                class="p-1.5 sm:p-2 rounded-xl border border-current/10 hover:bg-black/10 dark:hover:bg-white/10 transition-all cursor-pointer flex items-center justify-center opacity-80 hover:opacity-100"
-              >
-                <mat-icon class="text-base">fullscreen</mat-icon>
-              </button>
+                      @if (isAutoScrolling()) {
+                        <div class="flex items-center justify-between gap-1 pt-1 border-t border-white/10 text-[10px]">
+                          <span class="text-stone-400">سرعة التمرير:</span>
+                          <div class="flex items-center gap-1">
+                            @for (spd of [1, 2, 3]; track spd) {
+                              <button
+                                (click)="setAutoScrollSpeed(spd)"
+                                [class]="autoScrollSpeed() === spd ? 'bg-amber-500 text-stone-950 font-bold' : 'bg-stone-800 text-stone-300'"
+                                class="px-2 py-0.5 rounded cursor-pointer font-mono"
+                              >
+                                {{ spd }}x
+                              </button>
+                            }
+                          </div>
+                        </div>
+                      }
+                    </div>
+
+                    <!-- Audio Narration TTS in Tools -->
+                    <button
+                      (click)="toggleTts()"
+                      [class]="isSpeaking() ? 'bg-emerald-950/80 border-emerald-500/50 text-emerald-300 font-bold' : 'hover:bg-white/5 border border-transparent text-stone-300'"
+                      class="w-full text-right p-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-between text-xs"
+                    >
+                      <div class="flex items-center gap-2">
+                        <mat-icon class="text-sm text-emerald-400">{{ isSpeaking() ? 'volume_up' : 'volume_mute' }}</mat-icon>
+                        <span>القراءة الصوتية (ذكاء النطق)</span>
+                      </div>
+                      <span class="text-[10px] opacity-75">{{ isSpeaking() ? 'جاري القراءة' : 'تشغيل' }}</span>
+                    </button>
+
+                    <!-- Bookmark in Tools -->
+                    <button
+                      (click)="toggleBookmark()"
+                      [class]="isBookmarked() ? 'bg-amber-950/60 border-amber-500/40 text-amber-300' : 'hover:bg-white/5 border border-transparent text-stone-300'"
+                      class="w-full text-right p-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-between text-xs"
+                    >
+                      <div class="flex items-center gap-2">
+                        <mat-icon class="text-sm text-amber-400">{{ isBookmarked() ? 'bookmark' : 'bookmark_border' }}</mat-icon>
+                        <span>حفظ الرواية في المفضلة</span>
+                      </div>
+                      <span class="text-[10px] opacity-75">{{ isBookmarked() ? 'محفوظة' : 'حفظ' }}</span>
+                    </button>
+
+                    <!-- Zen Mode in Tools -->
+                    <button
+                      (click)="toggleZenMode(); closeToolsMenu()"
+                      class="w-full text-right p-2.5 rounded-xl hover:bg-white/5 text-stone-300 transition-all cursor-pointer flex items-center justify-between text-xs"
+                    >
+                      <div class="flex items-center gap-2">
+                        <mat-icon class="text-sm text-rose-400">fullscreen</mat-icon>
+                        <span>وضع التركيز الكامل (Zen)</span>
+                      </div>
+                      <span class="text-[10px] text-stone-500">إخفاء الأشرطة</span>
+                    </button>
+
+                    <!-- Fullscreen Browser Mode -->
+                    <button
+                      (click)="toggleFullscreen(); closeToolsMenu()"
+                      class="w-full text-right p-2.5 rounded-xl hover:bg-white/5 text-stone-300 transition-all cursor-pointer flex items-center justify-between text-xs"
+                    >
+                      <div class="flex items-center gap-2">
+                        <mat-icon class="text-sm text-rose-400">fit_screen</mat-icon>
+                        <span>ملء الشاشة بالمتصفح</span>
+                      </div>
+                      <span class="text-[10px] text-stone-500">F11</span>
+                    </button>
+
+                    <!-- Share Chapter Link -->
+                    <button
+                      (click)="shareChapter(); closeToolsMenu()"
+                      class="w-full text-right p-2.5 rounded-xl hover:bg-white/5 text-stone-300 transition-all cursor-pointer flex items-center justify-between text-xs"
+                    >
+                      <div class="flex items-center gap-2">
+                        <mat-icon class="text-sm text-rose-400">share</mat-icon>
+                        <span>مشاركة رابط الفصل</span>
+                      </div>
+                      <span class="text-[10px] text-stone-500">نسخ الرابط</span>
+                    </button>
+
+                    <!-- Scroll to Comments Shortcut -->
+                    <button
+                      (click)="scrollToComments(); closeToolsMenu()"
+                      class="w-full text-right p-2.5 rounded-xl hover:bg-white/5 text-stone-300 transition-all cursor-pointer flex items-center justify-between text-xs"
+                    >
+                      <div class="flex items-center gap-2">
+                        <mat-icon class="text-sm text-rose-400">forum</mat-icon>
+                        <span>الذهاب لقسم التعليقات</span>
+                      </div>
+                      <span class="text-[10px] text-stone-500">نهاية الفصل</span>
+                    </button>
+                  </div>
+                }
+              </div>
 
             </div>
 
@@ -172,12 +290,12 @@ type AutoScrollSpeed = 1 | 2 | 3;
         </header>
       }
 
-      <!-- ZEN MODE EXIT PILL (Shows when in Zen Mode) -->
+      <!-- ZEN MODE MINIMAL EXIT PILL (Only appears in Zen Mode) -->
       @if (isZenMode()) {
         <div class="fixed top-4 left-4 z-50 flex items-center gap-2">
           <button
             (click)="toggleZenMode()"
-            class="px-3 py-1.5 rounded-full liquid-glass border border-white/20 text-white text-xs flex items-center gap-1.5 shadow-xl hover:bg-white/20 transition-all cursor-pointer backdrop-blur-md"
+            class="px-3.5 py-1.5 rounded-full bg-stone-900/90 border border-white/20 text-white text-xs flex items-center gap-1.5 shadow-xl hover:bg-stone-800 transition-all cursor-pointer backdrop-blur-md"
             title="الخروج من وضع التركيز"
           >
             <mat-icon class="text-sm">fullscreen_exit</mat-icon>
@@ -186,9 +304,42 @@ type AutoScrollSpeed = 1 | 2 | 3;
         </div>
       }
 
+      <!-- ACTIVE STATUS MINI FLOATING PILL (Only shown when Auto-Scroll or TTS is actively running) -->
+      @if (isAutoScrolling() || isSpeaking()) {
+        <div
+          class="fixed bottom-5 left-5 z-40 flex items-center gap-2 p-1.5 rounded-2xl bg-stone-900/95 border border-white/15 text-white shadow-2xl backdrop-blur-md text-xs animate-in fade-in slide-in-from-bottom-2"
+        >
+          @if (isAutoScrolling()) {
+            <div class="flex items-center gap-1.5 px-2 py-1 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30">
+              <mat-icon class="text-sm animate-spin">autorenew</mat-icon>
+              <span>تمرير {{ autoScrollSpeed() }}x</span>
+            </div>
+            <button
+              (click)="stopAutoScroll()"
+              class="p-1 rounded-lg hover:bg-white/10 text-stone-300 hover:text-white transition-colors cursor-pointer"
+              title="إيقاف التمرير"
+            >
+              <mat-icon class="text-base">pause</mat-icon>
+            </button>
+          }
+          @if (isSpeaking()) {
+            <div class="flex items-center gap-1.5 px-2 py-1 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              <mat-icon class="text-sm animate-pulse">volume_up</mat-icon>
+              <span>نطق صوتي</span>
+            </div>
+            <button
+              (click)="stopTts()"
+              class="p-1 rounded-lg hover:bg-white/10 text-stone-300 hover:text-white transition-colors cursor-pointer"
+              title="إيقاف القراءة الصوتية"
+            >
+              <mat-icon class="text-base">stop</mat-icon>
+            </button>
+          }
+        </div>
+      }
+
       <!-- CHAPTER INDEX DRAWER (Modal / Slide-over) -->
       @if (showChapterDrawer()) {
-        <!-- Backdrop -->
         <button
           type="button"
           aria-label="إغلاق فهرس الفصول"
@@ -196,7 +347,6 @@ type AutoScrollSpeed = 1 | 2 | 3;
           class="fixed inset-0 z-50 w-full h-full bg-black/60 backdrop-blur-sm transition-opacity cursor-pointer border-none"
         ></button>
 
-        <!-- Drawer Content -->
         <div
           class="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-stone-900 text-stone-100 shadow-2xl border-l border-white/10 flex flex-col transition-transform transform duration-300"
         >
@@ -207,7 +357,7 @@ type AutoScrollSpeed = 1 | 2 | 3;
                 <mat-icon class="text-base">format_list_numbered_rtl</mat-icon>
               </div>
               <div>
-                <h3 class="font-bold text-sm sm:text-base font-amiri">فهرس الفصول</h3>
+                <h3 class="font-bold text-sm sm:text-base font-amiri">فهرس فصول الرواية</h3>
                 <span class="text-xs text-stone-400">{{ currentNovel()?.chapters?.length || 0 }} فصول متوفرة</span>
               </div>
             </div>
@@ -227,7 +377,7 @@ type AutoScrollSpeed = 1 | 2 | 3;
                 type="text"
                 [value]="chapterSearchQuery()"
                 (input)="onSearchChapter($event)"
-                placeholder="ابحث برقم الفصل أو العنوان..."
+                placeholder="ابحث برقم الفصل أو عنوانه..."
                 class="w-full bg-stone-950/80 border border-white/10 rounded-xl pr-9 pl-4 py-2 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-rose-500 transition-colors"
               />
               <mat-icon class="absolute right-2.5 top-1/2 -translate-y-1/2 text-base text-stone-400 pointer-events-none">
@@ -282,9 +432,8 @@ type AutoScrollSpeed = 1 | 2 | 3;
         </div>
       }
 
-      <!-- READER APPEARANCE CUSTOMIZATION DRAWER (Modal / Slide-over) -->
+      <!-- ENHANCED READER APPEARANCE & SETTINGS DRAWER -->
       @if (showSettingsDrawer()) {
-        <!-- Backdrop -->
         <button
           type="button"
           aria-label="إغلاق مظهر القراءة"
@@ -292,7 +441,6 @@ type AutoScrollSpeed = 1 | 2 | 3;
           class="fixed inset-0 z-50 w-full h-full bg-black/60 backdrop-blur-sm transition-opacity cursor-pointer border-none"
         ></button>
 
-        <!-- Drawer Content -->
         <div
           class="fixed inset-y-0 left-0 z-50 w-full max-w-md bg-stone-900 text-stone-100 shadow-2xl border-r border-white/10 flex flex-col transition-transform transform duration-300"
         >
@@ -303,8 +451,8 @@ type AutoScrollSpeed = 1 | 2 | 3;
                 <mat-icon class="text-base">tune</mat-icon>
               </div>
               <div>
-                <h3 class="font-bold text-sm sm:text-base font-amiri">مظهر وتخصيص القراءة</h3>
-                <span class="text-xs text-stone-400">اختر الخط والألوان الأنسب لراحة عينيك</span>
+                <h3 class="font-bold text-sm sm:text-base font-amiri">تخصيص مظهر وتجربة القراءة</h3>
+                <span class="text-xs text-stone-400">تحكم بالخط، المحاذاة، الألوان لراحة تامة</span>
               </div>
             </div>
 
@@ -316,10 +464,10 @@ type AutoScrollSpeed = 1 | 2 | 3;
             </button>
           </div>
 
-          <!-- Drawer Body with Controls -->
+          <!-- Drawer Body with Categorized Clean Sections -->
           <div class="flex-1 overflow-y-auto p-4 sm:p-5 space-y-6 text-xs">
             
-            <!-- SECTION 1: Color Themes (السمة اللونية لراحة العين) -->
+            <!-- SECTION 1: Color Themes (6 Distinct Eye-Friendly Themes) -->
             <div class="space-y-2.5">
               <div class="flex items-center justify-between">
                 <div class="font-bold text-stone-300 text-xs flex items-center gap-1.5">
@@ -329,17 +477,17 @@ type AutoScrollSpeed = 1 | 2 | 3;
                 <span class="text-[11px] text-stone-400 font-medium">{{ getThemeName() }}</span>
               </div>
 
-              <div class="grid grid-cols-2 gap-2.5">
+              <div class="grid grid-cols-2 gap-2">
                 <!-- Royal Dark Theme -->
                 <button
                   (click)="setTheme('dark')"
-                  [class]="settings().theme === 'dark' ? 'ring-2 ring-rose-500 font-bold bg-[#17151a]' : 'bg-[#17151a]/80 opacity-70 hover:opacity-100'"
-                  class="p-3 rounded-xl border border-white/10 flex items-center gap-2.5 transition-all cursor-pointer text-right"
+                  [class]="settings().theme === 'dark' ? 'ring-2 ring-rose-500 font-bold bg-[#141217]' : 'bg-[#141217]/80 opacity-70 hover:opacity-100'"
+                  class="p-2.5 rounded-xl border border-white/10 flex items-center gap-2.5 transition-all cursor-pointer text-right"
                 >
-                  <div class="w-5 h-5 rounded-full bg-[#121015] border border-rose-500/50 shadow-inner shrink-0"></div>
+                  <div class="w-4 h-4 rounded-full bg-[#110f14] border border-rose-500/50 shadow-inner shrink-0"></div>
                   <div>
                     <span class="block text-white font-bold">داكن ملكي</span>
-                    <span class="text-[10px] text-stone-400">الراحة الليلية الافتراضية</span>
+                    <span class="text-[10px] text-stone-400">الراحة الليلية</span>
                   </div>
                 </button>
 
@@ -347,47 +495,135 @@ type AutoScrollSpeed = 1 | 2 | 3;
                 <button
                   (click)="setTheme('black')"
                   [class]="settings().theme === 'black' ? 'ring-2 ring-rose-500 font-bold bg-black' : 'bg-black/90 opacity-70 hover:opacity-100'"
-                  class="p-3 rounded-xl border border-stone-800 flex items-center gap-2.5 transition-all cursor-pointer text-right"
+                  class="p-2.5 rounded-xl border border-stone-800 flex items-center gap-2.5 transition-all cursor-pointer text-right"
                 >
-                  <div class="w-5 h-5 rounded-full bg-black border border-stone-700 shadow-inner shrink-0"></div>
+                  <div class="w-4 h-4 rounded-full bg-black border border-stone-700 shadow-inner shrink-0"></div>
                   <div>
                     <span class="block text-stone-200 font-bold">أموليد أسود</span>
-                    <span class="text-[10px] text-stone-500">سواد خالص موفر للطاقة</span>
+                    <span class="text-[10px] text-stone-500">سواد خالص</span>
                   </div>
                 </button>
 
                 <!-- Sepia / Parchment Theme -->
                 <button
                   (click)="setTheme('sepia')"
-                  [class]="settings().theme === 'sepia' ? 'ring-2 ring-amber-600 font-bold bg-[#f4ebd0]' : 'bg-[#f4ebd0]/80 opacity-70 hover:opacity-100'"
-                  class="p-3 rounded-xl border border-amber-300 flex items-center gap-2.5 transition-all cursor-pointer text-right"
+                  [class]="settings().theme === 'sepia' ? 'ring-2 ring-amber-600 font-bold bg-[#f7f0e0]' : 'bg-[#f7f0e0]/80 opacity-70 hover:opacity-100'"
+                  class="p-2.5 rounded-xl border border-amber-300 flex items-center gap-2.5 transition-all cursor-pointer text-right"
                 >
-                  <div class="w-5 h-5 rounded-full bg-[#f4ebd0] border border-amber-500 shadow-inner shrink-0"></div>
+                  <div class="w-4 h-4 rounded-full bg-[#f7f0e0] border border-amber-500 shadow-inner shrink-0"></div>
                   <div>
-                    <span class="block text-[#382b1d] font-bold">ورق بردي (سيبيا)</span>
-                    <span class="text-[10px] text-[#78644e]">دفء ورق الكتب القديمة</span>
+                    <span class="block text-[#2c2217] font-bold">ورق بردي (سيبيا)</span>
+                    <span class="text-[10px] text-[#78644e]">دفء الكتب القديمة</span>
                   </div>
                 </button>
 
-                <!-- Daylight Clean Paper Theme -->
+                <!-- Clean Light Paper Theme -->
                 <button
                   (click)="setTheme('light')"
-                  [class]="settings().theme === 'light' ? 'ring-2 ring-rose-500 font-bold bg-[#fafafa]' : 'bg-[#fafafa]/80 opacity-70 hover:opacity-100'"
-                  class="p-3 rounded-xl border border-stone-300 flex items-center gap-2.5 transition-all cursor-pointer text-right"
+                  [class]="settings().theme === 'light' ? 'ring-2 ring-rose-500 font-bold bg-[#faf9f6]' : 'bg-[#faf9f6]/80 opacity-70 hover:opacity-100'"
+                  class="p-2.5 rounded-xl border border-stone-300 flex items-center gap-2.5 transition-all cursor-pointer text-right"
                 >
-                  <div class="w-5 h-5 rounded-full bg-white border border-stone-400 shadow-inner shrink-0"></div>
+                  <div class="w-4 h-4 rounded-full bg-white border border-stone-400 shadow-inner shrink-0"></div>
                   <div>
                     <span class="block text-stone-900 font-bold">نهاري ناصع</span>
-                    <span class="text-[10px] text-stone-500">للقراءة تحت الإضاءة القوية</span>
+                    <span class="text-[10px] text-stone-500">إضاءة بيضاء نقية</span>
+                  </div>
+                </button>
+
+                <!-- Emerald Forest Night -->
+                <button
+                  (click)="setTheme('emerald')"
+                  [class]="settings().theme === 'emerald' ? 'ring-2 ring-emerald-500 font-bold bg-[#0b1712]' : 'bg-[#0b1712]/80 opacity-70 hover:opacity-100'"
+                  class="p-2.5 rounded-xl border border-emerald-900/60 flex items-center gap-2.5 transition-all cursor-pointer text-right"
+                >
+                  <div class="w-4 h-4 rounded-full bg-[#0b1712] border border-emerald-500 shadow-inner shrink-0"></div>
+                  <div>
+                    <span class="block text-emerald-200 font-bold">واحة زمردية</span>
+                    <span class="text-[10px] text-emerald-400/80">تهدئة إجهاد العين</span>
+                  </div>
+                </button>
+
+                <!-- Midnight Navy -->
+                <button
+                  (click)="setTheme('navy')"
+                  [class]="settings().theme === 'navy' ? 'ring-2 ring-sky-500 font-bold bg-[#0a1220]' : 'bg-[#0a1220]/80 opacity-70 hover:opacity-100'"
+                  class="p-2.5 rounded-xl border border-sky-900/60 flex items-center gap-2.5 transition-all cursor-pointer text-right"
+                >
+                  <div class="w-4 h-4 rounded-full bg-[#0a1220] border border-sky-500 shadow-inner shrink-0"></div>
+                  <div>
+                    <span class="block text-sky-200 font-bold">سماء كحلية</span>
+                    <span class="text-[10px] text-sky-400/80">أزرق داكن هادئ</span>
                   </div>
                 </button>
               </div>
             </div>
 
-            <!-- SECTION 2: Arabic Font Family (الخط العربي) -->
-            <div class="space-y-2.5">
+            <!-- SECTION 2: Text Alignment (RIGHT, CENTER, LEFT with RTL Direction, JUSTIFY) -->
+            <!-- CRITICAL USER REQUIREMENT: Left alignment MUST keep direction RTL! -->
+            <div class="space-y-2.5 pt-2 border-t border-white/10">
+              <div class="font-bold text-stone-300 text-xs flex items-center justify-between">
+                <div class="flex items-center gap-1.5">
+                  <mat-icon class="text-sm text-rose-400">format_align_right</mat-icon>
+                  <span>شكل ومحاذاة القراءة</span>
+                </div>
+                <span class="text-[10px] text-stone-400">اتجاه النص عربي أصيل</span>
+              </div>
+
+              <div class="grid grid-cols-4 gap-1.5 bg-stone-950/60 p-1.5 rounded-2xl border border-white/10">
+                <!-- Right Alignment -->
+                <button
+                  (click)="setTextAlign('right')"
+                  [class]="settings().textAlign === 'right' ? 'bg-rose-600 text-white font-bold shadow-sm' : 'text-stone-400 hover:text-white hover:bg-white/5'"
+                  class="py-2 px-1 rounded-xl flex flex-col items-center gap-1 transition-all cursor-pointer"
+                  title="الكتابة من اليمين"
+                >
+                  <mat-icon class="text-base">format_align_right</mat-icon>
+                  <span class="text-[11px]">من اليمين</span>
+                </button>
+
+                <!-- Center Alignment -->
+                <button
+                  (click)="setTextAlign('center')"
+                  [class]="settings().textAlign === 'center' ? 'bg-rose-600 text-white font-bold shadow-sm' : 'text-stone-400 hover:text-white hover:bg-white/5'"
+                  class="py-2 px-1 rounded-xl flex flex-col items-center gap-1 transition-all cursor-pointer"
+                  title="الكتابة من المنتصف (توسيط)"
+                >
+                  <mat-icon class="text-base">format_align_center</mat-icon>
+                  <span class="text-[11px]">من المنتصف</span>
+                </button>
+
+                <!-- Left Alignment (Direction remains RTL, only text aligned left) -->
+                <button
+                  (click)="setTextAlign('left')"
+                  [class]="settings().textAlign === 'left' ? 'bg-rose-600 text-white font-bold shadow-sm' : 'text-stone-400 hover:text-white hover:bg-white/5'"
+                  class="py-2 px-1 rounded-xl flex flex-col items-center gap-1 transition-all cursor-pointer"
+                  title="الكتابة من اليسار (مع الحفاظ على اتجاه وترابط الحروف العربية)"
+                >
+                  <mat-icon class="text-base">format_align_left</mat-icon>
+                  <span class="text-[11px]">من اليسار</span>
+                </button>
+
+                <!-- Justify Alignment -->
+                <button
+                  (click)="setTextAlign('justify')"
+                  [class]="settings().textAlign === 'justify' ? 'bg-rose-600 text-white font-bold shadow-sm' : 'text-stone-400 hover:text-white hover:bg-white/5'"
+                  class="py-2 px-1 rounded-xl flex flex-col items-center gap-1 transition-all cursor-pointer"
+                  title="ضبط كامل وتوزيع متوازن للأسطر"
+                >
+                  <mat-icon class="text-base">format_align_justify</mat-icon>
+                  <span class="text-[11px]">ضبط كامل</span>
+                </button>
+              </div>
+
+              <p class="text-[10px] text-stone-400 px-1 leading-normal">
+                ملاحظة: عند اختيار "من اليسار"، تظل الحروف وتشكيلها باتجاه اللغة العربية الطبيعي السليم مع محاذاة بداية الأسطر لجهة اليسار.
+              </p>
+            </div>
+
+            <!-- SECTION 3: Arabic Fonts (Amiri, Cairo, Tajawal, Naskh, Kufi, System) -->
+            <div class="space-y-2.5 pt-2 border-t border-white/10">
               <div class="font-bold text-stone-300 text-xs flex items-center gap-1.5">
-                <mat-icon class="text-sm text-rose-400">format_size</mat-icon>
+                <mat-icon class="text-sm text-rose-400">text_format</mat-icon>
                 <span>نوع الخط العربي</span>
               </div>
 
@@ -405,7 +641,7 @@ type AutoScrollSpeed = 1 | 2 | 3;
                   [class]="settings().fontFamily === 'cairo' ? 'bg-rose-950/80 border-rose-500 text-white font-bold' : 'bg-stone-950/50 border-white/5 text-stone-300 hover:bg-stone-800'"
                   class="p-2.5 rounded-xl border transition-all cursor-pointer text-center font-cairo text-xs"
                 >
-                  خط كايرو (عصري واضح)
+                  خط كايرو (عصري بارز)
                 </button>
 
                 <button
@@ -413,7 +649,23 @@ type AutoScrollSpeed = 1 | 2 | 3;
                   [class]="settings().fontFamily === 'tajawal' ? 'bg-rose-950/80 border-rose-500 text-white font-bold' : 'bg-stone-950/50 border-white/5 text-stone-300 hover:bg-stone-800'"
                   class="p-2.5 rounded-xl border transition-all cursor-pointer text-center font-tajawal text-xs"
                 >
-                  خط تجوال (ناعم ومتوازن)
+                  خط تجوال (ناعم ومريح)
+                </button>
+
+                <button
+                  (click)="setFont('naskh')"
+                  [class]="settings().fontFamily === 'naskh' ? 'bg-rose-950/80 border-rose-500 text-white font-bold' : 'bg-stone-950/50 border-white/5 text-stone-300 hover:bg-stone-800'"
+                  class="p-2.5 rounded-xl border transition-all cursor-pointer text-center font-naskh text-sm"
+                >
+                  خط النسخ (تراثي واضح)
+                </button>
+
+                <button
+                  (click)="setFont('kufi')"
+                  [class]="settings().fontFamily === 'kufi' ? 'bg-rose-950/80 border-rose-500 text-white font-bold' : 'bg-stone-950/50 border-white/5 text-stone-300 hover:bg-stone-800'"
+                  class="p-2.5 rounded-xl border transition-all cursor-pointer text-center font-kufi text-xs"
+                >
+                  خط كوفي (هندسي فاخر)
                 </button>
 
                 <button
@@ -421,13 +673,13 @@ type AutoScrollSpeed = 1 | 2 | 3;
                   [class]="settings().fontFamily === 'system' ? 'bg-rose-950/80 border-rose-500 text-white font-bold' : 'bg-stone-950/50 border-white/5 text-stone-300 hover:bg-stone-800'"
                   class="p-2.5 rounded-xl border transition-all cursor-pointer text-center font-sans text-xs"
                 >
-                  خط النظام الأساسي
+                  خط النظام المدمج
                 </button>
               </div>
             </div>
 
-            <!-- SECTION 3: Font Size Control (حجم الخط) -->
-            <div class="space-y-2.5">
+            <!-- SECTION 4: Font Size & Font Weight (حجم وسماكة الخط) -->
+            <div class="space-y-3 pt-2 border-t border-white/10">
               <div class="flex items-center justify-between">
                 <div class="font-bold text-stone-300 text-xs flex items-center gap-1.5">
                   <mat-icon class="text-sm text-rose-400">text_fields</mat-icon>
@@ -442,7 +694,7 @@ type AutoScrollSpeed = 1 | 2 | 3;
                 <button
                   (click)="changeFontSize(-1)"
                   title="تصغير الخط"
-                  class="w-10 h-10 rounded-xl bg-stone-950/60 border border-white/10 hover:bg-stone-800 flex items-center justify-center font-bold text-sm cursor-pointer transition-colors active:scale-95"
+                  class="w-9 h-9 rounded-xl bg-stone-950/60 border border-white/10 hover:bg-stone-800 flex items-center justify-center font-bold text-sm cursor-pointer transition-colors active:scale-95"
                 >
                   -A
                 </button>
@@ -450,7 +702,7 @@ type AutoScrollSpeed = 1 | 2 | 3;
                 <input
                   type="range"
                   min="16"
-                  max="36"
+                  max="38"
                   step="1"
                   [value]="settings().fontSize"
                   (input)="onFontSizeSlider($event)"
@@ -460,15 +712,15 @@ type AutoScrollSpeed = 1 | 2 | 3;
                 <button
                   (click)="changeFontSize(1)"
                   title="تكبير الخط"
-                  class="w-10 h-10 rounded-xl bg-stone-950/60 border border-white/10 hover:bg-stone-800 flex items-center justify-center font-bold text-sm cursor-pointer transition-colors active:scale-95"
+                  class="w-9 h-9 rounded-xl bg-stone-950/60 border border-white/10 hover:bg-stone-800 flex items-center justify-center font-bold text-sm cursor-pointer transition-colors active:scale-95"
                 >
                   +A
                 </button>
               </div>
 
               <!-- Quick Size Presets -->
-              <div class="flex items-center justify-between gap-1 pt-1">
-                @for (preset of [18, 21, 24, 28, 32]; track preset) {
+              <div class="flex items-center justify-between gap-1">
+                @for (preset of [18, 22, 26, 30, 34]; track preset) {
                   <button
                     (click)="setFontSizeDirect(preset)"
                     [class]="settings().fontSize === preset ? 'bg-rose-600 text-white font-bold' : 'bg-stone-950/40 text-stone-400 hover:text-white'"
@@ -478,44 +730,102 @@ type AutoScrollSpeed = 1 | 2 | 3;
                   </button>
                 }
               </div>
+
+              <!-- Font Weight Selector -->
+              <div class="flex items-center justify-between pt-1">
+                <span class="text-stone-300">سماكة الخط:</span>
+                <div class="flex items-center gap-1 bg-stone-950/60 p-1 rounded-xl border border-white/10">
+                  <button
+                    (click)="setFontWeight('normal')"
+                    [class]="(settings().fontWeight || 'normal') === 'normal' ? 'bg-rose-600 text-white font-bold' : 'text-stone-400 hover:text-white'"
+                    class="px-2.5 py-1 rounded-lg text-[11px] transition-colors cursor-pointer"
+                  >
+                    عادي
+                  </button>
+                  <button
+                    (click)="setFontWeight('medium')"
+                    [class]="settings().fontWeight === 'medium' ? 'bg-rose-600 text-white font-bold' : 'text-stone-400 hover:text-white'"
+                    class="px-2.5 py-1 rounded-lg text-[11px] transition-colors cursor-pointer"
+                  >
+                    متوسط
+                  </button>
+                  <button
+                    (click)="setFontWeight('bold')"
+                    [class]="settings().fontWeight === 'bold' ? 'bg-rose-600 text-white font-bold' : 'text-stone-400 hover:text-white'"
+                    class="px-2.5 py-1 rounded-lg text-[11px] transition-colors cursor-pointer"
+                  >
+                    عريض
+                  </button>
+                </div>
+              </div>
             </div>
 
-            <!-- SECTION 4: Line Height (ارتفاع الأسطر) -->
-            <div class="space-y-2.5">
+            <!-- SECTION 5: Line Spacing & Paragraph Margins (ارتفاع الأسطر وتباعد الفقرات) -->
+            <div class="space-y-3 pt-2 border-t border-white/10">
               <div class="font-bold text-stone-300 text-xs flex items-center gap-1.5">
                 <mat-icon class="text-sm text-rose-400">format_line_spacing</mat-icon>
-                <span>ارتفاع الأسطر والمسافات</span>
+                <span>ارتفاع الأسطر وتباعد الفقرات</span>
               </div>
 
-              <div class="grid grid-cols-3 gap-2">
-                <button
-                  (click)="setLineHeight(1.8)"
-                  [class]="settings().lineHeight === 1.8 ? 'bg-rose-950/80 border-rose-500 text-white font-bold' : 'bg-stone-950/50 border-white/5 text-stone-300 hover:bg-stone-800'"
-                  class="py-2 px-2 rounded-xl border text-center transition-all cursor-pointer"
-                >
-                  مدمج (1.8)
-                </button>
+              <!-- Line Height -->
+              <div class="grid grid-cols-4 gap-1.5">
+                @for (lh of [1.8, 2.2, 2.6, 3.0]; track lh) {
+                  <button
+                    (click)="setLineHeight(lh)"
+                    [class]="settings().lineHeight === lh ? 'bg-rose-950/80 border-rose-500 text-white font-bold' : 'bg-stone-950/50 border-white/5 text-stone-300 hover:bg-stone-800'"
+                    class="py-1.5 rounded-xl border text-center transition-all cursor-pointer font-mono text-[11px]"
+                  >
+                    {{ lh }}
+                  </button>
+                }
+              </div>
 
-                <button
-                  (click)="setLineHeight(2.2)"
-                  [class]="settings().lineHeight === 2.2 ? 'bg-rose-950/80 border-rose-500 text-white font-bold' : 'bg-stone-950/50 border-white/5 text-stone-300 hover:bg-stone-800'"
-                  class="py-2 px-2 rounded-xl border text-center transition-all cursor-pointer"
-                >
-                  مريح (2.2)
-                </button>
+              <!-- Paragraph Spacing -->
+              <div class="flex items-center justify-between">
+                <span class="text-stone-300">تباعد الفقرات:</span>
+                <div class="flex items-center gap-1 bg-stone-950/60 p-1 rounded-xl border border-white/10">
+                  <button
+                    (click)="setParagraphSpacing('compact')"
+                    [class]="settings().paragraphSpacing === 'compact' ? 'bg-rose-600 text-white font-bold' : 'text-stone-400 hover:text-white'"
+                    class="px-2.5 py-1 rounded-lg text-[11px] cursor-pointer"
+                  >
+                    متقارب
+                  </button>
+                  <button
+                    (click)="setParagraphSpacing('normal')"
+                    [class]="(settings().paragraphSpacing || 'normal') === 'normal' ? 'bg-rose-600 text-white font-bold' : 'text-stone-400 hover:text-white'"
+                    class="px-2.5 py-1 rounded-lg text-[11px] cursor-pointer"
+                  >
+                    معتدل
+                  </button>
+                  <button
+                    (click)="setParagraphSpacing('relaxed')"
+                    [class]="settings().paragraphSpacing === 'relaxed' ? 'bg-rose-600 text-white font-bold' : 'text-stone-400 hover:text-white'"
+                    class="px-2.5 py-1 rounded-lg text-[11px] cursor-pointer"
+                  >
+                    فسيح
+                  </button>
+                </div>
+              </div>
 
+              <!-- Paragraph Indent Toggle -->
+              <div class="flex items-center justify-between">
+                <div>
+                  <span class="text-stone-300 block">إزاحة بداية الفقرة الأدبية:</span>
+                  <span class="text-[10px] text-stone-500">مسافة بادئة أنيقة لأول سطر</span>
+                </div>
                 <button
-                  (click)="setLineHeight(2.6)"
-                  [class]="settings().lineHeight === 2.6 ? 'bg-rose-950/80 border-rose-500 text-white font-bold' : 'bg-stone-950/50 border-white/5 text-stone-300 hover:bg-stone-800'"
-                  class="py-2 px-2 rounded-xl border text-center transition-all cursor-pointer"
+                  (click)="toggleParagraphIndent()"
+                  [class]="settings().indentParagraphs !== false ? 'bg-rose-600 text-white' : 'bg-stone-950 border border-white/10 text-stone-400'"
+                  class="px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer"
                 >
-                  فسيح (2.6)
+                  {{ settings().indentParagraphs !== false ? 'مُمكَّن' : 'معطل' }}
                 </button>
               </div>
             </div>
 
-            <!-- SECTION 5: Reading Canvas Width (عرض مساحة القراءة) -->
-            <div class="space-y-2.5">
+            <!-- SECTION 6: Reading Canvas Width (عرض مساحة القراءة) -->
+            <div class="space-y-2.5 pt-2 border-t border-white/10">
               <div class="font-bold text-stone-300 text-xs flex items-center gap-1.5">
                 <mat-icon class="text-sm text-rose-400">view_column</mat-icon>
                 <span>عرض صفحة القراءة</span>
@@ -556,34 +866,33 @@ type AutoScrollSpeed = 1 | 2 | 3;
               </div>
             </div>
 
-            <!-- SECTION 6: Text Alignment & Tashkeel (محاذاة النص والتشكيل) -->
+            <!-- SECTION 7: Reading Eye Comfort & Extra Features (التشكيل، التعتيم، المسطرة) -->
             <div class="space-y-3 pt-2 border-t border-white/10">
-              <!-- Text Alignment -->
-              <div class="flex items-center justify-between">
-                <span class="text-stone-300 font-medium">محاذاة الأسطر:</span>
-                <div class="flex items-center gap-1 border border-white/10 rounded-lg p-0.5 bg-stone-950/40">
-                  <button
-                    (click)="setTextAlign('justify')"
-                    [class]="settings().textAlign !== 'right' ? 'bg-rose-600 text-white' : 'text-stone-400 hover:text-white'"
-                    class="px-2 py-1 rounded text-xs cursor-pointer transition-colors"
-                  >
-                    ضبط كامل
-                  </button>
-                  <button
-                    (click)="setTextAlign('right')"
-                    [class]="settings().textAlign === 'right' ? 'bg-rose-600 text-white' : 'text-stone-400 hover:text-white'"
-                    class="px-2 py-1 rounded text-xs cursor-pointer transition-colors"
-                  >
-                    يمين
-                  </button>
+              <!-- Screen Dimmer Slider -->
+              <div class="space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <div class="text-stone-300 flex items-center gap-1.5">
+                    <mat-icon class="text-sm text-rose-400">brightness_medium</mat-icon>
+                    <span>تعتيم الشاشة للقراءة الليلية:</span>
+                  </div>
+                  <span class="font-mono text-rose-400">{{ settings().screenDimmer || 0 }}%</span>
                 </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="60"
+                  step="5"
+                  [value]="settings().screenDimmer || 0"
+                  (input)="onDimmerSlider($event)"
+                  class="w-full accent-rose-500 cursor-pointer h-2 bg-stone-800 rounded-lg"
+                />
               </div>
 
-              <!-- Tashkeel Diacritics Toggle -->
+              <!-- Diacritics / Tashkeel Highlight -->
               <div class="flex items-center justify-between">
                 <div>
-                  <span class="text-stone-300 font-medium block">تمييز علامات التشكيل الفخمة:</span>
-                  <span class="text-[10px] text-stone-500">إبراز الحركات اللغوية بلون جمالي هادئ</span>
+                  <span class="text-stone-300 font-medium block">إبراز حركات التشكيل:</span>
+                  <span class="text-[10px] text-stone-500">تلوين الحركات اللغوية ببريق قرمزي هادئ</span>
                 </div>
                 <button
                   (click)="toggleTashkeelHighlight()"
@@ -591,6 +900,21 @@ type AutoScrollSpeed = 1 | 2 | 3;
                   class="px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer"
                 >
                   {{ settings().highlightTashkeel ? 'مُمكَّن' : 'معطل' }}
+                </button>
+              </div>
+
+              <!-- Reading Focus Ruler -->
+              <div class="flex items-center justify-between">
+                <div>
+                  <span class="text-stone-300 font-medium block">مسطرة تركيز القراءة:</span>
+                  <span class="text-[10px] text-stone-500">خط تتبع لتسهيل التركيز على السطور</span>
+                </div>
+                <button
+                  (click)="toggleReadingRuler()"
+                  [class]="settings().readingRuler ? 'bg-rose-600 text-white' : 'bg-stone-950 border border-white/10 text-stone-400'"
+                  class="px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                >
+                  {{ settings().readingRuler ? 'مُمكَّنة' : 'معطلة' }}
                 </button>
               </div>
             </div>
@@ -609,21 +933,24 @@ type AutoScrollSpeed = 1 | 2 | 3;
 
             <button
               (click)="closeDrawers()"
-              class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition-colors cursor-pointer"
+              class="px-5 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition-colors cursor-pointer"
             >
-              تم
+              تم الحفظ
             </button>
           </div>
         </div>
       }
 
-      <!-- MAIN READING CANVAS / ARTICLE -->
-      <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-14">
+      <!-- ========================================================================= -->
+      <!-- MAIN READING CANVAS / ARTICLE (Clearly Divided, Clean, and Comfortable) -->
+      <!-- ========================================================================= -->
+      <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         <article [class]="'mx-auto transition-all duration-300 ' + getWidthClass()">
           
-          <!-- Elegant Novel & Chapter Breadcrumb Header -->
-          <header class="mb-10 sm:mb-14 text-center space-y-4 pb-8 border-b border-current/10">
+          <!-- SECTION 1: ELEGANT CHAPTER HEADER & METADATA -->
+          <header class="mb-8 sm:mb-12 text-center space-y-4 pb-6 border-b border-current/10">
             
+            <!-- Breadcrumbs -->
             <nav class="flex items-center justify-center gap-2 text-xs opacity-60 font-sans" aria-label="مسار التصفح">
               <a routerLink="/" class="hover:text-rose-500 transition-colors">الرئيسية</a>
               <span>/</span>
@@ -641,7 +968,7 @@ type AutoScrollSpeed = 1 | 2 | 3;
               {{ currentChapter()?.title || 'جاري تحميل عنوان الفصل...' }}
             </h1>
 
-            <!-- Stylized Arabesque Ornamental Divider -->
+            <!-- Literary Arabesque Ornamental Divider -->
             <div class="flex items-center justify-center gap-3 py-1 opacity-70">
               <div class="h-px w-12 sm:w-20 bg-gradient-to-l from-transparent to-current/30"></div>
               <span class="text-rose-500 text-sm font-serif">✤ ✦ ✤</span>
@@ -669,13 +996,13 @@ type AutoScrollSpeed = 1 | 2 | 3;
 
               <div class="flex items-center gap-1.5">
                 <mat-icon class="text-sm text-rose-500">schedule</mat-icon>
-                <span>{{ readingTimeMinutes() }} دقائق للقراءة</span>
+                <span>{{ readingTimeMinutes() }} د للقراءة</span>
               </div>
             </div>
 
           </header>
 
-          <!-- DECODING / LOADING STATE -->
+          <!-- SECTION 2: CHAPTER READING BODY -->
           @if (store.isDecoding()) {
             <div class="py-24 flex flex-col items-center justify-center gap-4 text-center">
               <div class="w-14 h-14 rounded-2xl bg-rose-600/10 border border-rose-500/30 flex items-center justify-center text-rose-500 animate-spin">
@@ -687,15 +1014,16 @@ type AutoScrollSpeed = 1 | 2 | 3;
               </div>
             </div>
           } @else {
-            <!-- NOVEL CHAPTER PARAGRAPHS (LITERARY BODY) -->
+            <!-- NOVEL CHAPTER PARAGRAPHS -->
             <div
-              [class]="'transition-all duration-300 ' + getFontFamilyClass() + ' ' + getTextAlignClass() + ' ' + getParagraphSpacingClass()"
+              [class]="'transition-all duration-300 ' + getFontFamilyClass() + ' ' + getFontWeightClass() + ' ' + getTextAlignClass() + ' ' + getParagraphSpacingClass()"
               [style.font-size.px]="settings().fontSize"
               [style.line-height]="settings().lineHeight"
+              dir="rtl"
             >
               @for (paragraph of chapterParagraphs(); track $index) {
                 <p
-                  class="indent-6 sm:indent-10 tracking-normal transition-all"
+                  [class]="getParagraphIndentClass() + ' tracking-normal transition-all'"
                   [innerHTML]="formatParagraph(paragraph)"
                 ></p>
               } @empty {
@@ -706,17 +1034,17 @@ type AutoScrollSpeed = 1 | 2 | 3;
             </div>
           }
 
-          <!-- CHAPTER BOTTOM COMPREHENSIVE CONTROLS -->
-          <footer class="mt-16 sm:mt-24 pt-8 sm:pt-12 border-t border-current/10 space-y-8">
+          <!-- SECTION 3: CHAPTER BOTTOM NAVIGATION & SECONDARY TOOLS -->
+          <div class="mt-14 sm:mt-20 pt-8 sm:pt-10 border-t border-current/15 space-y-6">
             
             <!-- Previous & Next Chapters Grand Navigation Cards -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               
               <!-- Previous Chapter Button -->
               <button
                 (click)="goToPrevChapter()"
                 [disabled]="isFirstChapter()"
-                class="group p-4 rounded-2xl border border-current/15 disabled:opacity-30 disabled:cursor-not-allowed hover:border-rose-500/40 hover:bg-black/5 dark:hover:bg-white/5 transition-all cursor-pointer text-right flex items-center gap-3.5"
+                class="group p-4 rounded-2xl border border-current/15 disabled:opacity-30 disabled:cursor-not-allowed hover:border-rose-500/40 hover:bg-current/5 transition-all cursor-pointer text-right flex items-center gap-3.5"
               >
                 <div class="w-10 h-10 rounded-xl bg-current/5 border border-current/10 flex items-center justify-center text-rose-500 group-hover:scale-110 transition-transform shrink-0">
                   <mat-icon>arrow_forward</mat-icon>
@@ -748,8 +1076,8 @@ type AutoScrollSpeed = 1 | 2 | 3;
 
             </div>
 
-            <!-- Additional Auxiliary Action Bar -->
-            <div class="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl border border-current/10 bg-current/5">
+            <!-- Auxiliary Action Strip -->
+            <div class="flex flex-wrap items-center justify-between gap-2.5 p-3 sm:p-4 rounded-2xl border border-current/10 bg-current/5">
               
               <div class="flex items-center gap-2">
                 <button
@@ -760,13 +1088,13 @@ type AutoScrollSpeed = 1 | 2 | 3;
                   <span>فهرس الفصول</span>
                 </button>
 
-                <a
-                  [routerLink]="['/novel', currentNovel()?.id]"
+                <button
+                  (click)="toggleSettingsDrawer()"
                   class="px-3 py-2 rounded-xl border border-current/10 hover:bg-current/10 transition-colors cursor-pointer text-xs flex items-center gap-1.5 font-medium"
                 >
-                  <mat-icon class="text-base text-rose-500">auto_stories</mat-icon>
-                  <span>تفاصيل الرواية</span>
-                </a>
+                  <mat-icon class="text-base text-rose-500">tune</mat-icon>
+                  <span>مظهر القراءة</span>
+                </button>
               </div>
 
               <div class="flex items-center gap-2">
@@ -795,19 +1123,19 @@ type AutoScrollSpeed = 1 | 2 | 3;
               </div>
             }
 
-          </footer>
+          </div>
 
           <!-- ========================================================================= -->
-          <!-- CHAPTER READER COMMENTS SECTION (التعليقات مع أيقونة المستخدم وغلافه الخلفي 1500x800) -->
+          <!-- SECTION 4: CHAPTER READER COMMENTS (LAST ELEMENT OF THE PAGE - NO FOOTER!) -->
           <!-- ========================================================================= -->
-          <section class="mt-16 sm:mt-24 pt-8 sm:pt-12 border-t border-current/15 space-y-8">
+          <section id="reader-comments" class="mt-14 sm:mt-20 pt-8 sm:pt-10 border-t border-current/15 space-y-6">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-2xl bg-rose-600/20 text-rose-500 border border-rose-500/30 flex items-center justify-center">
                   <mat-icon class="text-xl">forum</mat-icon>
                 </div>
                 <div>
-                  <h3 class="text-xl font-bold font-amiri text-inherit">نقاشات وتعليقات المقاتلين</h3>
+                  <h3 class="text-lg sm:text-xl font-bold font-amiri text-inherit">نقاشات وتعليقات المقاتلين</h3>
                   <p class="text-xs opacity-60">شارك انطباعك وتحليلك لأحداث هذا الفصل</p>
                 </div>
               </div>
@@ -819,17 +1147,17 @@ type AutoScrollSpeed = 1 | 2 | 3;
 
             <!-- Write Comment Card -->
             @if (authStore.isAuthenticated()) {
-              <div class="liquid-glass rounded-3xl p-5 sm:p-6 border border-white/10 space-y-4 shadow-xl">
-                <div class="flex items-center justify-between text-xs opacity-70">
+              <div class="rounded-3xl p-4 sm:p-5 border border-white/10 bg-stone-900/60 backdrop-blur-md space-y-4 shadow-xl">
+                <div class="flex items-center justify-between text-xs opacity-75">
                   <span>اكتب تعليقك بصفتك:</span>
                   <a routerLink="/profile" class="text-rose-400 hover:underline flex items-center gap-1 font-bold">
-                    <span>إعدادات الأيقونة والغلاف (1500 × 800)</span>
+                    <span>إعدادات الغلاف (1500 × 800) والأيقونة</span>
                     <mat-icon class="text-xs">arrow_back</mat-icon>
                   </a>
                 </div>
 
                 <!-- Preview of current user's banner & circular avatar -->
-                <div class="relative rounded-2xl overflow-hidden border border-white/10 h-28 sm:h-32 group">
+                <div class="relative rounded-2xl overflow-hidden border border-white/10 h-24 sm:h-28 group">
                   <img
                     [src]="authStore.coverURL()"
                     alt="غلاف تعليقك"
@@ -840,12 +1168,12 @@ type AutoScrollSpeed = 1 | 2 | 3;
                   <div class="absolute inset-0 cover-inner-shadow pointer-events-none"></div>
 
                   <!-- Overlapping circular avatar & username -->
-                  <div class="absolute bottom-3 right-4 z-10 flex items-center gap-3">
-                    <div class="w-12 h-12 rounded-full overflow-hidden border-2 border-rose-500 shadow-lg bg-stone-900 shrink-0">
+                  <div class="absolute bottom-2.5 right-4 z-10 flex items-center gap-3">
+                    <div class="w-11 h-11 rounded-full overflow-hidden border-2 border-rose-500 shadow-lg bg-stone-900 shrink-0">
                       @if (authStore.photoURL()) {
                         <img [src]="authStore.photoURL()" alt="صورة القارئ" referrerpolicy="no-referrer" class="w-full h-full object-cover" />
                       } @else {
-                        <div class="w-full h-full bg-rose-700 flex items-center justify-center text-white font-bold text-lg font-amiri">
+                        <div class="w-full h-full bg-rose-700 flex items-center justify-center text-white font-bold text-base font-amiri">
                           {{ authStore.displayName().charAt(0) || 'ق' }}
                         </div>
                       }
@@ -863,7 +1191,7 @@ type AutoScrollSpeed = 1 | 2 | 3;
                     (input)="onCommentInput($event)"
                     rows="3"
                     placeholder="ما رأيك في تطورات هذا الفصل؟ أطلق العنان لمشاعرك الأدبية..."
-                    class="w-full bg-black/30 border border-white/15 focus:border-rose-500 rounded-2xl p-4 text-xs sm:text-sm text-stone-100 placeholder-stone-500 focus:outline-none transition-colors resize-none"
+                    class="w-full bg-stone-950/80 border border-white/15 focus:border-rose-500 rounded-2xl p-3.5 text-xs sm:text-sm text-stone-100 placeholder-stone-500 focus:outline-none transition-colors resize-none"
                   ></textarea>
 
                   <div class="flex items-center justify-between gap-3">
@@ -881,7 +1209,7 @@ type AutoScrollSpeed = 1 | 2 | 3;
                 </div>
               </div>
             } @else {
-              <div class="p-6 rounded-3xl liquid-glass border border-white/10 text-center space-y-3">
+              <div class="p-6 rounded-3xl border border-white/10 bg-stone-900/60 backdrop-blur-md text-center space-y-3">
                 <div class="w-12 h-12 rounded-2xl bg-rose-600/15 border border-rose-500/30 flex items-center justify-center text-rose-400 mx-auto">
                   <mat-icon class="text-2xl">account_circle</mat-icon>
                 </div>
@@ -900,12 +1228,12 @@ type AutoScrollSpeed = 1 | 2 | 3;
             }
 
             <!-- List of Comments -->
-            <div class="space-y-5">
+            <div class="space-y-4">
               @for (comment of store.chapterComments(); track comment.id) {
-                <div class="rounded-3xl overflow-hidden liquid-glass-card border border-white/10 hover:border-rose-500/30 transition-all shadow-lg">
+                <div class="rounded-3xl overflow-hidden border border-white/10 bg-stone-900/50 hover:border-rose-500/30 transition-all shadow-lg">
                   
                   <!-- Comment User Cover Backdrop (1500x800 Aspect with Inner Shading) -->
-                  <div class="relative h-24 sm:h-28 w-full overflow-hidden">
+                  <div class="relative h-20 sm:h-24 w-full overflow-hidden">
                     <img
                       [src]="comment.userCover || authStore.coverURL()"
                       alt="غلاف المعلق"
@@ -917,12 +1245,12 @@ type AutoScrollSpeed = 1 | 2 | 3;
                     <div class="absolute inset-0 cover-inner-shadow pointer-events-none"></div>
 
                     <!-- Overlapping User Circular Avatar and Name -->
-                    <div class="absolute bottom-2.5 right-4 z-10 flex items-center gap-3">
-                      <div class="w-12 h-12 rounded-full overflow-hidden border-2 border-stone-950 shadow-xl bg-stone-900 shrink-0">
+                    <div class="absolute bottom-2 right-3.5 z-10 flex items-center gap-2.5">
+                      <div class="w-10 h-10 rounded-full overflow-hidden border-2 border-stone-950 shadow-xl bg-stone-900 shrink-0">
                         @if (comment.userAvatar) {
                           <img [src]="comment.userAvatar" alt="{{ comment.userName }}" referrerpolicy="no-referrer" class="w-full h-full object-cover" />
                         } @else {
-                          <div class="w-full h-full bg-gradient-to-br from-rose-600 to-stone-900 flex items-center justify-center text-white font-bold font-amiri text-lg">
+                          <div class="w-full h-full bg-gradient-to-br from-rose-600 to-stone-900 flex items-center justify-center text-white font-bold font-amiri text-base">
                             {{ comment.userName.charAt(0) || 'ق' }}
                           </div>
                         }
@@ -930,7 +1258,7 @@ type AutoScrollSpeed = 1 | 2 | 3;
 
                       <div>
                         <div class="flex items-center gap-2">
-                          <strong class="text-sm font-bold font-amiri text-white drop-shadow">
+                          <strong class="text-xs sm:text-sm font-bold font-amiri text-white drop-shadow">
                             {{ comment.userName }}
                           </strong>
                           <span class="px-2 py-0.5 rounded-full bg-rose-600/30 border border-rose-400/40 text-[10px] text-rose-200 font-bold">
@@ -948,7 +1276,7 @@ type AutoScrollSpeed = 1 | 2 | 3;
                       <button
                         type="button"
                         (click)="onDeleteComment(comment.id)"
-                        class="absolute top-3 left-3 p-1.5 rounded-xl bg-black/60 hover:bg-rose-950 border border-white/10 hover:border-rose-500 text-stone-300 hover:text-rose-400 text-xs transition-colors cursor-pointer"
+                        class="absolute top-2.5 left-2.5 p-1 rounded-lg bg-black/60 hover:bg-rose-950 border border-white/10 hover:border-rose-500 text-stone-300 hover:text-rose-400 text-xs transition-colors cursor-pointer"
                         title="حذف تعليقي"
                       >
                         <mat-icon class="text-sm">delete_outline</mat-icon>
@@ -957,32 +1285,32 @@ type AutoScrollSpeed = 1 | 2 | 3;
                   </div>
 
                   <!-- Comment Body & Actions -->
-                  <div class="p-5 pt-3 space-y-3">
+                  <div class="p-4 pt-3 space-y-2.5">
                     <p class="text-xs sm:text-sm text-stone-200 leading-relaxed font-sans whitespace-pre-line">
                       {{ comment.text }}
                     </p>
 
-                    <div class="flex items-center justify-between border-t border-white/5 pt-3 text-xs">
+                    <div class="flex items-center justify-between border-t border-white/5 pt-2 text-xs">
                       <button
                         type="button"
                         (click)="onLikeComment(comment.id)"
-                        class="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white/5 hover:bg-rose-600/20 text-stone-300 hover:text-rose-300 transition-colors cursor-pointer"
+                        class="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white/5 hover:bg-rose-600/20 text-stone-300 hover:text-rose-300 transition-colors cursor-pointer"
                       >
                         <mat-icon class="text-sm text-rose-400">favorite</mat-icon>
-                        <span>{{ comment.likes || 0 }}</span>
+                        <span class="text-xs">{{ comment.likes || 0 }}</span>
                       </button>
 
                       <span class="text-[10px] text-stone-500 font-mono">
-                        معرف التعليق: #{{ comment.id.substring(3, 8) }}
+                        معرف: #{{ comment.id.substring(3, 8) }}
                       </span>
                     </div>
                   </div>
 
                 </div>
               } @empty {
-                <div class="p-8 rounded-3xl liquid-glass border border-white/5 text-center space-y-2 opacity-70">
+                <div class="p-8 rounded-3xl border border-white/5 bg-stone-900/40 text-center space-y-2 opacity-70">
                   <mat-icon class="text-3xl text-rose-400">chat_bubble_outline</mat-icon>
-                  <p class="text-xs font-amiri">كن أول من يترك بصمته ويعلق على هذا الفصل!</p>
+                  <p class="text-xs font-amiri">كن أول من يترك بصمته الأدبية ويعلق على هذا الفصل!</p>
                 </div>
               }
             </div>
@@ -990,61 +1318,6 @@ type AutoScrollSpeed = 1 | 2 | 3;
 
         </article>
       </main>
-
-      <!-- FLOATING QUICK NAVIGATION DOCK (Bottom Bar) -->
-      @if (showFloatingDock()) {
-        <aside
-          class="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 px-3 py-2 rounded-2xl liquid-glass border border-white/15 shadow-2xl flex items-center gap-2 text-white text-xs backdrop-blur-xl animate-in fade-in slide-in-from-bottom-3"
-          aria-label="شريط التنقل السريع"
-        >
-          <!-- Prev -->
-          <button
-            (click)="goToPrevChapter()"
-            [disabled]="isFirstChapter()"
-            title="الفصل السابق"
-            class="p-1.5 rounded-xl hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
-          >
-            <mat-icon class="text-base">chevron_right</mat-icon>
-          </button>
-
-          <!-- Index Drawer -->
-          <button
-            (click)="toggleChapterDrawer()"
-            title="قائمة الفصول"
-            class="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-white/10 hover:bg-white/20 transition-colors cursor-pointer font-bold"
-          >
-            <span class="text-[11px]">فصل {{ currentChapter()?.chapterIndex || 1 }}</span>
-            <span class="opacity-50">/</span>
-            <span class="text-[10px] opacity-70">{{ currentNovel()?.chapters?.length || 0 }}</span>
-          </button>
-
-          <!-- Scroll Percentage -->
-          <div class="px-2 py-1 rounded-xl bg-rose-600/30 text-rose-300 font-mono text-[11px] font-bold border border-rose-500/30">
-            {{ scrollProgress() }}%
-          </div>
-
-          <!-- Next -->
-          <button
-            (click)="goToNextChapter()"
-            [disabled]="isLastChapter()"
-            title="الفصل التالي"
-            class="p-1.5 rounded-xl hover:bg-white/10 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
-          >
-            <mat-icon class="text-base">chevron_left</mat-icon>
-          </button>
-
-          <div class="h-4 w-px bg-white/20 mx-0.5"></div>
-
-          <!-- Top Scroll -->
-          <button
-            (click)="scrollToTop()"
-            title="الصعود لبداية الصفحة"
-            class="p-1.5 rounded-xl hover:bg-white/10 transition-colors cursor-pointer text-stone-300 hover:text-white"
-          >
-            <mat-icon class="text-base">keyboard_arrow_up</mat-icon>
-          </button>
-        </aside>
-      }
 
     </div>
   `,
@@ -1058,11 +1331,11 @@ export class NovelReader implements OnInit, OnDestroy {
   // Component Signals
   readonly showChapterDrawer = signal<boolean>(false);
   readonly showSettingsDrawer = signal<boolean>(false);
+  readonly showToolsMenu = signal<boolean>(false);
   readonly isZenMode = signal<boolean>(false);
-  readonly scrollProgress = signal<number>(0);
-  readonly showFloatingDock = signal<boolean>(false);
   readonly chapterSearchQuery = signal<string>('');
   readonly shareToast = signal<string>('');
+  readonly rulerY = signal<number>(0);
 
   // Comment Signals
   readonly commentTextInput = signal<string>('');
@@ -1083,7 +1356,6 @@ export class NovelReader implements OnInit, OnDestroy {
   readonly currentChapter = this.store.selectedChapter;
 
   constructor() {
-    // When novels are available and nothing is selected, pick the first
     effect(() => {
       const novels = this.store.novels();
       if (!this.store.selectedNovel() && novels.length > 0) {
@@ -1091,7 +1363,6 @@ export class NovelReader implements OnInit, OnDestroy {
       }
     });
 
-    // Reactive load of comments for current chapter
     effect(() => {
       const ch = this.currentChapter();
       if (ch) {
@@ -1101,7 +1372,6 @@ export class NovelReader implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    // Listen for route params if provided (e.g., /reader/:novelId/:chapterId)
     this.route.paramMap.subscribe(params => {
       const novelId = params.get('novelId');
       const chapterId = params.get('chapterId');
@@ -1113,47 +1383,28 @@ export class NovelReader implements OnInit, OnDestroy {
         }
       }
     });
-
-    if (typeof window !== 'undefined') {
-      window.addEventListener('scroll', this.onWindowScroll, { passive: true });
-    }
   }
 
   ngOnDestroy(): void {
     this.stopAutoScroll();
     this.stopTts();
-    if (typeof window !== 'undefined') {
-      window.removeEventListener('scroll', this.onWindowScroll);
+  }
+
+  onMouseMove(e: MouseEvent): void {
+    if (this.settings().readingRuler) {
+      this.rulerY.set(e.clientY);
     }
   }
 
-  // Window scroll handler for progress bar and floating dock
-  private readonly onWindowScroll = () => {
-    if (typeof window === 'undefined') return;
-    const doc = document.documentElement;
-    const scrollTop = window.scrollY || doc.scrollTop;
-    const scrollHeight = doc.scrollHeight - doc.clientHeight;
-
-    if (scrollHeight > 0) {
-      const pct = Math.min(100, Math.max(0, Math.round((scrollTop / scrollHeight) * 100)));
-      this.scrollProgress.set(pct);
-    }
-
-    // Show floating dock only when scrolled down enough (> 300px)
-    this.showFloatingDock.set(scrollTop > 300);
-  };
-
   @HostListener('window:keydown', ['$event'])
   handleKeyboardEvent(event: KeyboardEvent): void {
-    // Escape closes drawers or exits Zen mode
     if (event.key === 'Escape') {
-      if (this.showChapterDrawer() || this.showSettingsDrawer()) {
+      if (this.showChapterDrawer() || this.showSettingsDrawer() || this.showToolsMenu()) {
         this.closeDrawers();
       } else if (this.isZenMode()) {
         this.isZenMode.set(false);
       }
     }
-    // Arrow Right (next in RTL or prev based on standard reading)
     if (event.key === 'ArrowRight' && (event.altKey || event.ctrlKey)) {
       this.goToPrevChapter();
     }
@@ -1162,7 +1413,6 @@ export class NovelReader implements OnInit, OnDestroy {
     }
   }
 
-  // Paragraph splitting and formatting
   readonly chapterParagraphs = computed<string[]>(() => {
     const raw = this.store.currentChapterText();
     if (!raw) return [];
@@ -1207,7 +1457,7 @@ export class NovelReader implements OnInit, OnDestroy {
     if (idx > 0) {
       return novel.chapters[idx - 1].title;
     }
-    return 'أنت في بداية الرواية';
+    return 'بداية الرواية';
   });
 
   readonly nextChapterTitle = computed<string>(() => {
@@ -1218,7 +1468,7 @@ export class NovelReader implements OnInit, OnDestroy {
     if (idx >= 0 && idx < novel.chapters.length - 1) {
       return novel.chapters[idx + 1].title;
     }
-    return 'وصلت إلى آخر فصل متوفر حالياً';
+    return 'آخر فصل متوفر';
   });
 
   readonly readingTimeMinutes = computed<number>(() => {
@@ -1278,25 +1528,58 @@ export class NovelReader implements OnInit, OnDestroy {
     }
   }
 
+  scrollToComments(): void {
+    if (typeof document !== 'undefined') {
+      const el = document.getElementById('reader-comments');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  }
+
   // Drawers & Modals
   toggleChapterDrawer(): void {
     this.showSettingsDrawer.set(false);
+    this.showToolsMenu.set(false);
     this.showChapterDrawer.update(v => !v);
   }
 
   toggleSettingsDrawer(): void {
     this.showChapterDrawer.set(false);
+    this.showToolsMenu.set(false);
     this.showSettingsDrawer.update(v => !v);
+  }
+
+  toggleToolsMenu(): void {
+    this.showToolsMenu.update(v => !v);
+  }
+
+  closeToolsMenu(): void {
+    this.showToolsMenu.set(false);
   }
 
   closeDrawers(): void {
     this.showChapterDrawer.set(false);
     this.showSettingsDrawer.set(false);
+    this.showToolsMenu.set(false);
   }
 
   toggleZenMode(): void {
     this.closeDrawers();
     this.isZenMode.update(v => !v);
+  }
+
+  toggleFullscreen(): void {
+    if (typeof document === 'undefined') return;
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(err => {
+        console.warn('Fullscreen request failed:', err);
+      });
+    } else {
+      document.exitFullscreen().catch(err => {
+        console.warn('Exit fullscreen failed:', err);
+      });
+    }
   }
 
   onSearchChapter(event: Event): void {
@@ -1332,9 +1615,13 @@ export class NovelReader implements OnInit, OnDestroy {
     this.store.updateReaderSettings({ fontFamily });
   }
 
+  setFontWeight(fontWeight: ReaderWeight): void {
+    this.store.updateReaderSettings({ fontWeight });
+  }
+
   changeFontSize(delta: number): void {
     const current = this.settings().fontSize;
-    const next = Math.min(36, Math.max(16, current + delta));
+    const next = Math.min(38, Math.max(16, current + delta));
     this.store.updateReaderSettings({ fontSize: next });
   }
 
@@ -1351,16 +1638,36 @@ export class NovelReader implements OnInit, OnDestroy {
     this.store.updateReaderSettings({ lineHeight });
   }
 
+  setParagraphSpacing(paragraphSpacing: ParagraphSpacing): void {
+    this.store.updateReaderSettings({ paragraphSpacing });
+  }
+
+  toggleParagraphIndent(): void {
+    this.store.updateReaderSettings({ indentParagraphs: !(this.settings().indentParagraphs !== false) });
+  }
+
   setWidth(pageWidth: ReaderWidth): void {
     this.store.updateReaderSettings({ pageWidth });
   }
 
-  setTextAlign(textAlign: 'justify' | 'right'): void {
+  // USER REQUIREMENT:
+  // "إمكانية تعديل شكل القراءة مثلاً الكتابة من المنتصف الكتابة من اليمين و من اليسار
+  // بس لما تكون من اليسار لاتجعل الخط من اليسار لليمين فقط مكن الخط"
+  setTextAlign(textAlign: ReaderAlign): void {
     this.store.updateReaderSettings({ textAlign });
   }
 
   toggleTashkeelHighlight(): void {
     this.store.updateReaderSettings({ highlightTashkeel: !this.settings().highlightTashkeel });
+  }
+
+  toggleReadingRuler(): void {
+    this.store.updateReaderSettings({ readingRuler: !this.settings().readingRuler });
+  }
+
+  onDimmerSlider(event: Event): void {
+    const val = Number((event.target as HTMLInputElement).value);
+    this.store.updateReaderSettings({ screenDimmer: val });
   }
 
   resetSettings(): void {
@@ -1371,21 +1678,24 @@ export class NovelReader implements OnInit, OnDestroy {
       lineHeight: 2.2,
       pageWidth: 'normal',
       highlightTashkeel: false,
+      showDiagnostics: false,
       textAlign: 'justify',
+      paragraphSpacing: 'normal',
+      fontWeight: 'normal',
+      indentParagraphs: true,
+      screenDimmer: 0,
+      readingRuler: false,
     });
   }
 
   // Auto Scroll Engine
   toggleAutoScroll(): void {
     if (this.isAutoScrolling()) {
-      // Cycle speed or stop
       const current = this.autoScrollSpeed();
       if (current === 1) {
-        this.autoScrollSpeed.set(2);
-        this.restartAutoScroll();
+        this.setAutoScrollSpeed(2);
       } else if (current === 2) {
-        this.autoScrollSpeed.set(3);
-        this.restartAutoScroll();
+        this.setAutoScrollSpeed(3);
       } else {
         this.stopAutoScroll();
       }
@@ -1396,16 +1706,24 @@ export class NovelReader implements OnInit, OnDestroy {
     }
   }
 
+  setAutoScrollSpeed(speed: number): void {
+    const validSpeed: AutoScrollSpeed = speed === 2 ? 2 : speed === 3 ? 3 : 1;
+    this.autoScrollSpeed.set(validSpeed);
+    if (!this.isAutoScrolling()) {
+      this.isAutoScrolling.set(true);
+    }
+    this.startAutoScroll();
+  }
+
   private startAutoScroll(): void {
-    this.stopAutoScroll();
+    this.stopAutoScrollOnly();
     if (typeof window === 'undefined') return;
 
     const speed = this.autoScrollSpeed();
-    const intervalMs = speed === 1 ? 50 : speed === 2 ? 30 : 18;
+    const intervalMs = speed === 1 ? 45 : speed === 2 ? 28 : 16;
 
     this.autoScrollInterval = setInterval(() => {
       window.scrollBy({ top: 1, behavior: 'smooth' });
-      // If reached bottom, stop
       const doc = document.documentElement;
       if (window.scrollY + window.innerHeight >= doc.scrollHeight - 5) {
         this.stopAutoScroll();
@@ -1413,21 +1731,19 @@ export class NovelReader implements OnInit, OnDestroy {
     }, intervalMs);
   }
 
-  private restartAutoScroll(): void {
-    if (this.isAutoScrolling()) {
-      this.startAutoScroll();
-    }
-  }
-
-  private stopAutoScroll(): void {
+  private stopAutoScrollOnly(): void {
     if (this.autoScrollInterval) {
       clearInterval(this.autoScrollInterval);
       this.autoScrollInterval = null;
     }
+  }
+
+  stopAutoScroll(): void {
+    this.stopAutoScrollOnly();
     this.isAutoScrolling.set(false);
   }
 
-  // Arabic Text-to-Speech (TTS)
+  // Arabic TTS
   toggleTts(): void {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
       this.shareToast.set('ميزة النطق الصوتي غير مدعومة في هذا المتصفح');
@@ -1452,7 +1768,6 @@ export class NovelReader implements OnInit, OnDestroy {
     utterance.lang = 'ar-SA';
     utterance.rate = 0.95;
 
-    // Pick an Arabic voice if available
     const voices = window.speechSynthesis.getVoices();
     const arabicVoice = voices.find(v => v.lang.startsWith('ar'));
     if (arabicVoice) {
@@ -1471,7 +1786,7 @@ export class NovelReader implements OnInit, OnDestroy {
     this.isSpeaking.set(true);
   }
 
-  private stopTts(): void {
+  stopTts(): void {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
     }
@@ -1482,28 +1797,36 @@ export class NovelReader implements OnInit, OnDestroy {
   getThemeContainerClass(): string {
     switch (this.settings().theme) {
       case 'sepia':
-        return 'bg-[#f8f2e4] text-[#2d2417]';
+        return 'bg-[#f7f0e0] text-[#2c2217]';
       case 'light':
-        return 'bg-[#faf9f5] text-[#1e2428]';
+        return 'bg-[#faf9f6] text-[#1c1917]';
       case 'black':
         return 'bg-black text-[#d6d2cb]';
+      case 'emerald':
+        return 'bg-[#0b1712] text-[#d0e6dc]';
+      case 'navy':
+        return 'bg-[#0a1220] text-[#d6e3f5]';
       case 'dark':
       default:
-        return 'bg-[#151318] text-[#e6e2da]';
+        return 'bg-[#141217] text-[#e6e2da]';
     }
   }
 
   getNavbarThemeClass(): string {
     switch (this.settings().theme) {
       case 'sepia':
-        return 'bg-[#f0e7d3]/95 border-[#dfd4bd] text-[#2d2417] shadow-sm';
+        return 'bg-[#eee4cf]/95 border-[#decfae] text-[#2c2217] shadow-sm';
       case 'light':
         return 'bg-[#ffffff]/95 border-stone-200 text-stone-900 shadow-sm';
       case 'black':
         return 'bg-black/95 border-stone-900 text-[#d6d2cb]';
+      case 'emerald':
+        return 'bg-[#09140f]/95 border-[#152e22] text-[#d0e6dc] shadow-sm';
+      case 'navy':
+        return 'bg-[#080e1a]/95 border-[#13223d] text-[#d6e3f5] shadow-sm';
       case 'dark':
       default:
-        return 'bg-[#121015]/90 border-white/5 text-[#e6e2da] shadow-sm';
+        return 'bg-[#110f14]/95 border-white/5 text-[#e6e2da] shadow-sm';
     }
   }
 
@@ -1515,6 +1838,10 @@ export class NovelReader implements OnInit, OnDestroy {
         return 'نهاري ناصع';
       case 'black':
         return 'أموليد أسود';
+      case 'emerald':
+        return 'واحة زمردية';
+      case 'navy':
+        return 'سماء كحلية';
       case 'dark':
       default:
         return 'داكن ملكي';
@@ -1529,39 +1856,81 @@ export class NovelReader implements OnInit, OnDestroy {
         return 'font-cairo';
       case 'tajawal':
         return 'font-tajawal';
+      case 'naskh':
+        return 'font-naskh';
+      case 'kufi':
+        return 'font-kufi';
       case 'system':
       default:
         return 'font-sans';
     }
   }
 
+  getFontWeightClass(): string {
+    switch (this.settings().fontWeight) {
+      case 'medium':
+        return 'font-medium';
+      case 'bold':
+        return 'font-bold';
+      case 'normal':
+      default:
+        return 'font-normal';
+    }
+  }
+
   getWidthClass(): string {
     switch (this.settings().pageWidth) {
       case 'narrow':
-        return 'max-w-2xl'; // ~672px
+        return 'max-w-2xl';
       case 'wide':
-        return 'max-w-5xl'; // ~1024px
+        return 'max-w-5xl';
       case 'full':
         return 'max-w-full px-2 sm:px-4';
       case 'normal':
       default:
-        return 'max-w-3xl'; // ~768px - optimal reading width
+        return 'max-w-3xl';
     }
   }
 
+  // USER REQUIREMENT:
+  // "مثلاً الكتابة من المنتصف الكتابة من اليمين و من اليسار
+  // بس لما تكون من اليسار لاتجعل الخط من اليسار لليمين فقط مكن الخط."
+  // Direction remains strictly RTL so Arabic script renders normally,
+  // while only text-align is adjusted to right, center, left, or justify!
   getTextAlignClass(): string {
-    return this.settings().textAlign === 'right' ? 'text-right' : 'text-justify';
+    switch (this.settings().textAlign) {
+      case 'right':
+        return 'text-right [direction:rtl]';
+      case 'center':
+        return 'text-center [direction:rtl]';
+      case 'left':
+        return 'text-left [direction:rtl]';
+      case 'justify':
+      default:
+        return 'text-justify [direction:rtl]';
+    }
   }
 
   getParagraphSpacingClass(): string {
-    return 'space-y-6 sm:space-y-8';
+    switch (this.settings().paragraphSpacing) {
+      case 'compact':
+        return 'space-y-4 sm:space-y-5';
+      case 'relaxed':
+        return 'space-y-8 sm:space-y-10';
+      case 'normal':
+      default:
+        return 'space-y-6 sm:space-y-7';
+    }
+  }
+
+  getParagraphIndentClass(): string {
+    return this.settings().indentParagraphs !== false ? 'indent-6 sm:indent-10' : 'indent-0';
   }
 
   formatParagraph(text: string): string {
     if (!this.settings().highlightTashkeel) {
       return text;
     }
-    // Highlighting Arabic diacritics in soft glowing crimson/amber
     return text.replace(/([\u064B-\u065F\u0670])/g, '<span class="text-rose-500 font-bold">$1</span>');
   }
 

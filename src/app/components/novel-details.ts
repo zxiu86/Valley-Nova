@@ -9,7 +9,7 @@ import { ChapterSummary, Novel } from '../core/novel-models';
   selector: 'app-novel-details',
   imports: [RouterLink, MatIconModule],
   template: `
-    <div class="min-h-screen text-stone-100 pb-32">
+    <div class="min-h-screen text-stone-100 pb-24">
       
       @if (currentNovel(); as novel) {
         
@@ -43,10 +43,10 @@ import { ChapterSummary, Novel } from '../core/novel-models';
         </nav>
 
         <!-- ========================================================================= -->
-        <!-- 1. HERO SHOWCASE: THE ULTIMATE NOVEL PROFILE -->
+        <!-- 1. HERO SHOWCASE: THE NOVEL PROFILE -->
         <!-- ========================================================================= -->
         <header class="relative overflow-hidden pt-6 pb-12 px-4 sm:px-6 lg:px-8 border-b border-stone-800/80">
-          <!-- Subtle Soft Ambient Light (بدون توهجات حادة) -->
+          <!-- Subtle Soft Ambient Light -->
           <div class="absolute top-1/4 right-1/4 w-96 h-96 bg-rose-950/20 rounded-full blur-3xl pointer-events-none"></div>
 
           <div class="max-w-7xl mx-auto">
@@ -61,7 +61,7 @@ import { ChapterSummary, Novel } from '../core/novel-models';
                     <div class="absolute inset-0 opacity-15 bg-[radial-gradient(#e11d48_1px,transparent_1px)] [background-size:16px_16px]"></div>
                   </div>
 
-                  <!-- Inner Vignette Shadow (بدون حواف حادة) -->
+                  <!-- Inner Vignette Shadow -->
                   <div class="absolute inset-0 cover-inner-shadow pointer-events-none"></div>
 
                   <!-- Top Badges -->
@@ -128,12 +128,12 @@ import { ChapterSummary, Novel } from '../core/novel-models';
                   </span>
                   
                   <span class="px-3 py-1 rounded-full liquid-glass border border-white/10 text-xs text-stone-300">
-                    رواية عربية ومترجمة
+                    {{ isTranslated() ? 'رواية مترجمة معتمدة' : 'رواية عربية أصلية' }}
                   </span>
 
                   <span class="px-3 py-1 rounded-full liquid-glass border border-white/10 text-xs text-stone-300 flex items-center gap-1">
                     <mat-icon class="text-xs text-emerald-400">check_circle</mat-icon>
-                    <span>فصول كاملة ومدققة</span>
+                    <span>فصول كاملة وتدقيق لغوي</span>
                   </span>
                 </div>
 
@@ -142,48 +142,9 @@ import { ChapterSummary, Novel } from '../core/novel-models';
                   {{ novel.title }}
                 </h1>
 
-                <!-- Prominent Author and Translator Info (مؤلف - مترجم) -->
-                <div class="p-4 rounded-2xl liquid-glass border border-white/10 flex flex-wrap items-center justify-between gap-4">
-                  <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-rose-950/80 border border-rose-500/30 flex items-center justify-center text-rose-300">
-                      <mat-icon>person</mat-icon>
-                    </div>
-                    <div>
-                      <span class="text-[11px] text-stone-400 block font-sans">المؤلف الأصلي</span>
-                      <strong class="text-sm font-bold text-white font-amiri">{{ novel.author }}</strong>
-                    </div>
-                  </div>
-
-                  <div class="h-8 w-px bg-white/10 hidden sm:block"></div>
-
-                  <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-stone-900 border border-white/10 flex items-center justify-center text-rose-300">
-                      <mat-icon>translate</mat-icon>
-                    </div>
-                    <div>
-                      <span class="text-[11px] text-stone-400 block font-sans">المترجم / فريق التعريب</span>
-                      <strong class="text-sm font-bold text-stone-200 font-amiri">
-                        {{ novel.translator || 'الأصل العربي' }}
-                      </strong>
-                    </div>
-                  </div>
-
-                  <div class="h-8 w-px bg-white/10 hidden sm:block"></div>
-
-                  <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-stone-900 border border-white/10 flex items-center justify-center text-rose-300">
-                      <mat-icon>menu_book</mat-icon>
-                    </div>
-                    <div>
-                      <span class="text-[11px] text-stone-400 block font-sans">حالة العمل</span>
-                      <strong class="text-sm font-bold text-emerald-400">مستمرة · تحديث أسبوعي</strong>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- COMPREHENSIVE DATA MATRIX: كل المعلومات بدون نسيان واستثناء -->
+                <!-- COMPREHENSIVE DATA MATRIX: التقييم، الفصول، القراءات، الكلمات -->
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-                  <!-- 1. التقييم -->
+                  <!-- 1. التقييم العام -->
                   <div class="p-4 rounded-2xl liquid-glass border border-white/10 space-y-1">
                     <div class="flex items-center justify-between text-xs text-stone-400">
                       <span>التقييم العام</span>
@@ -241,34 +202,156 @@ import { ChapterSummary, Novel } from '../core/novel-models';
                   </div>
                 </div>
 
-                <!-- Interactive User Rating Bar (قيم الرواية بنفسك) -->
-                <div class="p-4 rounded-2xl liquid-glass border border-rose-500/20 flex flex-wrap items-center justify-between gap-4">
-                  <div class="flex items-center gap-2 text-xs">
-                    <mat-icon class="text-amber-400 text-base">grade</mat-icon>
-                    <span class="text-stone-300 font-medium">
-                      {{ myRating() ? 'تقييمك الشخصي لهذه الرواية:' : 'هل قرأت الرواية؟ أضف تقييمك الآن:' }}
-                    </span>
-                  </div>
+                <!-- ========================================================================= -->
+                <!-- INTERACTIVE ONE-TIME RATING BAR (تقييم تفاعلي صحيح لمرة واحدة دون تضخيم لانهائي) -->
+                <!-- ========================================================================= -->
+                <div class="p-4 sm:p-5 rounded-2xl liquid-glass border border-amber-500/25 space-y-2.5">
+                  <div class="flex flex-wrap items-center justify-between gap-2">
+                    <div class="flex items-center gap-2">
+                      <div class="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                        <mat-icon class="text-base">star_rate</mat-icon>
+                      </div>
+                      <div>
+                        <span class="text-xs font-bold text-white block">تقييمك الشخصي للرواية</span>
+                        <span class="text-[11px] text-stone-400">
+                          @if (myRating()) {
+                            لقد قيّمت هذه الرواية بـ {{ myRating() }} نجوم. (يمكنك تعديل تقييمك متى شئت)
+                          } @else {
+                            انقر على النجوم أدناه لتسجيل تقييمك للرواية (يُحتسب صوت واحد فقط)
+                          }
+                        </span>
+                      </div>
+                    </div>
 
-                  <div class="flex items-center gap-1.5">
-                    @for (star of [1, 2, 3, 4, 5]; track star) {
-                      <button
-                        type="button"
-                        (click)="rateNovel(star)"
-                        [title]="'تقييم ' + star + ' من 5'"
-                        class="p-1 rounded-lg hover:scale-115 transition-transform cursor-pointer"
-                      >
-                        <mat-icon [class]="(myRating() || 0) >= star ? 'text-amber-400' : 'text-stone-600 hover:text-amber-300'">
-                          star
-                        </mat-icon>
-                      </button>
-                    }
                     @if (myRating()) {
-                      <span class="text-xs font-bold text-amber-400 font-mono-code mr-1">
-                        ({{ myRating() }}/5)
+                      <span class="px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-bold flex items-center gap-1">
+                        <mat-icon class="text-xs">check</mat-icon>
+                        <span>تم تسجيل تقييمك: {{ myRating() }}/5</span>
                       </span>
                     }
                   </div>
+
+                  <!-- Interactive 5-Star Row with Hover Preview -->
+                  <div class="flex items-center gap-2 pt-1">
+                    <div
+                      class="flex items-center gap-1 bg-stone-950/70 p-1.5 rounded-xl border border-white/10"
+                      (mouseleave)="onStarsMouseLeave()"
+                    >
+                      @for (star of [1, 2, 3, 4, 5]; track star) {
+                        <button
+                          type="button"
+                          (click)="rateNovel(star)"
+                          (mouseenter)="onStarMouseEnter(star)"
+                          [title]="'تقييم ' + star + ' من 5'"
+                          class="p-1.5 rounded-lg hover:scale-120 transition-all cursor-pointer focus:outline-none"
+                        >
+                          <mat-icon
+                            [class]="getStarClass(star)"
+                            class="text-xl transition-colors"
+                          >
+                            star
+                          </mat-icon>
+                        </button>
+                      }
+                    </div>
+
+                    <span class="text-xs text-stone-400 font-sans">
+                      @if (hoveredStars() > 0) {
+                        <strong class="text-amber-400 font-bold">{{ hoveredStars() }} من 5</strong> (انقر للتأكيد)
+                      } @else if (myRating()) {
+                        <span class="text-stone-300">تقييمك محفوظ</span>
+                      } @else {
+                        <span>اختر من 1 إلى 5 نجوم</span>
+                      }
+                    </span>
+                  </div>
+                </div>
+
+                <!-- ========================================================================= -->
+                <!-- PUBLISHER & RIGHTS SECTION: DIRECTLY UNDER STAR RATING (حقوق الناشر والمترجم/المؤلف) -->
+                <!-- ========================================================================= -->
+                <div class="rounded-3xl overflow-hidden border border-rose-500/25 liquid-glass-card shadow-xl space-y-0">
+                  
+                  <!-- Top Banner / Background of the Creator (غلاف خلفي سينمائي) -->
+                  <div class="relative h-28 sm:h-36 w-full overflow-hidden bg-stone-900">
+                    <img
+                      [src]="getCreatorCover()"
+                      [alt]="getCreatorName()"
+                      referrerpolicy="no-referrer"
+                      class="w-full h-full object-cover"
+                    />
+                    <!-- Inner shading and blending into card background -->
+                    <div class="absolute inset-0 bg-gradient-to-t from-stone-950 via-stone-950/60 to-black/30 pointer-events-none"></div>
+                    <div class="absolute inset-0 cover-inner-shadow pointer-events-none"></div>
+
+                    <!-- Top Badge in Banner -->
+                    <div class="absolute top-3 right-4 z-10 flex items-center gap-2">
+                      <span class="px-3 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/15 text-[11px] font-bold text-rose-300 flex items-center gap-1.5">
+                        <mat-icon class="text-xs text-rose-400">verified</mat-icon>
+                        <span>{{ isTranslated() ? 'حقوق الترجمة والتعريب' : 'حقوق التأليف والملكية الفكرية' }}</span>
+                      </span>
+                    </div>
+
+                    <!-- Overlapping Creator Circular Avatar and Name -->
+                    <div class="absolute bottom-3 right-4 z-10 flex items-center gap-3.5">
+                      <!-- Circular Avatar with glowing border -->
+                      <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden border-2 border-rose-500 shadow-2xl bg-stone-950 shrink-0">
+                        @if (getCreatorAvatar()) {
+                          <img
+                            [src]="getCreatorAvatar()"
+                            [alt]="getCreatorName()"
+                            referrerpolicy="no-referrer"
+                            class="w-full h-full object-cover"
+                          />
+                        } @else {
+                          <div class="w-full h-full bg-gradient-to-br from-rose-700 to-stone-900 flex items-center justify-center text-white font-bold text-xl font-amiri">
+                            {{ getCreatorName().charAt(0) || 'ق' }}
+                          </div>
+                        }
+                      </div>
+
+                      <div class="drop-shadow-md">
+                        <div class="flex items-center gap-2">
+                          <strong class="text-base sm:text-lg font-bold font-amiri text-white">
+                            {{ getCreatorName() }}
+                          </strong>
+                          <span class="px-2 py-0.5 rounded-full bg-rose-600/40 border border-rose-400/40 text-[10px] text-rose-200 font-bold">
+                            {{ isTranslated() ? 'المترجم المعتمد' : 'المؤلف الأصلي' }}
+                          </span>
+                        </div>
+                        <span class="text-[11px] text-rose-200/90 font-sans block">
+                          {{ isTranslated() ? 'ناشر ومترجم رسمي على منصة مقاتل الروايات' : 'صاحب النص الأدبي والحقوق الفكرية المسجلة' }}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Creator Body & Bio Details -->
+                  <div class="p-4 sm:p-5 pt-3 space-y-3 bg-stone-950/80">
+                    <p class="text-xs sm:text-sm text-stone-300 leading-relaxed font-sans">
+                      {{ getCreatorBio() }}
+                    </p>
+
+                    <!-- Rights & Copyright Strip -->
+                    <div class="pt-2 border-t border-white/10 flex flex-wrap items-center justify-between gap-3 text-xs">
+                      <div class="flex items-center gap-2 text-stone-400 text-[11px]">
+                        <mat-icon class="text-sm text-rose-400">shield</mat-icon>
+                        <span>
+                          {{ isTranslated()
+                            ? 'جميع حقوق التعريب والصياغة الأدبية محفوظة للمترجم — منصة مقاتل الروايات © 2026'
+                            : 'جميع حقوق الملكية الفكرية والنشر محفوظة للكاتب — منصة مقاتل الروايات © 2026' }}
+                        </span>
+                      </div>
+
+                      @if (isTranslated() && novel.author) {
+                        <div class="text-[11px] text-stone-400 font-sans">
+                          <span>المؤلف الأصلي: </span>
+                          <strong class="text-stone-200 font-amiri">{{ novel.author }}</strong>
+                        </div>
+                      }
+                    </div>
+                  </div>
+
                 </div>
 
                 <!-- Call-to-Action Action Buttons -->
@@ -276,7 +359,7 @@ import { ChapterSummary, Novel } from '../core/novel-models';
                   <button
                     type="button"
                     (click)="startReadingFirstChapter()"
-                    class="flex-1 sm:flex-none flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-sm sm:text-base shadow-lg transition-all cursor-pointer hover:scale-102"
+                    class="flex-1 sm:flex-none flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-2xl bg-gradient-to-l from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-bold text-sm sm:text-base shadow-xl transition-all cursor-pointer hover:scale-102"
                   >
                     <mat-icon class="text-xl">play_arrow</mat-icon>
                     <span>ابدأ القراءة من الفصل الأول</span>
@@ -512,6 +595,7 @@ export class NovelDetails {
   readonly chapterSearchQuery = signal<string>('');
   readonly isSortAscending = signal<boolean>(true);
   readonly copyNotice = signal<string>('');
+  readonly hoveredStars = signal<number>(0);
 
   constructor() {
     this.route.paramMap.subscribe(params => {
@@ -549,10 +633,16 @@ export class NovelDetails {
     return this.store.userRatings()[novel.id] || null;
   });
 
+  readonly isTranslated = computed<boolean>(() => {
+    const novel = this.currentNovel();
+    if (!novel) return false;
+    return Boolean(novel.translator && novel.translator !== 'الأصل العربي');
+  });
+
   readonly userRatingCount = computed(() => {
     const novel = this.currentNovel();
     if (!novel) return '1,420';
-    const base = novel.chapters.length * 350 + 420;
+    const base = novel.ratingCount || (novel.chapters.length * 350 + 420);
     return base.toLocaleString('ar-EG');
   });
 
@@ -601,18 +691,71 @@ export class NovelDetails {
     return this.store.novels().filter(n => n.id !== cur.id).slice(0, 4);
   });
 
-  toggleBookmark(): void {
+  // Creator profile helpers (Author or Translator)
+  getCreatorName(): string {
     const novel = this.currentNovel();
-    if (!novel) return;
-    this.store.toggleBookmark(novel.id);
+    if (!novel) return 'المؤلف';
+    return this.isTranslated() ? (novel.translator || 'فريق مقاتل الروايات') : novel.author;
+  }
+
+  getCreatorAvatar(): string {
+    const novel = this.currentNovel();
+    if (!novel) return '';
+    if (this.isTranslated()) {
+      return novel.translatorAvatar || 'assist/img/logo.png';
+    }
+    return novel.authorAvatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=300&auto=format&fit=crop';
+  }
+
+  getCreatorCover(): string {
+    const novel = this.currentNovel();
+    if (!novel) return 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?q=80&w=1500&auto=format&fit=crop';
+    if (this.isTranslated()) {
+      return novel.translatorCover || 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?q=80&w=1500&auto=format&fit=crop';
+    }
+    return novel.authorCover || 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=1500&auto=format&fit=crop';
+  }
+
+  getCreatorBio(): string {
+    const novel = this.currentNovel();
+    if (!novel) return '';
+    if (this.isTranslated()) {
+      return novel.translatorBio || 'فريق الترجمة والتعريب الرسمي لمنصة مقاتل الروايات؛ تعريب حصري متقن يحافظ على روح وفصاحة الضاد.';
+    }
+    return novel.authorBio || 'صاحب النص الأدبي والحقوق الفكرية المسجلة حصرياً على منصة مقاتل الروايات.';
+  }
+
+  // Interactive Star Rating Logic
+  onStarMouseEnter(star: number): void {
+    this.hoveredStars.set(star);
+  }
+
+  onStarsMouseLeave(): void {
+    this.hoveredStars.set(0);
+  }
+
+  getStarClass(star: number): string {
+    const hovered = this.hoveredStars();
+    const active = this.myRating() || 0;
+
+    if (hovered > 0) {
+      return star <= hovered ? 'text-amber-400 drop-shadow' : 'text-stone-700';
+    }
+    return star <= active ? 'text-amber-400 drop-shadow' : 'text-stone-700 hover:text-amber-300';
   }
 
   rateNovel(stars: number): void {
     const novel = this.currentNovel();
     if (!novel) return;
     this.store.rateNovel(novel.id, stars);
-    this.copyNotice.set(`شكراً لك! تم تسجيل تقييمك (${stars} نجوم) بنجاح.`);
-    setTimeout(() => this.copyNotice.set(''), 3000);
+    this.copyNotice.set(`شكراً لك! تم تسجيل تقييمك (${stars} نجوم من 5) بنجاح.`);
+    setTimeout(() => this.copyNotice.set(''), 3500);
+  }
+
+  toggleBookmark(): void {
+    const novel = this.currentNovel();
+    if (!novel) return;
+    this.store.toggleBookmark(novel.id);
   }
 
   shareNovel(): void {

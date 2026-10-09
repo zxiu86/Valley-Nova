@@ -11,6 +11,12 @@
   .font-tajawal {
     font-family: 'Tajawal', sans-serif;
   }
+  .font-naskh {
+    font-family: 'Noto Naskh Arabic', serif;
+  }
+  .font-kufi {
+    font-family: 'Noto Kufi Arabic', sans-serif;
+  }
   .font-mono-code {
     font-family: 'JetBrains Mono', monospace;
   }

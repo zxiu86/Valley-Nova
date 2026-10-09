@@ -8,12 +8,19 @@ export interface RawNovelData {
   id: string;
   title: string;
   author: string;
+  authorAvatar?: string;
+  authorCover?: string;
+  authorBio?: string;
   translator?: string;
+  translatorAvatar?: string;
+  translatorCover?: string;
+  translatorBio?: string;
   category: string;
   description: string;
   coverGradient: string;
   accentColor: string;
   rating?: number;
+  ratingCount?: number;
   views?: string;
   badge?: string;
   section: 'featured' | 'trending' | 'translated' | 'fantasy';
@@ -25,10 +32,17 @@ export const SAMPLE_NOVELS: RawNovelData[] = [
     id: 'novel-valley-chronicles',
     title: 'سجلات مقاتل الظلال والقرمز',
     author: 'ألكسندر فاليري',
+    authorAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=300&auto=format&fit=crop',
+    authorCover: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=1500&auto=format&fit=crop',
+    authorBio: 'كاتب فانتازيا ملحمية بريطاني، حائز على جوائز في أدب الخيال الأسطوري وصاحب ملحمة معاقل الظلال.',
     translator: 'فريق مقاتل الروايات',
+    translatorAvatar: 'assist/img/logo.png',
+    translatorCover: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?q=80&w=1500&auto=format&fit=crop',
+    translatorBio: 'فريق الترجمة والتعريب الرسمي لمنصة مقاتل الروايات؛ تعريب حصري متقن يحافظ على روح وفصاحة الضاد.',
     category: 'فانتازيا ملحمية',
     section: 'featured',
     rating: 4.92,
+    ratingCount: 2840,
     views: '240K',
     badge: 'الأكثر فصولاً',
     description: 'في معاقل الجبال القرمزية، تكتشف سلالة قديمة مخطوطات مشفرة بلغة الأثير. ملحمة أدبية تحبس الأنفاس بين الحقيقة والأساطير المنسية لصراع مقاتلي الظلال.',
@@ -105,10 +119,17 @@ export const SAMPLE_NOVELS: RawNovelData[] = [
     id: 'novel-sword-monarch',
     title: 'سيد السيوف التسعة: ولادة الإمبراطور',
     author: 'شين تشانغ لين',
+    authorAvatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=300&auto=format&fit=crop',
+    authorCover: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=1500&auto=format&fit=crop',
+    authorBio: 'مؤلف روايات الفنون القتالية الشرقية وشوان هوان، صاحب السلسلة الأسطورية سادة السيوف التسعة.',
     translator: 'م. أحمد حسام',
+    translatorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=300&auto=format&fit=crop',
+    translatorCover: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?q=80&w=1500&auto=format&fit=crop',
+    translatorBio: 'مترجم متخصص في الروايات الآسيوية وعوالم الزراعة الروحية والأثير، تعريب عربي بليغ ومفصل.',
     category: 'روايات مترجمة / شوان هوان',
     section: 'translated',
     rating: 4.88,
+    ratingCount: 3120,
     views: '340K',
     badge: 'الأكثر قراءة',
     description: 'استيقظ لين في عالم يحكمه الأقوياء بطاقة التشي، ومعه تسعة أختام لسيف لا يقهر. رحلة الصعود من الحضيض إلى قمة العوالم التسعة.',
@@ -133,10 +154,17 @@ export const SAMPLE_NOVELS: RawNovelData[] = [
     id: 'novel-infinite-library',
     title: 'مكتبة اللانهاية وأسرار الأثير',
     author: 'جوليان موريس',
+    authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300&auto=format&fit=crop',
+    authorCover: 'https://images.unsplash.com/photo-1507842229451-7f01be7fe8e7?q=80&w=1500&auto=format&fit=crop',
+    authorBio: 'روائي خيال علمي وفلسفي بريطاني، تُرجمت رواياته إلى أكثر من 20 لغة حول العالم.',
     translator: 'د. ليلى الشريف',
+    translatorAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=300&auto=format&fit=crop',
+    translatorCover: 'https://images.unsplash.com/photo-1519791883288-dc8bd696e667?q=80&w=1500&auto=format&fit=crop',
+    translatorBio: 'أستاذة الأدب المقارن والترجمة بجامعة السوربون، متخصصة في ترجمة الخيال العلمي الرفيع.',
     category: 'غموض وخيال علمي',
     section: 'trending',
     rating: 4.95,
+    ratingCount: 1890,
     views: '98K',
     badge: 'موصى به',
     description: 'مكتبة تمتد عبر أبعاد موازية، كل رفٍ فيها يحتوي على حياة محتملة لشخص ما. هل تستطيع البطلة العثور على النسخة الوحيدة التي تُصلح الماضي؟',
@@ -160,10 +188,17 @@ export const SAMPLE_NOVELS: RawNovelData[] = [
     id: 'novel-crimson-alchemist',
     title: 'كيميائي القرمز: حجر الأرواح',
     author: 'فيكتور هوغو لوكليرك',
+    authorAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=300&auto=format&fit=crop',
+    authorCover: 'https://images.unsplash.com/photo-1507842229451-7f01be7fe8e7?q=80&w=1500&auto=format&fit=crop',
+    authorBio: 'روائي ومؤرخ أدبي فرنسي متخصص في الأدب القوطي والروايات التاريخية في عصر التنوير.',
     translator: 'أحمد سامي الدروبي',
+    translatorAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=300&auto=format&fit=crop',
+    translatorCover: 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?q=80&w=1500&auto=format&fit=crop',
+    translatorBio: 'مترجم وباحث لغوي معتمد، عضو اتحاد المترجمين العرب، قام بنقل العديد من روائع الأدب العالمي إلى لغة الضاد.',
     category: 'روايات مترجمة / أدب كلاسيكي',
     section: 'fantasy',
     rating: 4.75,
+    ratingCount: 1620,
     views: '85K',
     badge: 'روائع كلاسيكية',
     description: 'في باريس القرن الثامن عشر، يبحث كيميائي معزول عن سر تحويل المعادن إلى وعي حي، ليدخل في صراع مع جمعيات سرية تسعى للخلود.',
@@ -185,10 +220,14 @@ export const SAMPLE_NOVELS: RawNovelData[] = [
     id: 'novel-desert-sultan',
     title: 'سلطان رمال الفجر الذهبي',
     author: 'طارق عبد العزيز',
+    authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=300&auto=format&fit=crop',
+    authorCover: 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?q=80&w=1500&auto=format&fit=crop',
+    authorBio: 'أديب وروائي عربي، يكتب الملاحم التاريخية العربية وأسرار الصحراء، حاصل على جائزة الرواية العربية المتميزة.',
     translator: 'الأصل العربي',
     category: 'تاريخ ورواية عربية',
     section: 'trending',
     rating: 4.9,
+    ratingCount: 1950,
     views: '115K',
     badge: 'رواية أصلية',
     description: 'ملحمة عربية في أعماق الجزيرة ورمالها المتحركة، حيث تتصادم القبائل في صراع على البقاء والسيادة وشرف الكلمة.',
@@ -210,10 +249,14 @@ export const SAMPLE_NOVELS: RawNovelData[] = [
     id: 'novel-cyber-cairo',
     title: 'القاهرة 2099: ذكريات السيليكون',
     author: 'كريم المنشاوي',
+    authorAvatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?q=80&w=300&auto=format&fit=crop',
+    authorCover: 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?q=80&w=1500&auto=format&fit=crop',
+    authorBio: 'كاتب خيال علمي ومهندس حوسبة متقدمة، يستكشف تقاطعات الهوية الإنسانية والذكاء السيبراني في الشرق الأوسط.',
     translator: 'الأصل العربي',
     category: 'سايبربانك وخيال علمي',
     section: 'fantasy',
     rating: 4.88,
+    ratingCount: 1380,
     views: '67K',
     badge: 'سايبربانك',
     description: 'في قاهرة المستقبل المكتظة بالأضواء النيونية والذكاء السيبراني، يبحث مهندس شبكات عصبية عن شظايا ذاكرة مشفرة كادت أن تُغير مصير الشرق الأوسط.',
@@ -228,6 +271,66 @@ export const SAMPLE_NOVELS: RawNovelData[] = [
 
 — تَدَفُّقُ البَيَانَاتِ الأَثِيرِيَّةِ يُسَجِّلُ نِسَبَ اسْتِقْرَارٍ قِيَاسِيَّةً فِي الخَوَادِمِ الشَّرْقِيَّةِ.
 هَمَسَ عُمَر فِي جِهَازِ الاتِّصَالِ المَزْرُوعِ خَلْفَ أُذُنِهِ، قَبْلَ أَنْ يَتَوَارَى فِي زِحَامِ المَدِينَةِ الفَوْضَوِيَّةِ.`,
+      },
+    ],
+  },
+  {
+    id: 'novel-astral-sovereign',
+    title: 'سيد الأثير: أسطورة النجوم التسعة',
+    author: 'ليان شينغ',
+    authorAvatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=300&auto=format&fit=crop',
+    authorCover: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=1500&auto=format&fit=crop',
+    authorBio: 'كاتب ومؤلف فنون قتالية صينية ملحمية (شوان هوان)، تُرجمت أعماله لملايين القراء حول العالم.',
+    translator: 'هشام كمال الدين',
+    translatorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300&auto=format&fit=crop',
+    translatorCover: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?q=80&w=1500&auto=format&fit=crop',
+    translatorBio: 'مترجم متخصص في أدب العوالم الموازية والفنون القتالية، تعريب متقن لمصطلحات الطاقة والأثير.',
+    category: 'فنون قتالية وعوالم موازية',
+    section: 'trending',
+    rating: 4.86,
+    ratingCount: 2150,
+    views: '190K',
+    badge: 'فنون قتالية',
+    description: 'في عالم النجوم التسعة، يولد فتى بجسد فاقد لتدفق الطاقة، لكنه يعثر على خاتم سماوي يعيد كتابة قوانين الزراعة الروحية والسيادة المطلقة.',
+    coverGradient: 'from-violet-950 via-stone-900 to-rose-950',
+    accentColor: '#8b5cf6',
+    chapters: [
+      {
+        chapterIndex: 1,
+        title: 'الفصل الأول: صدى الخاتم السماوي في الوادي المقفر',
+        content: `كَانَ اللَّيْلُ يَبْسُطُ رِدَاءَهُ الأَسْوَدَ المُرَصَّعَ بِالنُّجُومِ فَوْقَ قِمَمِ جِبَالِ الأَثِيرِ الشَّاهِقَةِ.
+وَقَفَ يُوسُف يَتَأَمَّلُ نَبَضَاتِ النُّورِ المُنْبَعِثَةِ مِنْ يَدِهِ بَعْدَ سَنَوَاتٍ مِنَ الإِخْفَاقِ وَاليَأْسِ.
+
+— هَذِهِ المَرَّةَ، لَنْ يَكُونَ مَصِيرِي بِيَدِ غَيْرِي!
+قَالَهَا بِعَزْمٍ رَاسِخٍ، حِينَ انْفَجَرَتْ طَاقَةُ النُّجُومِ التِّسْعَةِ فِي عُرُوقِهِ كَنَهْرٍ مِنَ الضِّيَاءِ.`,
+      },
+    ],
+  },
+  {
+    id: 'novel-damascus-secrets',
+    title: 'أسرار قصر الوردة الدمشقية',
+    author: 'نور الهدى الشامي',
+    authorAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=300&auto=format&fit=crop',
+    authorCover: 'https://images.unsplash.com/photo-1519791883288-dc8bd696e667?q=80&w=1500&auto=format&fit=crop',
+    authorBio: 'روائية سورية متخصصة في أدب الغموض والرواية التاريخية، تجمع بين الرومانسية الكلاسيكية والتشويق.',
+    translator: 'الأصل العربي',
+    category: 'غموض وتاريخ أدبي',
+    section: 'featured',
+    rating: 4.95,
+    ratingCount: 1780,
+    views: '145K',
+    badge: 'غموض وتاريخ',
+    description: 'بين أزقة دمشق القديمة وقصورها العريقة في مطلع القرن العشرين، تكشف مذكرات مخفية أسرار مؤامرة دولية وكنزاً فكرياً مفقوداً.',
+    coverGradient: 'from-amber-950 via-stone-900 to-emerald-950',
+    accentColor: '#10b981',
+    chapters: [
+      {
+        chapterIndex: 1,
+        title: 'الفصل الأول: المفتاح النحاسي في باحة الياسمين',
+        content: `كَانَ عَبَقُ اليَاسَمِينِ يَمْلَأُ أَرْجَاءَ البَاحَةِ الدِّمَشْقِيَّةِ العَتِيقَةِ مَعَ سُكُونِ المَسَاءِ.
+فَتَحَتْ مَرْيَم الصُّنْدُوقَ الخَشَبِيَّ المُطَعَّمَ بِالصَّدَفِ، فَوَجَدَتْ فِيهِ رِسَالَةً مُغْلَقَةً بِالشَّمْعِ الأَحْمَرِ.
+
+«إِلَى مَنْ يَصِلُهُ هَذَا الكِتَابُ: مَا دَفَنَّاهُ هُنَا لَيْسَ ذَهَبًا، بَلْ حَقِيقَةٌ كَادَتْ أَنْ تُحْرِقَ بِلَادَ الشَّامِ».`,
       },
     ],
   },

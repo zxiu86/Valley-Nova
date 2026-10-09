@@ -16,13 +16,20 @@ export interface Novel {
   id: string;
   title: string;
   author: string;
+  authorAvatar?: string;
+  authorCover?: string;
+  authorBio?: string;
   translator?: string;
+  translatorAvatar?: string;
+  translatorCover?: string;
+  translatorBio?: string;
   category: string;
   description: string;
   coverGradient: string;
   coverImage?: string;
   accentColor: string;
   rating?: number;
+  ratingCount?: number;
   views?: string;
   badge?: string;
   section?: string;
@@ -32,9 +39,12 @@ export interface Novel {
   isPreloaded?: boolean;
 }
 
-export type ReaderTheme = 'light' | 'sepia' | 'dark' | 'black';
-export type ReaderFont = 'amiri' | 'cairo' | 'tajawal' | 'system';
+export type ReaderTheme = 'light' | 'sepia' | 'dark' | 'black' | 'emerald' | 'navy';
+export type ReaderFont = 'amiri' | 'cairo' | 'tajawal' | 'naskh' | 'kufi' | 'system';
 export type ReaderWidth = 'narrow' | 'normal' | 'wide' | 'full';
+export type ReaderAlign = 'justify' | 'right' | 'center' | 'left';
+export type ReaderWeight = 'normal' | 'medium' | 'bold';
+export type ParagraphSpacing = 'compact' | 'normal' | 'relaxed';
 
 export interface ReaderSettings {
   theme: ReaderTheme;
@@ -44,6 +54,10 @@ export interface ReaderSettings {
   pageWidth: ReaderWidth;
   highlightTashkeel: boolean;
   showDiagnostics: boolean;
-  textAlign?: 'justify' | 'right';
-  paragraphSpacing?: 'normal' | 'relaxed';
+  textAlign: ReaderAlign;
+  paragraphSpacing: ParagraphSpacing;
+  fontWeight?: ReaderWeight;
+  indentParagraphs?: boolean;
+  screenDimmer?: number;
+  readingRuler?: boolean;
 }
