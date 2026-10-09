@@ -16,16 +16,22 @@ import { AuthStore } from '../core/auth-store';
           <!-- RIGHT: Website Logo & Name (شعار الموقع واسم مقاتل الروايات) -->
           <div class="flex items-center gap-3">
             <a routerLink="/" (click)="closeMenu()" class="flex items-center gap-3 group cursor-pointer focus-visible:outline-none">
-              <!-- Site Logo (.ico from /assist/img/logo.ico as requested) -->
-              <div class="relative w-11 h-11 rounded-2xl overflow-hidden liquid-glass flex items-center justify-center border border-rose-500/25 group-hover:border-rose-500/60 transition-all shadow-md">
-                <img
-                  src="/assist/img/logo.ico"
-                  alt="شعار مقاتل الروايات"
-                  class="w-full h-full object-contain p-1 group-hover:scale-105 transition-transform"
-                  (error)="onLogoError()"
-                />
+              
+              <!-- Site Logo with multi-format fallback (PNG, SVG, ICO) -->
+              <div class="relative w-11 h-11 rounded-2xl overflow-hidden liquid-glass flex items-center justify-center border border-rose-500/25 group-hover:border-rose-500/60 transition-all shadow-md p-1">
+                <picture class="w-full h-full flex items-center justify-center">
+                  <source srcset="assist/img/logo.png" type="image/png">
+                  <source srcset="assist/img/logo.svg" type="image/svg+xml">
+                  <img
+                    src="assist/img/logo.ico"
+                    alt="شعار مقاتل الروايات"
+                    class="w-full h-full object-contain group-hover:scale-105 transition-transform"
+                    (error)="onLogoError()"
+                  />
+                </picture>
+
                 @if (logoFailed()) {
-                  <!-- Elegant Arabic Emblem Fallback if logo.ico is not yet uploaded by user -->
+                  <!-- Elegant Arabic Emblem Fallback -->
                   <div class="absolute inset-0 bg-gradient-to-br from-rose-600 via-rose-800 to-stone-950 flex items-center justify-center font-amiri font-bold text-2xl text-white shadow-inner">
                     م
                   </div>
@@ -50,10 +56,10 @@ import { AuthStore } from '../core/auth-store';
           <!-- FAR LEFT: User Account Quick Button + Hamburger Menu Button (أقصى اليسار) -->
           <div class="flex items-center gap-2 sm:gap-3">
             
-            <!-- Quick Firebase Auth Button -->
+            <!-- Quick Auth Status Button in Desktop Navbar -->
             @if (authStore.isAuthenticated()) {
               <a
-                routerLink="/profile"
+                routerLink="/login"
                 (click)="closeMenu()"
                 class="hidden sm:flex items-center gap-2 py-1.5 px-3 rounded-2xl liquid-glass border border-rose-500/30 hover:border-rose-500/60 transition-all text-xs cursor-pointer group"
                 title="الملف الشخصي للقارئ"
@@ -86,13 +92,13 @@ import { AuthStore } from '../core/auth-store';
               </a>
             }
 
-            <!-- Hamburger Button -->
+            <!-- Hamburger Button with Soft Rotation -->
             <button
               (click)="toggleMenu()"
               aria-label="قائمة مقاتل الروايات"
               class="w-11 h-11 rounded-2xl liquid-glass flex items-center justify-center text-rose-200 hover:text-white hover:bg-rose-950/40 border border-white/10 hover:border-rose-500/40 shadow-sm transition-all cursor-pointer"
             >
-              <mat-icon class="text-2xl transition-transform" [class.rotate-90]="isMenuOpen()">
+              <mat-icon class="text-2xl transition-transform duration-300" [class.rotate-90]="isMenuOpen()">
                 {{ isMenuOpen() ? 'close' : 'menu' }}
               </mat-icon>
             </button>
@@ -105,7 +111,7 @@ import { AuthStore } from '../core/auth-store';
     <!-- Liquid Glass Slide-over Drawer / Menu with Smooth Fluid Animations -->
     <!-- Smooth Frosted Backdrop with Gentle Fade -->
     <div
-      class="fixed inset-0 z-40 bg-black/75 backdrop-blur-sm transition-opacity duration-500 ease-out"
+      class="fixed inset-0 z-40 bg-black/80 backdrop-blur-md transition-opacity duration-300 ease-out"
       [class.opacity-100]="isMenuOpen()"
       [class.pointer-events-auto]="isMenuOpen()"
       [class.opacity-0]="!isMenuOpen()"
@@ -119,37 +125,43 @@ import { AuthStore } from '../core/auth-store';
       ></button>
     </div>
 
-    <!-- Fluid Slide-over Drawer with Luxury Spring Easing (حركة انسيابية أنيقة وسلسة) -->
+    <!-- Fluid Slide-over Drawer with Luxurious Modern Layout -->
     <aside
-      class="fixed top-0 left-0 bottom-0 z-50 w-full max-w-sm liquid-glass bg-stone-950/95 border-r border-rose-500/20 shadow-2xl flex flex-col justify-between p-6 overflow-y-auto transform transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]"
+      class="fixed top-0 left-0 bottom-0 z-50 w-full max-w-sm liquid-glass bg-stone-950/95 border-r border-rose-500/20 shadow-2xl flex flex-col justify-between p-5 sm:p-6 overflow-y-auto transform transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
       [class.translate-x-0]="isMenuOpen()"
       [class.-translate-x-full]="!isMenuOpen()"
     >
         
-        <!-- Drawer Header -->
+        <!-- Drawer Content Upper -->
         <div class="space-y-6">
+          
+          <!-- Drawer Header -->
           <div class="flex items-center justify-between border-b border-rose-500/15 pb-4">
-            <div class="flex items-center gap-2.5">
-              <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-rose-600 to-rose-950 flex items-center justify-center font-amiri font-bold text-white text-lg shadow-sm">
-                م
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-2xl liquid-glass border border-rose-500/30 flex items-center justify-center p-1 shadow-sm">
+                <img
+                  src="assist/img/logo.png"
+                  alt="مقاتل الروايات"
+                  class="w-full h-full object-contain"
+                />
               </div>
               <div>
                 <h3 class="text-lg font-bold font-amiri text-white">مقاتل الروايات</h3>
-                <span class="text-[10px] text-rose-400">القائمة الرئيسية والتصفح</span>
+                <span class="text-[10px] text-rose-400">القائمة والتصفح الذكي</span>
               </div>
             </div>
 
             <button
               (click)="closeMenu()"
               aria-label="إغلاق القائمة"
-              class="w-9 h-9 rounded-xl liquid-glass flex items-center justify-center text-stone-400 hover:text-white cursor-pointer"
+              class="w-9 h-9 rounded-xl liquid-glass flex items-center justify-center text-stone-400 hover:text-white cursor-pointer transition-colors"
             >
               <mat-icon class="text-xl">close</mat-icon>
             </button>
           </div>
 
-          <!-- USER AUTHENTICATION SECTION (مربوط بفايربيس) -->
-          <div class="p-4 rounded-2xl liquid-glass border border-rose-500/25 space-y-3">
+          <!-- 1. USER PROFILE SECTION (أنظف وأجمل بدون أي ذكر تقني) -->
+          <div class="p-4 rounded-2xl liquid-glass border border-rose-500/20 space-y-3">
             @if (authStore.isAuthenticated()) {
               <div class="flex items-center gap-3">
                 @if (authStore.photoURL()) {
@@ -176,12 +188,12 @@ import { AuthStore } from '../core/auth-store';
 
               <div class="grid grid-cols-2 gap-2 pt-2 border-t border-white/10">
                 <a
-                  routerLink="/profile"
+                  routerLink="/login"
                   (click)="closeMenu()"
                   class="py-2 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-center text-xs text-stone-200 font-medium transition-colors cursor-pointer flex items-center justify-center gap-1"
                 >
-                  <mat-icon class="text-sm">badge</mat-icon>
-                  <span>الملف الشخصي</span>
+                  <mat-icon class="text-sm text-rose-400">account_circle</mat-icon>
+                  <span>حسابي</span>
                 </a>
                 <button
                   type="button"
@@ -195,11 +207,11 @@ import { AuthStore } from '../core/auth-store';
             } @else {
               <div class="space-y-2">
                 <div class="flex items-center gap-2 text-xs font-bold text-stone-200">
-                  <mat-icon class="text-rose-400 text-base">account_circle</mat-icon>
-                  <span>حساب القارئ في فايربيس</span>
+                  <mat-icon class="text-rose-400 text-base">person</mat-icon>
+                  <span>حساب القارئ</span>
                 </div>
                 <p class="text-[11px] text-stone-400 leading-relaxed font-sans">
-                  سجّل دخولك لمزامنة مفضلتك، حفظ تقدم القراءة، وتقييم رواياتك المفضلة.
+                  سجّل دخولك لحفظ تقدم القراءة، مزامنة فصولك، وتقييم رواياتك المفضلة.
                 </p>
                 <a
                   routerLink="/login"
@@ -213,9 +225,9 @@ import { AuthStore } from '../core/auth-store';
             }
           </div>
 
-          <!-- Section Navigation Links (تم مسح نشر فصل جديد كما طُلب) -->
-          <div class="space-y-1.5">
-            <span class="text-[11px] font-bold text-stone-400 uppercase tracking-wider block px-2 mb-2">
+          <!-- 2. MAIN NAVIGATION SECTIONS -->
+          <div class="space-y-1">
+            <span class="text-[10px] font-bold text-stone-400 uppercase tracking-wider block px-2 mb-1.5">
               تصفح الأقسام والروايات
             </span>
 
@@ -242,21 +254,20 @@ import { AuthStore } from '../core/auth-store';
               (click)="closeMenu()"
               class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-stone-200 hover:text-white hover:bg-rose-950/40 hover:border hover:border-rose-500/20 transition-all cursor-pointer"
             >
-              <mat-icon class="text-rose-400 text-lg">lock</mat-icon>
-              <span>صفحة تسجيل الدخول والحساب</span>
+              <mat-icon class="text-rose-400 text-lg">manage_accounts</mat-icon>
+              <span>إدارة الحساب والمزامنة</span>
             </a>
           </div>
 
-          <!-- Reader Features & Import -->
-          <div class="space-y-1.5 pt-4 border-t border-rose-500/15">
-            <span class="text-[11px] font-bold text-stone-400 uppercase tracking-wider block px-2 mb-2">
-              خيارات القارئ
+          <!-- 3. READER UTILITIES (فتح ملف رواية محلي) -->
+          <div class="space-y-1.5 pt-3 border-t border-rose-500/15">
+            <span class="text-[10px] font-bold text-stone-400 uppercase tracking-wider block px-2 mb-1.5">
+              أدوات القارئ
             </span>
 
-            <!-- Import file button -->
             <label class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-stone-200 hover:text-white hover:bg-rose-950/40 hover:border hover:border-rose-500/20 transition-all cursor-pointer">
               <mat-icon class="text-rose-400 text-lg">file_upload</mat-icon>
-              <span>فتح ملف رواية محفوظ محلياً</span>
+              <span>فتح ملف رواية محفوظ محلياً (.mtx)</span>
               <input
                 type="file"
                 accept=".mtx"
@@ -266,20 +277,21 @@ import { AuthStore } from '../core/auth-store';
             </label>
           </div>
 
-          <!-- Reader Experience Note -->
-          <div class="p-4 rounded-2xl liquid-glass space-y-1.5 border border-rose-500/15">
-            <div class="flex items-center gap-2 text-xs font-bold text-rose-300">
-              <mat-icon class="text-sm text-rose-400">cloud_done</mat-icon>
-              <span>سحابية فايربيس الموثوقة</span>
+          <!-- 4. LITERARY AMBIENCE BADGE -->
+          <div class="p-3.5 rounded-2xl liquid-glass border border-rose-500/15 space-y-1">
+            <div class="flex items-center gap-1.5 text-xs font-bold text-rose-300">
+              <mat-icon class="text-sm text-rose-400">verified</mat-icon>
+              <span>منصة عربية رائدة</span>
             </div>
-            <p class="text-[11px] text-stone-300 leading-relaxed font-sans">
-              حسابك ومكتبتك مشفرة ومحفوظة سحابياً عبر Firebase Authentication و Cloud Firestore لضمان استمرارية القراءة عبر جميع أجهزتك.
+            <p class="text-[11px] text-stone-400 leading-relaxed font-sans">
+              قراءة فورية عالية الدقة بدون إعلانات مزعجة، مع حفظ تقدمك ومفضلتك تلقائياً.
             </p>
           </div>
+
         </div>
 
         <!-- Drawer Footer -->
-        <div class="pt-6 border-t border-rose-500/15 text-center text-xs text-stone-500">
+        <div class="pt-4 border-t border-rose-500/15 text-center text-[11px] text-stone-500">
           <span>مقاتل الروايات © 2026 · منصة القراءة العربية</span>
         </div>
 

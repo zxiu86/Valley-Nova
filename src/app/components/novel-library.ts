@@ -464,7 +464,7 @@ export class NovelLibrary {
   readonly store = inject(NovelStore);
   private readonly router = inject(Router);
 
-  readonly selectedGenre = signal<string>('all');
+  readonly selectedGenre = this.store.selectedCategoryFilter;
   readonly heroMode = signal<HeroMode>('most_read');
 
   readonly availableGenres = [

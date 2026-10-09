@@ -255,11 +255,9 @@ export class AuthStore {
     const code = (error as { code?: string })?.code || '';
     const message = (error as Error)?.message || '';
 
-    // Handle Firebase unauthorized domain for OAuth / Google sign-in
+    // Handle unauthorized domain for OAuth / Google sign-in
     if (code === 'auth/unauthorized-domain' || message.includes('unauthorized-domain')) {
-      const currentHost = typeof window !== 'undefined' ? (window.location.hostname || window.location.host) : '';
-      this.unauthorizedDomain.set(currentHost);
-      return `نطاق الاستضافة الحالي (${currentHost}) غير مدرج في النطاقات المصرح بها (Authorized Domains) في Firebase Console. يمكنك استخدام البريد الإلكتروني وكلمة المرور فوراً، أو إضافة النطاق في إعدادات فايربيس.`;
+      return 'تسجيل الدخول عبر Google غير متاح حالياً على هذا النطاق. يمكنك استخدام البريد الإلكتروني وكلمة المرور فوراً للمتابعة دون انقطاع.';
     }
 
     switch (code) {
@@ -268,21 +266,21 @@ export class AuthStore {
       case 'auth/invalid-credential':
         return 'البريد الإلكتروني أو كلمة المرور غير صحيحة.';
       case 'auth/email-already-in-use':
-        return 'هذا البريد الإلكتروني مسجل بالفعل. يمكنك تسجيل الدخول بدلاً من ذلك.';
+        return 'هذا البريد الإلكتروني مسجل مسبقاً. يرجى اختيار تسجيل الدخول.';
       case 'auth/invalid-email':
         return 'صيغة البريد الإلكتروني غير صالحة.';
       case 'auth/weak-password':
-        return 'كلمة المرور ضعيفة جداً. يرجى اختيار كلمة مرور أطول من 6 أحرف.';
+        return 'كلمة المرور ضعيفة. يرجى اختيار كلمة مرور مكوّنة من 6 خانات على الأقل.';
       case 'auth/popup-closed-by-user':
-        return 'تم إغلاق نافذة تسجيل الدخول قبل إتمام العملية.';
+        return 'تم إغلاق نافذة الدخول قبل إتمام العملية.';
       case 'auth/popup-blocked':
-        return 'تم حظر النافذة المنبثقة من قبل المتصفح. يرجى السماح بالنوافذ المنبثقة.';
+        return 'المتصفح حظر النافذة المنبثقة. يرجى السماح بالنوافذ المنبثقة.';
       case 'auth/too-many-requests':
-        return 'تم إجراء محاولات كثيرة خاطئة. يرجى المحاولة بعد قليل.';
+        return 'تم إجراء عدة محاولات متتالية. يرجى الانتظار دقيقة والمحاولة مجدداً.';
       case 'auth/network-request-failed':
-        return 'تعذر الاتصال بالشبكة. يرجى التحقق من اتصال الإنترنت.';
+        return 'تعذر الاتصال بالخادم. يرجى التحقق من اتصالك بالإنترنت.';
       default:
-        return 'حدث خطأ أثناء المصادقة: ' + (message || 'يرجى المحاولة مجدداً');
+        return 'تعذر إتمام العملية في الوقت الحالي. يرجى التحقق من البيانات والمحاولة مجدداً.';
     }
   }
 }

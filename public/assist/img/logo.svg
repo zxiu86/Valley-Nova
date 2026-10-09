@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background Gradient -->
+    <radialGradient id="bgGlow" cx="50%" cy="45%" r="50%">
+      <stop offset="0%" stop-color="#881337" stop-opacity="0.8"/>
+      <stop offset="60%" stop-color="#4c0519" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#0c0a09" stop-opacity="1"/>
+    </radialGradient>
+    
+    <!-- Shield Border Gradient -->
+    <linearGradient id="shieldBorder" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f43f5e"/>
+      <stop offset="50%" stop-color="#fb7185"/>
+      <stop offset="100%" stop-color="#9f1239"/>
+    </linearGradient>
+
+    <!-- Gold Accent Gradient -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fde047"/>
+      <stop offset="50%" stop-color="#eab308"/>
+      <stop offset="100%" stop-color="#ca8a04"/>
+    </linearGradient>
+
+    <!-- Blade Gradient -->
+    <linearGradient id="bladeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="40%" stop-color="#fecdd3"/>
+      <stop offset="70%" stop-color="#e11d48"/>
+      <stop offset="100%" stop-color="#881337"/>
+    </linearGradient>
+
+    <!-- Book Pages Gradient -->
+    <linearGradient id="bookGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fff1f2"/>
+      <stop offset="100%" stop-color="#fecdd3"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background Shield Crest -->
+  <path d="M 256 24 C 360 24 440 60 456 160 C 472 288 384 416 256 488 C 128 416 40 288 56 160 C 72 60 152 24 256 24 Z" 
+        fill="url(#bgGlow)" 
+        stroke="url(#shieldBorder)" 
+        stroke-width="14" 
+        stroke-linejoin="round"/>
+
+  <!-- Inner Crest Line -->
+  <path d="M 256 46 C 342 46 414 78 428 165 C 442 272 368 384 256 450 C 144 384 70 272 84 165 C 98 78 170 46 256 46 Z" 
+        fill="none" 
+        stroke="url(#goldGrad)" 
+        stroke-width="3" 
+        stroke-dasharray="8 6" 
+        opacity="0.6"/>
+
+  <!-- Left Blade (Crossed Sword) -->
+  <g transform="translate(256,220) rotate(-42) translate(-256,-220)">
+    <!-- Blade -->
+    <path d="M 251 70 L 256 45 L 261 70 L 258 290 L 254 290 Z" fill="url(#bladeGrad)" stroke="#fda4af" stroke-width="1.5"/>
+    <path d="M 256 45 L 256 290" stroke="#fff" stroke-width="2"/>
+    <!-- Guard -->
+    <path d="M 230 290 C 240 286 272 286 282 290 L 278 300 L 234 300 Z" fill="url(#goldGrad)"/>
+    <!-- Hilt Handle -->
+    <rect x="252" y="300" width="8" height="45" rx="3" fill="#1c1917" stroke="url(#goldGrad)" stroke-width="2"/>
+    <!-- Pommel -->
+    <circle cx="256" cy="354" r="10" fill="url(#goldGrad)"/>
+    <circle cx="256" cy="354" r="5" fill="#e11d48"/>
+  </g>
+
+  <!-- Right Blade (Crossed Sword) -->
+  <g transform="translate(256,220) rotate(42) translate(-256,-220)">
+    <!-- Blade -->
+    <path d="M 251 70 L 256 45 L 261 70 L 258 290 L 254 290 Z" fill="url(#bladeGrad)" stroke="#fda4af" stroke-width="1.5"/>
+    <path d="M 256 45 L 256 290" stroke="#fff" stroke-width="2"/>
+    <!-- Guard -->
+    <path d="M 230 290 C 240 286 272 286 282 290 L 278 300 L 234 300 Z" fill="url(#goldGrad)"/>
+    <!-- Hilt Handle -->
+    <rect x="252" y="300" width="8" height="45" rx="3" fill="#1c1917" stroke="url(#goldGrad)" stroke-width="2"/>
+    <!-- Pommel -->
+    <circle cx="256" cy="354" r="10" fill="url(#goldGrad)"/>
+    <circle cx="256" cy="354" r="5" fill="#e11d48"/>
+  </g>
+
+  <!-- Open Mystical Novel (Center Piece) -->
+  <!-- Book Cover Base -->
+  <path d="M 140 250 C 185 240 230 255 256 275 C 282 255 327 240 372 250 L 372 375 C 327 365 282 380 256 400 C 230 380 185 365 140 375 Z" 
+        fill="#4c0519" 
+        stroke="url(#goldGrad)" 
+        stroke-width="5"/>
+
+  <!-- Left Open Pages -->
+  <path d="M 148 258 C 188 248 230 262 253 280 L 253 394 C 230 376 188 362 148 270 Z" 
+        fill="url(#bookGrad)" 
+        stroke="#fda4af" 
+        stroke-width="2"/>
+
+  <!-- Right Open Pages -->
+  <path d="M 364 258 C 324 248 282 262 259 280 L 259 394 C 282 376 324 362 364 270 Z" 
+        fill="url(#bookGrad)" 
+        stroke="#fda4af" 
+        stroke-width="2"/>
+
+  <!-- Spine Center Gold Ribbon -->
+  <line x1="256" y1="270" x2="256" y2="402" stroke="url(#goldGrad)" stroke-width="4"/>
+
+  <!-- Arabic Calligraphy "مقاتل" Center Initial "م" -->
+  <text x="256" y="240" 
+        font-family="'Amiri', 'Traditional Arabic', serif" 
+        font-size="115" 
+        font-weight="bold" 
+        text-anchor="middle" 
+        fill="#ffffff" 
+        stroke="#9f1239" 
+        stroke-width="3"
+        style="filter: drop-shadow(0px 4px 8px rgba(0,0,0,0.8));">م</text>
+
+  <!-- Top Warrior Star Emblem -->
+  <polygon points="256,65 264,85 286,88 270,103 274,124 256,113 238,124 242,103 226,88 248,85" 
+           fill="url(#goldGrad)" 
+           stroke="#fff" 
+           stroke-width="1.5"/>
+</svg>

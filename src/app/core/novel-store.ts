@@ -43,6 +43,7 @@ export class NovelStore {
   readonly readerSettings = signal<ReaderSettings>(DEFAULT_SETTINGS);
   readonly bookmarkedNovelIds = signal<string[]>([]);
   readonly userRatings = signal<Record<string, number>>({});
+  readonly selectedCategoryFilter = signal<string>('all');
 
   readonly isDecoding = signal<boolean>(false);
   readonly isEncoding = signal<boolean>(false);
