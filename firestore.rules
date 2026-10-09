@@ -28,9 +28,9 @@ service cloud.firestore {
       return resource.data;
     }
 
-    // User profile: only owner can read and write their own profile
+    // User profile: owner can write, any user can get (for commenter avatars/covers)
     match /users/{userId} {
-      allow get: if isValidId(userId) && isOwner(userId);
+      allow get: if isValidId(userId);
       allow list: if false;
       allow create: if isValidId(userId) && isOwner(userId) &&
         incoming().id == userId &&
@@ -55,6 +55,18 @@ service cloud.firestore {
         allow delete: if isValidId(userId) && isOwner(userId) && isValidId(bookmarkId);
       }
 
+      // User reading history subcollection
+      match /history/{historyId} {
+        allow read: if isValidId(userId) && isOwner(userId);
+        allow create: if isValidId(userId) && isOwner(userId) &&
+          isValidId(historyId) &&
+          incoming().userId == userId;
+        allow update: if isValidId(userId) && isOwner(userId) &&
+          isValidId(historyId) &&
+          incoming().userId == userId;
+        allow delete: if isValidId(userId) && isOwner(userId) && isValidId(historyId);
+      }
+
       // User ratings subcollection
       match /ratings/{ratingId} {
         allow read: if isValidId(userId) && isOwner(userId);
@@ -72,6 +84,16 @@ service cloud.firestore {
           incoming().rating <= 5;
         allow delete: if isValidId(userId) && isOwner(userId) && isValidId(ratingId);
       }
+    }
+
+    // Public chapter comments
+    match /comments/{commentId} {
+      allow read: if true;
+      allow create: if isSignedIn() && isValidId(commentId) &&
+        incoming().userId == request.auth.uid &&
+        incoming().text is string && incoming().text.size() <= 1500;
+      allow update, delete: if isSignedIn() && isValidId(commentId) &&
+        existing().userId == request.auth.uid;
     }
   }
 }

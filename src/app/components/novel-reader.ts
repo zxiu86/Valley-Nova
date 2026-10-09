@@ -12,6 +12,7 @@ import {
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { NovelStore } from '../core/novel-store';
+import { AuthStore } from '../core/auth-store';
 import { ChapterSummary, ReaderFont, ReaderTheme, ReaderWidth } from '../core/novel-models';
 
 type AutoScrollSpeed = 1 | 2 | 3;
@@ -796,6 +797,197 @@ type AutoScrollSpeed = 1 | 2 | 3;
 
           </footer>
 
+          <!-- ========================================================================= -->
+          <!-- CHAPTER READER COMMENTS SECTION (التعليقات مع أيقونة المستخدم وغلافه الخلفي 1500x800) -->
+          <!-- ========================================================================= -->
+          <section class="mt-16 sm:mt-24 pt-8 sm:pt-12 border-t border-current/15 space-y-8">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-rose-600/20 text-rose-500 border border-rose-500/30 flex items-center justify-center">
+                  <mat-icon class="text-xl">forum</mat-icon>
+                </div>
+                <div>
+                  <h3 class="text-xl font-bold font-amiri text-inherit">نقاشات وتعليقات المقاتلين</h3>
+                  <p class="text-xs opacity-60">شارك انطباعك وتحليلك لأحداث هذا الفصل</p>
+                </div>
+              </div>
+
+              <span class="px-3 py-1 rounded-full bg-rose-600/15 border border-rose-500/30 text-rose-400 text-xs font-bold">
+                {{ store.chapterComments().length }} تعليق
+              </span>
+            </div>
+
+            <!-- Write Comment Card -->
+            @if (authStore.isAuthenticated()) {
+              <div class="liquid-glass rounded-3xl p-5 sm:p-6 border border-white/10 space-y-4 shadow-xl">
+                <div class="flex items-center justify-between text-xs opacity-70">
+                  <span>اكتب تعليقك بصفتك:</span>
+                  <a routerLink="/profile" class="text-rose-400 hover:underline flex items-center gap-1 font-bold">
+                    <span>إعدادات الأيقونة والغلاف (1500 × 800)</span>
+                    <mat-icon class="text-xs">arrow_back</mat-icon>
+                  </a>
+                </div>
+
+                <!-- Preview of current user's banner & circular avatar -->
+                <div class="relative rounded-2xl overflow-hidden border border-white/10 h-28 sm:h-32 group">
+                  <img
+                    [src]="authStore.coverURL()"
+                    alt="غلاف تعليقك"
+                    referrerpolicy="no-referrer"
+                    class="w-full h-full object-cover"
+                  />
+                  <div class="absolute inset-0 bg-gradient-to-t from-stone-950 via-stone-950/40 to-transparent pointer-events-none"></div>
+                  <div class="absolute inset-0 cover-inner-shadow pointer-events-none"></div>
+
+                  <!-- Overlapping circular avatar & username -->
+                  <div class="absolute bottom-3 right-4 z-10 flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-full overflow-hidden border-2 border-rose-500 shadow-lg bg-stone-900 shrink-0">
+                      @if (authStore.photoURL()) {
+                        <img [src]="authStore.photoURL()" alt="صورة القارئ" referrerpolicy="no-referrer" class="w-full h-full object-cover" />
+                      } @else {
+                        <div class="w-full h-full bg-rose-700 flex items-center justify-center text-white font-bold text-lg font-amiri">
+                          {{ authStore.displayName().charAt(0) || 'ق' }}
+                        </div>
+                      }
+                    </div>
+                    <div class="drop-shadow-md">
+                      <span class="text-sm font-bold text-white block font-amiri">{{ authStore.displayName() }}</span>
+                      <span class="text-[10px] text-rose-300 font-sans block">غلافك وأيقونتك المخصصة تظهر مع كل تعليق</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="space-y-3">
+                  <textarea
+                    [value]="commentTextInput()"
+                    (input)="onCommentInput($event)"
+                    rows="3"
+                    placeholder="ما رأيك في تطورات هذا الفصل؟ أطلق العنان لمشاعرك الأدبية..."
+                    class="w-full bg-black/30 border border-white/15 focus:border-rose-500 rounded-2xl p-4 text-xs sm:text-sm text-stone-100 placeholder-stone-500 focus:outline-none transition-colors resize-none"
+                  ></textarea>
+
+                  <div class="flex items-center justify-between gap-3">
+                    <span class="text-[11px] opacity-60">احرص على احترام بقية القراء وتجنب الحرق الصريح</span>
+                    <button
+                      type="button"
+                      (click)="onPostComment()"
+                      [disabled]="isPostingComment() || !commentTextInput().trim()"
+                      class="px-5 py-2.5 rounded-xl bg-gradient-to-l from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-bold text-xs shadow-md transition-all cursor-pointer flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <mat-icon class="text-base">send</mat-icon>
+                      <span>{{ isPostingComment() ? 'جاري النشر...' : 'نشر التعليق' }}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            } @else {
+              <div class="p-6 rounded-3xl liquid-glass border border-white/10 text-center space-y-3">
+                <div class="w-12 h-12 rounded-2xl bg-rose-600/15 border border-rose-500/30 flex items-center justify-center text-rose-400 mx-auto">
+                  <mat-icon class="text-2xl">account_circle</mat-icon>
+                </div>
+                <h4 class="font-bold text-base font-amiri text-inherit">سجّل دخولك للمشاركة في نقاش الفصل</h4>
+                <p class="text-xs opacity-70 max-w-md mx-auto">
+                  سجّل دخولك لتظهر تعليقاتك بأيقونتك وغلافك الخلفي الخاص (1500 × 800) الذي قمت بضبطه في حسابك!
+                </p>
+                <a
+                  routerLink="/login"
+                  class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-l from-rose-600 to-rose-700 text-white font-bold text-xs shadow-md hover:from-rose-500 transition-all cursor-pointer mt-1"
+                >
+                  <mat-icon class="text-sm">login</mat-icon>
+                  <span>تسجيل الدخول / إنشاء حساب</span>
+                </a>
+              </div>
+            }
+
+            <!-- List of Comments -->
+            <div class="space-y-5">
+              @for (comment of store.chapterComments(); track comment.id) {
+                <div class="rounded-3xl overflow-hidden liquid-glass-card border border-white/10 hover:border-rose-500/30 transition-all shadow-lg">
+                  
+                  <!-- Comment User Cover Backdrop (1500x800 Aspect with Inner Shading) -->
+                  <div class="relative h-24 sm:h-28 w-full overflow-hidden">
+                    <img
+                      [src]="comment.userCover || authStore.coverURL()"
+                      alt="غلاف المعلق"
+                      referrerpolicy="no-referrer"
+                      class="w-full h-full object-cover"
+                    />
+                    <!-- Inner shading and blending into card background -->
+                    <div class="absolute inset-0 bg-gradient-to-t from-stone-950 via-stone-950/50 to-transparent pointer-events-none"></div>
+                    <div class="absolute inset-0 cover-inner-shadow pointer-events-none"></div>
+
+                    <!-- Overlapping User Circular Avatar and Name -->
+                    <div class="absolute bottom-2.5 right-4 z-10 flex items-center gap-3">
+                      <div class="w-12 h-12 rounded-full overflow-hidden border-2 border-stone-950 shadow-xl bg-stone-900 shrink-0">
+                        @if (comment.userAvatar) {
+                          <img [src]="comment.userAvatar" alt="{{ comment.userName }}" referrerpolicy="no-referrer" class="w-full h-full object-cover" />
+                        } @else {
+                          <div class="w-full h-full bg-gradient-to-br from-rose-600 to-stone-900 flex items-center justify-center text-white font-bold font-amiri text-lg">
+                            {{ comment.userName.charAt(0) || 'ق' }}
+                          </div>
+                        }
+                      </div>
+
+                      <div>
+                        <div class="flex items-center gap-2">
+                          <strong class="text-sm font-bold font-amiri text-white drop-shadow">
+                            {{ comment.userName }}
+                          </strong>
+                          <span class="px-2 py-0.5 rounded-full bg-rose-600/30 border border-rose-400/40 text-[10px] text-rose-200 font-bold">
+                            قارئ مقاتل
+                          </span>
+                        </div>
+                        <span class="text-[10px] text-stone-300 font-mono block drop-shadow">
+                          {{ formatCommentTime(comment.createdAt) }}
+                        </span>
+                      </div>
+                    </div>
+
+                    <!-- Delete button if it's the current user's comment -->
+                    @if (authStore.currentUser()?.uid === comment.userId) {
+                      <button
+                        type="button"
+                        (click)="onDeleteComment(comment.id)"
+                        class="absolute top-3 left-3 p-1.5 rounded-xl bg-black/60 hover:bg-rose-950 border border-white/10 hover:border-rose-500 text-stone-300 hover:text-rose-400 text-xs transition-colors cursor-pointer"
+                        title="حذف تعليقي"
+                      >
+                        <mat-icon class="text-sm">delete_outline</mat-icon>
+                      </button>
+                    }
+                  </div>
+
+                  <!-- Comment Body & Actions -->
+                  <div class="p-5 pt-3 space-y-3">
+                    <p class="text-xs sm:text-sm text-stone-200 leading-relaxed font-sans whitespace-pre-line">
+                      {{ comment.text }}
+                    </p>
+
+                    <div class="flex items-center justify-between border-t border-white/5 pt-3 text-xs">
+                      <button
+                        type="button"
+                        (click)="onLikeComment(comment.id)"
+                        class="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-white/5 hover:bg-rose-600/20 text-stone-300 hover:text-rose-300 transition-colors cursor-pointer"
+                      >
+                        <mat-icon class="text-sm text-rose-400">favorite</mat-icon>
+                        <span>{{ comment.likes || 0 }}</span>
+                      </button>
+
+                      <span class="text-[10px] text-stone-500 font-mono">
+                        معرف التعليق: #{{ comment.id.substring(3, 8) }}
+                      </span>
+                    </div>
+                  </div>
+
+                </div>
+              } @empty {
+                <div class="p-8 rounded-3xl liquid-glass border border-white/5 text-center space-y-2 opacity-70">
+                  <mat-icon class="text-3xl text-rose-400">chat_bubble_outline</mat-icon>
+                  <p class="text-xs font-amiri">كن أول من يترك بصمته ويعلق على هذا الفصل!</p>
+                </div>
+              }
+            </div>
+          </section>
+
         </article>
       </main>
 
@@ -859,6 +1051,7 @@ type AutoScrollSpeed = 1 | 2 | 3;
 })
 export class NovelReader implements OnInit, OnDestroy {
   readonly store = inject(NovelStore);
+  readonly authStore = inject(AuthStore);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
 
@@ -870,6 +1063,10 @@ export class NovelReader implements OnInit, OnDestroy {
   readonly showFloatingDock = signal<boolean>(false);
   readonly chapterSearchQuery = signal<string>('');
   readonly shareToast = signal<string>('');
+
+  // Comment Signals
+  readonly commentTextInput = signal<string>('');
+  readonly isPostingComment = signal<boolean>(false);
 
   // Auto-scroll signals
   readonly isAutoScrolling = signal<boolean>(false);
@@ -891,6 +1088,14 @@ export class NovelReader implements OnInit, OnDestroy {
       const novels = this.store.novels();
       if (!this.store.selectedNovel() && novels.length > 0) {
         this.store.selectNovel(novels[0].id);
+      }
+    });
+
+    // Reactive load of comments for current chapter
+    effect(() => {
+      const ch = this.currentChapter();
+      if (ch) {
+        this.store.loadChapterComments(ch.id);
       }
     });
   }
@@ -1358,5 +1563,57 @@ export class NovelReader implements OnInit, OnDestroy {
     }
     // Highlighting Arabic diacritics in soft glowing crimson/amber
     return text.replace(/([\u064B-\u065F\u0670])/g, '<span class="text-rose-500 font-bold">$1</span>');
+  }
+
+  // --- COMMENTS IMPLEMENTATION ---
+  onCommentInput(event: Event): void {
+    const target = event.target as HTMLTextAreaElement;
+    this.commentTextInput.set(target.value);
+  }
+
+  async onPostComment(): Promise<void> {
+    const text = this.commentTextInput().trim();
+    const novel = this.currentNovel();
+    const chapter = this.currentChapter();
+    if (!text || !novel || !chapter) return;
+
+    this.isPostingComment.set(true);
+    try {
+      const user = {
+        uid: this.authStore.currentUser()?.uid || 'guest',
+        displayName: this.authStore.displayName() || 'قارئ مقاتل',
+        photoURL: this.authStore.photoURL() || '',
+        coverURL: this.authStore.coverURL() || '',
+      };
+
+      await this.store.addChapterComment(novel.id, chapter.id, text, user);
+      this.commentTextInput.set('');
+    } finally {
+      this.isPostingComment.set(false);
+    }
+  }
+
+  async onLikeComment(commentId: string): Promise<void> {
+    const chapter = this.currentChapter();
+    if (!chapter) return;
+    await this.store.likeChapterComment(commentId, chapter.id);
+  }
+
+  async onDeleteComment(commentId: string): Promise<void> {
+    const chapter = this.currentChapter();
+    if (!chapter) return;
+    await this.store.deleteChapterComment(commentId, chapter.id);
+  }
+
+  formatCommentTime(isoString: string): string {
+    if (!isoString) return 'الآن';
+    const diff = Date.now() - new Date(isoString).getTime();
+    const minutes = Math.floor(diff / 60000);
+    if (minutes < 1) return 'الآن';
+    if (minutes < 60) return `منذ ${minutes} دقيقة`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `منذ ${hours} ساعة`;
+    const days = Math.floor(hours / 24);
+    return `منذ ${days} يوم`;
   }
 }

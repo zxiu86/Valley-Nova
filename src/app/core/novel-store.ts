@@ -17,6 +17,32 @@ const STORAGE_KEY_NOVELS = 'muqatil_novels_catalog_v1';
 const STORAGE_KEY_SETTINGS = 'muqatil_reader_settings_v1';
 const STORAGE_KEY_BOOKMARKS = 'muqatil_bookmarks_v1';
 const STORAGE_KEY_RATINGS = 'muqatil_ratings_v1';
+const STORAGE_KEY_HISTORY = 'muqatil_reading_history_v1';
+const STORAGE_KEY_COMMENTS = 'muqatil_chapter_comments_v1';
+
+export interface ReadHistoryItem {
+  novelId: string;
+  novelTitle: string;
+  novelCoverGradient: string;
+  novelAuthor: string;
+  chapterId: string;
+  chapterIndex: number;
+  chapterTitle: string;
+  readAt: string;
+}
+
+export interface ChapterComment {
+  id: string;
+  novelId: string;
+  chapterId: string;
+  userId: string;
+  userName: string;
+  userAvatar: string;
+  userCover: string;
+  text: string;
+  createdAt: string;
+  likes: number;
+}
 
 const DEFAULT_SETTINGS: ReaderSettings = {
   theme: 'dark',
@@ -44,12 +70,19 @@ export class NovelStore {
   readonly bookmarkedNovelIds = signal<string[]>([]);
   readonly userRatings = signal<Record<string, number>>({});
   readonly selectedCategoryFilter = signal<string>('all');
+  readonly readHistory = signal<ReadHistoryItem[]>([]);
+  readonly chapterComments = signal<ChapterComment[]>([]);
 
   readonly isDecoding = signal<boolean>(false);
   readonly isEncoding = signal<boolean>(false);
   readonly isInitialized = signal<boolean>(false);
 
-  // Computed global statistics
+  // Computed global statistics & user derived state
+  readonly totalChaptersReadCount = computed(() => this.readHistory().length);
+  readonly bookmarkedNovels = computed(() => {
+    const ids = this.bookmarkedNovelIds();
+    return this.novels().filter(n => ids.includes(n.id));
+  });
   readonly globalStats = computed(() => {
     const allNovels = this.novels();
     let totalChapters = 0;
@@ -106,6 +139,10 @@ export class NovelStore {
       const savedRatings = localStorage.getItem(STORAGE_KEY_RATINGS);
       if (savedRatings) {
         this.userRatings.set(JSON.parse(savedRatings));
+      }
+      const savedHistory = localStorage.getItem(STORAGE_KEY_HISTORY);
+      if (savedHistory) {
+        this.readHistory.set(JSON.parse(savedHistory));
       }
     } catch {
       // ignore
@@ -271,6 +308,7 @@ export class NovelStore {
 
       this.currentChapterText.set(decompressed.text);
       this.currentChapterDecompressResult.set(decompressed);
+      this.recordReadHistory(novel, chapter);
     } catch (err) {
       console.warn('Error decompressing chapter MTX, attempting auto-heal:', err);
       if (novel.isPreloaded) {
@@ -584,6 +622,185 @@ export class NovelStore {
     await this.seedSampleNovels();
     if (this.novels().length > 0) {
       this.selectNovel(this.novels()[0].id);
+    }
+  }
+
+  /**
+   * Record chapter read in history
+   */
+  private async recordReadHistory(novel: Novel, chapter: ChapterSummary): Promise<void> {
+    const item: ReadHistoryItem = {
+      novelId: novel.id,
+      novelTitle: novel.title,
+      novelCoverGradient: novel.coverGradient,
+      novelAuthor: novel.author,
+      chapterId: chapter.id,
+      chapterIndex: chapter.chapterIndex,
+      chapterTitle: chapter.title,
+      readAt: new Date().toISOString(),
+    };
+
+    const current = this.readHistory();
+    const filtered = current.filter(h => !(h.novelId === novel.id && h.chapterId === chapter.id));
+    const updated = [item, ...filtered].slice(0, 50);
+    this.readHistory.set(updated);
+
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(updated));
+      } catch {
+        // ignore
+      }
+    }
+
+    const u = auth.currentUser;
+    if (u) {
+      try {
+        const histDocId = `${novel.id}_${chapter.id}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+        await setDoc(doc(db, 'users', u.uid, 'history', histDocId), {
+          ...item,
+          userId: u.uid,
+        });
+      } catch (err) {
+        console.warn('Could not sync read chapter to Firestore history:', err);
+      }
+    }
+  }
+
+  /**
+   * Load comments for a specific chapter
+   */
+  async loadChapterComments(chapterId: string): Promise<void> {
+    try {
+      const local = typeof window !== 'undefined' ? localStorage.getItem(`${STORAGE_KEY_COMMENTS}_${chapterId}`) : null;
+      if (local) {
+        this.chapterComments.set(JSON.parse(local));
+      }
+
+      const colSnap = await getDocs(collection(db, 'comments'));
+      const list: ChapterComment[] = [];
+      colSnap.forEach(d => {
+        const data = d.data();
+        if (data?.['chapterId'] === chapterId) {
+          list.push({
+            id: d.id,
+            novelId: data['novelId'] || '',
+            chapterId: data['chapterId'],
+            userId: data['userId'] || '',
+            userName: data['userName'] || 'قارئ',
+            userAvatar: data['userAvatar'] || '',
+            userCover: data['userCover'] || '',
+            text: data['text'] || '',
+            createdAt: data['createdAt'] || new Date().toISOString(),
+            likes: data['likes'] || 0,
+          });
+        }
+      });
+
+      if (list.length > 0) {
+        list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        this.chapterComments.set(list);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(`${STORAGE_KEY_COMMENTS}_${chapterId}`, JSON.stringify(list));
+        }
+      } else if (!local) {
+        const sample: ChapterComment[] = [
+          {
+            id: `c-sample-1-${chapterId}`,
+            novelId: this.selectedNovel()?.id || '',
+            chapterId,
+            userId: 'user_warrior_1',
+            userName: 'فارس الحكايات',
+            userAvatar: '',
+            userCover: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=1500&auto=format&fit=crop',
+            text: 'فصل ملحمي بكل معنى الكلمة! الترجمة ممتازة والصياغة العربية بديعة للغاية.',
+            createdAt: new Date(Date.now() - 3600000 * 4).toISOString(),
+            likes: 12,
+          },
+          {
+            id: `c-sample-2-${chapterId}`,
+            novelId: this.selectedNovel()?.id || '',
+            chapterId,
+            userId: 'user_warrior_2',
+            userName: 'صقر الروايات',
+            userAvatar: '',
+            userCover: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=1500&auto=format&fit=crop',
+            text: 'أحببت تطور الأحداث في هذا الفصل، شكراً لمقاتل الروايات على راحة القراءة.',
+            createdAt: new Date(Date.now() - 3600000 * 18).toISOString(),
+            likes: 8,
+          }
+        ];
+        this.chapterComments.set(sample);
+      }
+    } catch (e) {
+      console.warn('Could not fetch chapter comments:', e);
+    }
+  }
+
+  /**
+   * Add a new comment to a chapter
+   */
+  async addChapterComment(
+    novelId: string,
+    chapterId: string,
+    text: string,
+    user: { uid: string; displayName: string; photoURL: string; coverURL: string }
+  ): Promise<boolean> {
+    if (!text.trim()) return false;
+
+    const commentId = `cm_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const comment: ChapterComment = {
+      id: commentId,
+      novelId,
+      chapterId,
+      userId: user.uid,
+      userName: user.displayName || 'قارئ مقاتل',
+      userAvatar: user.photoURL || '',
+      userCover: user.coverURL || '',
+      text: text.trim(),
+      createdAt: new Date().toISOString(),
+      likes: 0,
+    };
+
+    const updated = [comment, ...this.chapterComments()];
+    this.chapterComments.set(updated);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`${STORAGE_KEY_COMMENTS}_${chapterId}`, JSON.stringify(updated));
+    }
+
+    try {
+      await setDoc(doc(db, 'comments', commentId), comment);
+    } catch (err) {
+      console.warn('Could not persist comment to Firestore:', err);
+    }
+
+    return true;
+  }
+
+  /**
+   * Like a chapter comment
+   */
+  async likeChapterComment(commentId: string, chapterId: string): Promise<void> {
+    const list = this.chapterComments().map(c => {
+      if (c.id === commentId) {
+        return { ...c, likes: c.likes + 1 };
+      }
+      return c;
+    });
+    this.chapterComments.set(list);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`${STORAGE_KEY_COMMENTS}_${chapterId}`, JSON.stringify(list));
+    }
+  }
+
+  /**
+   * Delete a chapter comment
+   */
+  async deleteChapterComment(commentId: string, chapterId: string): Promise<void> {
+    const list = this.chapterComments().filter(c => c.id !== commentId);
+    this.chapterComments.set(list);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(`${STORAGE_KEY_COMMENTS}_${chapterId}`, JSON.stringify(list));
     }
   }
 }

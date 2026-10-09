@@ -92,8 +92,16 @@ type AuthMode = 'login' | 'register' | 'reset';
             <!-- Actions -->
             <div class="flex flex-col gap-3 pt-2">
               <a
+                routerLink="/profile"
+                class="w-full py-3 px-4 rounded-xl bg-gradient-to-l from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-bold text-xs sm:text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <mat-icon class="text-base">account_circle</mat-icon>
+                <span>الانتقال إلى الملف الشخصي والإعدادات</span>
+              </a>
+
+              <a
                 routerLink="/"
-                class="w-full py-3 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs sm:text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                class="w-full py-2.5 px-4 rounded-xl bg-white/10 hover:bg-white/15 text-stone-200 text-xs font-semibold transition-colors cursor-pointer flex items-center justify-center gap-2"
               >
                 <mat-icon class="text-base">auto_stories</mat-icon>
                 <span>الانتقال إلى مكتبة الروايات</span>

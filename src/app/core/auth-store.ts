@@ -20,9 +20,12 @@ export interface UserProfileData {
   email: string;
   displayName: string;
   photoURL?: string;
+  coverURL?: string;
   createdAt: string;
   updatedAt: string;
 }
+
+const DEFAULT_COVER_URL = 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=1500&auto=format&fit=crop';
 
 @Injectable({
   providedIn: 'root',
@@ -36,10 +39,13 @@ export class AuthStore {
 
   // Signals
   readonly user = signal<User | null>(null);
+  readonly currentUser = this.user;
   readonly isLoading = signal<boolean>(true);
   readonly authError = signal<string | null>(null);
   readonly actionNotice = signal<string | null>(null);
   readonly unauthorizedDomain = signal<string | null>(null);
+  readonly coverURL = signal<string>(DEFAULT_COVER_URL);
+  readonly customAvatarURL = signal<string>('');
 
   // Derived state
   readonly isAuthenticated = computed<boolean>(() => !!this.user());
@@ -49,7 +55,7 @@ export class AuthStore {
     return u.displayName || u.email?.split('@')[0] || 'قارئ';
   });
   readonly userEmail = computed<string>(() => this.user()?.email || '');
-  readonly photoURL = computed<string>(() => this.user()?.photoURL || '');
+  readonly photoURL = computed<string>(() => this.customAvatarURL() || this.user()?.photoURL || '');
 
   constructor() {
     this.init();
@@ -96,23 +102,38 @@ export class AuthStore {
       const snap = await getDoc(userDocRef);
       const now = new Date().toISOString();
 
+      // Load cached local avatar & cover if available
+      const localCover = typeof window !== 'undefined' ? localStorage.getItem(`muqatil_cover_${firebaseUser.uid}`) : null;
+      const localAvatar = typeof window !== 'undefined' ? localStorage.getItem(`muqatil_avatar_${firebaseUser.uid}`) : null;
+
       if (!snap.exists()) {
         const profile: UserProfileData = {
           id: firebaseUser.uid,
           email: firebaseUser.email || '',
           displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'قارئ مقاتل',
-          photoURL: firebaseUser.photoURL || '',
+          photoURL: localAvatar || firebaseUser.photoURL || '',
+          coverURL: localCover || DEFAULT_COVER_URL,
           createdAt: now,
           updatedAt: now,
         };
         await setDoc(userDocRef, profile);
+        this.coverURL.set(profile.coverURL || DEFAULT_COVER_URL);
+        if (profile.photoURL) this.customAvatarURL.set(profile.photoURL);
       } else {
+        const data = snap.data();
+        const effectiveCover = data?.['coverURL'] || localCover || DEFAULT_COVER_URL;
+        const effectiveAvatar = data?.['photoURL'] || localAvatar || firebaseUser.photoURL || '';
+
+        this.coverURL.set(effectiveCover);
+        if (effectiveAvatar) this.customAvatarURL.set(effectiveAvatar);
+
         await setDoc(
           userDocRef,
           {
             updatedAt: now,
-            displayName: firebaseUser.displayName || snap.data()?.['displayName'] || 'قارئ مقاتل',
-            photoURL: firebaseUser.photoURL || snap.data()?.['photoURL'] || '',
+            displayName: firebaseUser.displayName || data?.['displayName'] || 'قارئ مقاتل',
+            photoURL: effectiveAvatar,
+            coverURL: effectiveCover,
           },
           { merge: true }
         );
@@ -122,6 +143,78 @@ export class AuthStore {
       if (error instanceof Error && error.message.toLowerCase().includes('permission')) {
         handleFirestoreError(error, OperationType.WRITE, `users/${firebaseUser.uid}`);
       }
+    }
+  }
+
+  /**
+   * Updates display name, circular cropped avatar, and cover banner
+   */
+  async updateProfileData(params: { displayName?: string; photoURL?: string; coverURL?: string }): Promise<boolean> {
+    const u = this.user();
+    if (!u) return false;
+
+    this.isLoading.set(true);
+    this.authError.set(null);
+
+    try {
+      const authUpdates: { displayName?: string; photoURL?: string } = {};
+      if (params.displayName !== undefined && params.displayName.trim()) {
+        authUpdates.displayName = params.displayName.trim();
+      }
+
+      if (params.photoURL !== undefined) {
+        if (!params.photoURL.startsWith('data:') || params.photoURL.length < 2048) {
+          authUpdates.photoURL = params.photoURL;
+        }
+        this.customAvatarURL.set(params.photoURL);
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem(`muqatil_avatar_${u.uid}`, params.photoURL);
+          } catch {
+            // ignore
+          }
+        }
+      }
+
+      if (Object.keys(authUpdates).length > 0 && auth.currentUser) {
+        await updateProfile(auth.currentUser, authUpdates);
+      }
+
+      if (params.coverURL !== undefined) {
+        this.coverURL.set(params.coverURL);
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem(`muqatil_cover_${u.uid}`, params.coverURL);
+          } catch {
+            // ignore
+          }
+        }
+      }
+
+      // Sync to Firestore doc /users/{userId}
+      const userDocRef = doc(db, 'users', u.uid);
+      const firestoreData: Record<string, unknown> = {
+        updatedAt: new Date().toISOString(),
+      };
+      if (params.displayName !== undefined) firestoreData['displayName'] = params.displayName.trim();
+      if (params.photoURL !== undefined) firestoreData['photoURL'] = params.photoURL;
+      if (params.coverURL !== undefined) firestoreData['coverURL'] = params.coverURL;
+
+      await setDoc(userDocRef, firestoreData, { merge: true });
+
+      // Refresh local user signal
+      if (auth.currentUser) {
+        this.user.set({ ...auth.currentUser } as User);
+      }
+      this.actionNotice.set('تم حفظ بيانات الحساب والمظهر بنجاح!');
+      setTimeout(() => this.actionNotice.set(null), 3500);
+      return true;
+    } catch (err) {
+      console.error('Failed to update profile data:', err);
+      this.authError.set('تعذر حفظ التعديلات في الوقت الحالي.');
+      return false;
+    } finally {
+      this.isLoading.set(false);
     }
   }
 

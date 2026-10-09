@@ -59,10 +59,10 @@ import { AuthStore } from '../core/auth-store';
             <!-- Quick Auth Status Button in Desktop Navbar -->
             @if (authStore.isAuthenticated()) {
               <a
-                routerLink="/login"
+                routerLink="/profile"
                 (click)="closeMenu()"
                 class="hidden sm:flex items-center gap-2 py-1.5 px-3 rounded-2xl liquid-glass border border-rose-500/30 hover:border-rose-500/60 transition-all text-xs cursor-pointer group"
-                title="الملف الشخصي للقارئ"
+                title="الملف الشخصي وإعدادات الحساب"
               >
                 @if (authStore.photoURL()) {
                   <img
@@ -188,7 +188,7 @@ import { AuthStore } from '../core/auth-store';
 
               <div class="grid grid-cols-2 gap-2 pt-2 border-t border-white/10">
                 <a
-                  routerLink="/login"
+                  routerLink="/profile"
                   (click)="closeMenu()"
                   class="py-2 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-center text-xs text-stone-200 font-medium transition-colors cursor-pointer flex items-center justify-center gap-1"
                 >
