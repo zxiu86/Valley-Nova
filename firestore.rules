@@ -1,0 +1,77 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // User profile: only owner can read and write their own profile
+    match /users/{userId} {
+      allow get: if isValidId(userId) && isOwner(userId);
+      allow list: if false;
+      allow create: if isValidId(userId) && isOwner(userId) &&
+        incoming().id == userId &&
+        incoming().email is string &&
+        incoming().email.size() <= 200;
+      allow update: if isValidId(userId) && isOwner(userId) &&
+        incoming().id == existing().id &&
+        incoming().email == existing().email;
+      allow delete: if false;
+
+      // User bookmarks subcollection
+      match /bookmarks/{bookmarkId} {
+        allow read: if isValidId(userId) && isOwner(userId);
+        allow create: if isValidId(userId) && isOwner(userId) &&
+          isValidId(bookmarkId) &&
+          incoming().userId == userId &&
+          incoming().novelId is string &&
+          incoming().novelId.size() <= 100;
+        allow update: if isValidId(userId) && isOwner(userId) &&
+          isValidId(bookmarkId) &&
+          incoming().userId == userId;
+        allow delete: if isValidId(userId) && isOwner(userId) && isValidId(bookmarkId);
+      }
+
+      // User ratings subcollection
+      match /ratings/{ratingId} {
+        allow read: if isValidId(userId) && isOwner(userId);
+        allow create: if isValidId(userId) && isOwner(userId) &&
+          isValidId(ratingId) &&
+          incoming().userId == userId &&
+          incoming().rating is number &&
+          incoming().rating >= 1 &&
+          incoming().rating <= 5;
+        allow update: if isValidId(userId) && isOwner(userId) &&
+          isValidId(ratingId) &&
+          incoming().userId == userId &&
+          incoming().rating is number &&
+          incoming().rating >= 1 &&
+          incoming().rating <= 5;
+        allow delete: if isValidId(userId) && isOwner(userId) && isValidId(ratingId);
+      }
+    }
+  }
+}

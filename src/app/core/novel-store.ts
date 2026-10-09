@@ -9,18 +9,25 @@ import {
   MtxDecompressionResult,
   uint8ArrayToBase64,
 } from './mtx-codec';
+import { auth, db } from './firebase';
+import { collection, deleteDoc, doc, getDocs, setDoc } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
 
-const STORAGE_KEY_NOVELS = 'mtx_novels_catalog_v6';
-const STORAGE_KEY_SETTINGS = 'mtx_reader_settings_v6';
+const STORAGE_KEY_NOVELS = 'muqatil_novels_catalog_v1';
+const STORAGE_KEY_SETTINGS = 'muqatil_reader_settings_v1';
+const STORAGE_KEY_BOOKMARKS = 'muqatil_bookmarks_v1';
+const STORAGE_KEY_RATINGS = 'muqatil_ratings_v1';
 
 const DEFAULT_SETTINGS: ReaderSettings = {
   theme: 'dark',
   fontFamily: 'amiri',
-  fontSize: 20,
-  lineHeight: 2.1,
+  fontSize: 21,
+  lineHeight: 2.2,
   pageWidth: 'normal',
   highlightTashkeel: false,
-  showDiagnostics: true,
+  showDiagnostics: false,
+  textAlign: 'justify',
+  paragraphSpacing: 'normal',
 };
 
 @Injectable({
@@ -34,6 +41,8 @@ export class NovelStore {
   readonly currentChapterText = signal<string>('');
   readonly currentChapterDecompressResult = signal<MtxDecompressionResult | null>(null);
   readonly readerSettings = signal<ReaderSettings>(DEFAULT_SETTINGS);
+  readonly bookmarkedNovelIds = signal<string[]>([]);
+  readonly userRatings = signal<Record<string, number>>({});
 
   readonly isDecoding = signal<boolean>(false);
   readonly isEncoding = signal<boolean>(false);
@@ -87,6 +96,20 @@ export class NovelStore {
       // ignore
     }
 
+    // Load bookmarks and ratings
+    try {
+      const savedBookmarks = localStorage.getItem(STORAGE_KEY_BOOKMARKS);
+      if (savedBookmarks) {
+        this.bookmarkedNovelIds.set(JSON.parse(savedBookmarks));
+      }
+      const savedRatings = localStorage.getItem(STORAGE_KEY_RATINGS);
+      if (savedRatings) {
+        this.userRatings.set(JSON.parse(savedRatings));
+      }
+    } catch {
+      // ignore
+    }
+
     // Load novels
     try {
       const savedNovels = localStorage.getItem(STORAGE_KEY_NOVELS);
@@ -115,6 +138,26 @@ export class NovelStore {
     // If no saved novels or cached were incompatible, re-seed fresh catalog
     await this.seedSampleNovels();
     this.isInitialized.set(true);
+
+    // Sync Firestore bookmarks when user signs in
+    onAuthStateChanged(auth, async (u) => {
+      if (u) {
+        try {
+          const bms = await getDocs(collection(db, 'users', u.uid, 'bookmarks'));
+          const ids: string[] = [];
+          bms.forEach(d => {
+            if (d.data()?.['novelId']) ids.push(d.data()['novelId']);
+          });
+          if (ids.length > 0) {
+            const merged = Array.from(new Set([...this.bookmarkedNovelIds(), ...ids]));
+            this.bookmarkedNovelIds.set(merged);
+            localStorage.setItem(STORAGE_KEY_BOOKMARKS, JSON.stringify(merged));
+          }
+        } catch (e) {
+          console.warn('Could not load user bookmarks from Firestore:', e);
+        }
+      }
+    });
   }
 
   private async seedSampleNovels(): Promise<void> {
@@ -153,10 +196,15 @@ export class NovelStore {
         id: raw.id,
         title: raw.title,
         author: raw.author,
+        translator: raw.translator || 'فريق مقاتل الروايات',
         category: raw.category,
         description: raw.description,
         coverGradient: raw.coverGradient,
         accentColor: raw.accentColor,
+        rating: raw.rating ?? 4.9,
+        views: raw.views ?? '100K',
+        badge: raw.badge,
+        section: raw.section,
         chapters,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -255,6 +303,82 @@ export class NovelStore {
     if (currentIndex > 0) {
       const prevChapter = novel.chapters[currentIndex - 1];
       this.selectChapter(novel.id, prevChapter.id);
+    }
+  }
+
+  toggleBookmark(novelId: string): boolean {
+    const current = this.bookmarkedNovelIds();
+    const isSaved = current.includes(novelId);
+    const updated = isSaved ? current.filter(id => id !== novelId) : [...current, novelId];
+    this.bookmarkedNovelIds.set(updated);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(STORAGE_KEY_BOOKMARKS, JSON.stringify(updated));
+      } catch {
+        // ignore
+      }
+
+      // Sync with Firestore if user is authenticated
+      if (auth.currentUser) {
+        const bmRef = doc(db, 'users', auth.currentUser.uid, 'bookmarks', novelId);
+        if (isSaved) {
+          deleteDoc(bmRef).catch(err => console.warn('Could not delete Firestore bookmark:', err));
+        } else {
+          setDoc(bmRef, {
+            userId: auth.currentUser.uid,
+            novelId,
+            novelTitle: this.novels().find(n => n.id === novelId)?.title || '',
+            createdAt: new Date().toISOString(),
+          }).catch(err => console.warn('Could not write Firestore bookmark:', err));
+        }
+      }
+    }
+    return !isSaved;
+  }
+
+  isBookmarked(novelId: string): boolean {
+    return this.bookmarkedNovelIds().includes(novelId);
+  }
+
+  rateNovel(novelId: string, rating: number): void {
+    const ratings = { ...this.userRatings(), [novelId]: rating };
+    this.userRatings.set(ratings);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(STORAGE_KEY_RATINGS, JSON.stringify(ratings));
+      } catch {
+        // ignore
+      }
+
+      // Sync rating with Firestore if user is authenticated
+      if (auth.currentUser) {
+        const ratingRef = doc(db, 'users', auth.currentUser.uid, 'ratings', novelId);
+        setDoc(ratingRef, {
+          userId: auth.currentUser.uid,
+          novelId,
+          rating,
+          createdAt: new Date().toISOString(),
+        }).catch(err => console.warn('Could not save Firestore rating:', err));
+      }
+    }
+
+    // Update novel average rating
+    this.novels.update(list => list.map(n => {
+      if (n.id === novelId) {
+        const base = n.rating ?? 4.8;
+        const newRating = Math.round(((base * 10 + rating) / 11) * 100) / 100;
+        return { ...n, rating: newRating };
+      }
+      return n;
+    }));
+
+    if (this.selectedNovel()?.id === novelId) {
+      const current = this.selectedNovel();
+      if (current) {
+        const base = current.rating ?? 4.8;
+        const newRating = Math.round(((base * 10 + rating) / 11) * 100) / 100;
+        this.selectedNovel.set({ ...current, rating: newRating });
+      }
     }
   }
 

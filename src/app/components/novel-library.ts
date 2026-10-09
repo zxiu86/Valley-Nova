@@ -4,283 +4,456 @@ import { MatIconModule } from '@angular/material/icon';
 import { NovelStore } from '../core/novel-store';
 import { Novel } from '../core/novel-models';
 
+export type HeroMode = 'most_read' | 'top_rated' | 'most_chapters';
+
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-novel-library',
   imports: [MatIconModule],
   template: `
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+    <div class="space-y-24 sm:space-y-32 pb-32 text-stone-100">
       
-      <!-- Literary Hero Banner -->
-      <section class="relative rounded-3xl overflow-hidden bg-gradient-to-br from-stone-900 via-stone-900 to-amber-950/40 border border-stone-800 p-8 sm:p-12 shadow-xl">
-        <div class="relative z-10 max-w-3xl space-y-5">
-          <div class="flex items-center gap-2 text-xs font-mono-code text-amber-400">
-            <span>منظومة القراءة والنشر الذكية</span>
-            <span aria-hidden="true">·</span>
-            <span>صيغة MTX للضغط والترميز العربي</span>
-          </div>
+      <!-- ========================================================================= -->
+      <!-- 1. CINEMATIC HERO SPOTLIGHT: الأكثر قراءة · الأكثر تقييماً · الأكثر فصولاً -->
+      <!-- ========================================================================= -->
+      <section class="relative overflow-hidden pt-6 sm:pt-10 pb-16 sm:pb-20 px-4 sm:px-6 lg:px-8 border-b border-stone-800/80">
+        <!-- Subtle Soft Ambient Depth (بدون توهجات فاقعة) -->
+        <div class="absolute top-1/4 right-1/4 w-96 h-96 bg-rose-950/20 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-10 left-1/3 w-80 h-80 bg-stone-900/40 rounded-full blur-3xl pointer-events-none"></div>
 
-          <h1 class="text-3xl sm:text-5xl font-extrabold text-stone-100 font-amiri leading-tight">
-            موقع الروايات العربية المتقدم
-            <span class="block text-amber-500 font-bold mt-1 text-2xl sm:text-4xl">
-              بصيغة نصوص MTX فائقة الضغط والسرعة
-            </span>
-          </h1>
-
-          <p class="text-stone-300 text-sm sm:text-base leading-relaxed">
-            اقرأ وانشر رواياتك وفصولك الأدبية مجاناً وفورياً دون الحاجة إلى إنشاء حساب أو تسجيل دخول. تم تزويد الموقع بمحرك 
-            <strong class="text-amber-300 font-mono-code font-bold">MTX</strong> 
-            المبتكر، الذي ينشئ خريطة ترميز ديناميكية متخصصة للنصوص العربية، لتقليص الحجم بنسبة 70% إلى 80% مقارنة بترميز UTF-8 القياسي، مع فك تشفير فوري وضمان الحفاظ الكامل 100% على كافة علامات التشكيل والحركات (كَ، كِ، كُ، كْ، م، ن).
-          </p>
-
-          <!-- Banner Stats Grid (Clean text, unboxed) -->
-          <div class="pt-2 flex flex-wrap items-center gap-6 text-sm text-stone-300 border-t border-stone-800/80">
-            <div>
-              <span class="text-xs text-stone-400 block">التوفير مقارنة بـ UTF-8</span>
-              <span class="text-xl font-bold font-mono-code text-emerald-400">
-                {{ store.globalStats().savingsPercent }}%
+        <div class="max-w-7xl mx-auto space-y-8">
+          
+          <!-- Hero Mode Navigation Switcher (تنقلات سلسة بين الأكثر قراءة، تقييماً، وفصولاً) -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="space-y-1">
+              <span class="text-xs font-semibold text-rose-400 tracking-wider uppercase flex items-center gap-1.5">
+                <mat-icon class="text-base text-rose-400">workspace_premium</mat-icon>
+                <span>صدارة مقاتل الروايات</span>
               </span>
+              <h2 class="text-2xl sm:text-3xl font-extrabold font-amiri text-white">
+                أبرز الأعمال في المنصة
+              </h2>
             </div>
-            <div class="w-px h-8 bg-stone-800 hidden sm:block"></div>
-            <div>
-              <span class="text-xs text-stone-400 block">سرعة فك التشفير</span>
-              <span class="text-xl font-bold font-mono-code text-amber-400">فورية (&lt;0.5ms)</span>
-            </div>
-            <div class="w-px h-8 bg-stone-800 hidden sm:block"></div>
-            <div>
-              <span class="text-xs text-stone-400 block">دقة الحركات والتشكيل</span>
-              <span class="text-xl font-bold text-sky-400 font-sans">تطابق تام 100%</span>
-            </div>
-            <div class="w-px h-8 bg-stone-800 hidden sm:block"></div>
-            <div>
-              <span class="text-xs text-stone-400 block">إجمالي الفصول المتاحة</span>
-              <span class="text-xl font-bold text-stone-200">{{ store.globalStats().totalChapters }} فصل</span>
-            </div>
-          </div>
 
-          <!-- Hero Actions -->
-          <div class="pt-4 flex flex-wrap items-center gap-3">
-            <button
-              (click)="openLatestNovel()"
-              class="flex items-center gap-2 px-6 py-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-stone-950 font-bold text-sm shadow-lg shadow-amber-950/50 transition-all cursor-pointer"
-            >
-              <mat-icon class="text-lg">auto_stories</mat-icon>
-              <span>ابدأ القراءة الآن</span>
-            </button>
-
-            <button
-              (click)="goToEditor()"
-              class="flex items-center gap-2 px-6 py-3 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 font-medium text-sm border border-stone-700 transition-colors cursor-pointer"
-            >
-              <mat-icon class="text-lg text-amber-400">edit_note</mat-icon>
-              <span>كتابة ونشر فصل جديد</span>
-            </button>
-
-            <button
-              (click)="goToLab()"
-              class="flex items-center gap-2 px-4 py-3 rounded-xl text-stone-300 hover:text-white hover:bg-stone-800/40 text-sm transition-colors cursor-pointer"
-            >
-              <mat-icon class="text-lg">tune</mat-icon>
-              <span>فحص خريطة MTX</span>
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <!-- Filter Controls & Section Title -->
-      <section class="space-y-6">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-800 pb-4">
-          <div>
-            <h2 class="text-2xl font-bold text-stone-100 font-amiri flex items-center gap-2">
-              <mat-icon class="text-amber-500">book</mat-icon>
-              <span>مكتبة الروايات المتاحة</span>
-            </h2>
-            <p class="text-xs text-stone-400 mt-1">
-              اختر أي رواية لقراءتها وفك تشفيرها تلقائياً بصيغة MTX فائقة السرعة
-            </p>
-          </div>
-
-          <!-- Category Filter Segmented Control -->
-          <div class="flex items-center gap-1 p-1 bg-stone-900 rounded-xl border border-stone-800 overflow-x-auto text-xs">
-            @for (cat of categories(); track cat.id) {
+            <!-- Interactive Hero Category Tabs with Smooth Transitions -->
+            <div class="inline-flex p-1.5 rounded-2xl liquid-glass border border-white/10 self-start sm:self-auto gap-1">
               <button
-                (click)="selectedCategory.set(cat.id)"
-                [class]="selectedCategory() === cat.id 
-                  ? 'bg-amber-600 text-stone-950 font-bold px-3 py-1.5 rounded-lg shadow-sm' 
-                  : 'text-stone-400 hover:text-stone-200 px-3 py-1.5 rounded-lg transition-colors'"
+                type="button"
+                (click)="setHeroMode('most_read')"
+                [class]="heroMode() === 'most_read' 
+                  ? 'bg-rose-600 text-white font-bold shadow-md' 
+                  : 'text-stone-300 hover:text-white hover:bg-white/5'"
+                class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm transition-all duration-300 cursor-pointer"
               >
-                {{ cat.label }}
+                <mat-icon class="text-base">local_fire_department</mat-icon>
+                <span>الأكثر قراءة</span>
               </button>
-            }
+
+              <button
+                type="button"
+                (click)="setHeroMode('top_rated')"
+                [class]="heroMode() === 'top_rated' 
+                  ? 'bg-rose-600 text-white font-bold shadow-md' 
+                  : 'text-stone-300 hover:text-white hover:bg-white/5'"
+                class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm transition-all duration-300 cursor-pointer"
+              >
+                <mat-icon class="text-base">star</mat-icon>
+                <span>الأعلى تقييماً</span>
+              </button>
+
+              <button
+                type="button"
+                (click)="setHeroMode('most_chapters')"
+                [class]="heroMode() === 'most_chapters' 
+                  ? 'bg-rose-600 text-white font-bold shadow-md' 
+                  : 'text-stone-300 hover:text-white hover:bg-white/5'"
+                class="flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm transition-all duration-300 cursor-pointer"
+              >
+                <mat-icon class="text-base">auto_stories</mat-icon>
+                <span>الأكثر فصولاً</span>
+              </button>
+            </div>
           </div>
-        </div>
 
-        <!-- Novels Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          @for (novel of filteredNovels(); track novel.id) {
-            <article class="flex flex-col bg-stone-900/80 rounded-2xl border border-stone-800 overflow-hidden hover:border-stone-700 transition-all duration-200 shadow-md hover:shadow-xl group">
+          <!-- Dynamic Hero Showcase Container -->
+          @if (activeHeroChampion(); as hero) {
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch transition-opacity duration-300">
               
-              <!-- Book Cover Header Area -->
-              <div [class]="'relative p-6 bg-gradient-to-br ' + novel.coverGradient + ' text-white min-h-[160px] flex flex-col justify-between'">
-                <div class="flex items-start justify-between">
-                  <span class="text-xs text-amber-200/90 font-medium font-sans">
-                    {{ novel.category }}
-                  </span>
-                  
-                  <!-- Badges / Compression ratio -->
-                  <div class="flex items-center gap-1.5 px-2 py-0.5 rounded bg-black/40 backdrop-blur-sm text-[11px] font-mono-code text-emerald-300 border border-white/10">
-                    <mat-icon class="text-xs">compress</mat-icon>
-                    <span>{{ getNovelAverageSavings(novel) }}% توفير</span>
-                  </div>
-                </div>
+              <!-- Major Hero Champion Card (8 cols) -->
+              <div
+                class="lg:col-span-8 rounded-3xl relative overflow-hidden liquid-glass-crimson border border-rose-500/20 shadow-xl p-6 sm:p-10 flex flex-col justify-between group transition-all duration-300"
+              >
+                <!-- Artistic Background Gradient -->
+                <div [class]="'absolute inset-0 bg-gradient-to-br ' + hero.coverGradient + ' opacity-35 transition-transform duration-700 group-hover:scale-103 pointer-events-none'"></div>
+                <div class="absolute inset-0 bg-gradient-to-t from-stone-950 via-stone-950/75 to-transparent pointer-events-none"></div>
 
-                <div>
-                  <h3 class="text-xl font-bold font-amiri text-stone-100 group-hover:text-amber-300 transition-colors leading-snug">
-                    {{ novel.title }}
-                  </h3>
-                  <p class="text-xs text-stone-300 mt-1 flex items-center gap-1">
-                    <span>بقلم:</span>
-                    <span class="font-medium text-white">{{ novel.author }}</span>
+                <div class="relative z-10 space-y-4">
+                  <!-- Badges Bar -->
+                  <div class="flex flex-wrap items-center gap-2.5">
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-600/25 text-rose-300 border border-rose-500/30 text-xs font-semibold">
+                      <mat-icon class="text-sm text-rose-400">{{ heroCategoryInfo().icon }}</mat-icon>
+                      <span>{{ heroCategoryInfo().badge }}</span>
+                    </span>
+
+                    <span class="px-2.5 py-1 rounded-full liquid-glass border border-white/10 text-xs text-stone-300 font-sans">
+                      {{ hero.category }}
+                    </span>
+
+                    <div class="flex items-center gap-1 px-2.5 py-1 rounded-full liquid-glass text-amber-400 text-xs font-bold border border-white/10">
+                      <mat-icon class="text-sm">star</mat-icon>
+                      <span>{{ hero.rating || 4.9 }}</span>
+                    </div>
+
+                    <span class="px-2.5 py-1 rounded-full liquid-glass border border-white/10 text-xs text-stone-400 font-sans flex items-center gap-1">
+                      <mat-icon class="text-xs text-rose-400">visibility</mat-icon>
+                      <span>{{ hero.views }} قراءة</span>
+                    </span>
+                  </div>
+
+                  <!-- Author - Translator Prominently Displayed (مؤلف - مترجم) -->
+                  <div class="text-xs sm:text-sm text-rose-300 font-medium tracking-wide flex items-center gap-2 pt-1">
+                    <mat-icon class="text-base text-rose-400">person</mat-icon>
+                    <span>المؤلف: {{ hero.author }}</span>
+                    <span class="text-rose-500/80">·</span>
+                    <span class="text-stone-300">المترجم: {{ hero.translator || 'الأصل العربي' }}</span>
+                  </div>
+
+                  <!-- Novel Title seamlessly blended with soft inner shading -->
+                  <h1 class="text-2xl sm:text-4xl lg:text-5xl font-extrabold font-amiri text-white leading-tight">
+                    {{ hero.title }}
+                  </h1>
+
+                  <!-- Synopsis -->
+                  <p class="text-stone-300 text-xs sm:text-sm leading-relaxed max-w-2xl line-clamp-3 font-sans">
+                    {{ hero.description }}
                   </p>
                 </div>
-              </div>
 
-              <!-- Novel Metadata & Chapters -->
-              <div class="p-5 flex-1 flex flex-col justify-between space-y-4">
-                <p class="text-xs text-stone-400 line-clamp-3 leading-relaxed">
-                  {{ novel.description }}
-                </p>
+                <!-- Action Bar & Chapter Metadata -->
+                <div class="relative z-10 pt-6 mt-8 border-t border-white/10 flex flex-wrap items-center justify-between gap-4">
+                  <div class="flex items-center gap-5 text-xs text-stone-400 font-sans">
+                    <span class="flex items-center gap-1.5">
+                      <mat-icon class="text-rose-400 text-sm">menu_book</mat-icon>
+                      <strong class="text-white">{{ hero.chapters.length }}</strong> فصول كاملة
+                    </span>
+                    <span class="flex items-center gap-1.5">
+                      <mat-icon class="text-rose-400 text-sm">schedule</mat-icon>
+                      <span>تحديث فوري</span>
+                    </span>
+                  </div>
 
-                <!-- Stats summary (clean unboxed text) -->
-                <div class="pt-3 border-t border-stone-800/80 flex items-center justify-between text-xs text-stone-400">
-                  <div class="flex items-center gap-1.5">
-                    <mat-icon class="text-sm text-stone-500">list_alt</mat-icon>
-                    <span>{{ novel.chapters.length }} فصول</span>
-                  </div>
-                  <div class="flex items-center gap-1.5">
-                    <mat-icon class="text-sm text-stone-500">data_usage</mat-icon>
-                    <span class="font-mono-code">{{ formatBytes(getNovelMtxTotal(novel)) }} MTX</span>
-                  </div>
-                  <div class="flex items-center gap-1.5">
-                    <mat-icon class="text-sm text-stone-500">bolt</mat-icon>
-                    <span>فك فوري</span>
+                  <div class="flex items-center gap-3">
+                    <button
+                      type="button"
+                      (click)="readNovel(hero)"
+                      class="flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs sm:text-sm shadow-md transition-all cursor-pointer hover:scale-102"
+                    >
+                      <mat-icon class="text-lg">play_arrow</mat-icon>
+                      <span>ابدأ القراءة فوراً</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      (click)="selectNovel(hero)"
+                      class="flex items-center gap-2 px-4 py-2.5 rounded-2xl liquid-glass hover:bg-stone-800/60 text-stone-300 hover:text-white border border-white/10 text-xs font-medium transition-all cursor-pointer"
+                    >
+                      <mat-icon class="text-sm text-rose-400">format_list_bulleted</mat-icon>
+                      <span>تفاصيل الفصول</span>
+                    </button>
                   </div>
                 </div>
 
-                <!-- Chapters List Preview -->
-                <div class="space-y-1.5 bg-stone-950/60 p-2.5 rounded-xl border border-stone-800/60 text-xs">
-                  <span class="text-[11px] text-stone-500 font-semibold block px-1">الفصول المتوفرة:</span>
-                  @for (ch of novel.chapters.slice(0, 3); track ch.id) {
-                    <button
-                      type="button" 
-                      (click)="readChapter(novel.id, ch.id)"
-                      class="w-full flex items-center justify-between p-1.5 rounded-lg hover:bg-stone-800 text-stone-300 hover:text-amber-300 cursor-pointer transition-colors text-right"
-                    >
-                      <span class="truncate max-w-[200px]">{{ ch.title }}</span>
-                      <span class="text-[10px] font-mono-code text-stone-400">{{ formatBytes(ch.mtxBytes) }}</span>
-                    </button>
-                  }
-                  @if (novel.chapters.length > 3) {
-                    <div class="text-[11px] text-stone-400 text-center py-0.5">
-                      + {{ novel.chapters.length - 3 }} فصول أخرى
+              </div>
+
+              <!-- Secondary Contenders in this Category (4 cols) -->
+              <div class="lg:col-span-4 flex flex-col gap-6 justify-between">
+                @for (contender of activeHeroContenders(); track contender.id; let idx = $index) {
+                  <div
+                    (click)="selectNovel(contender)"
+                    (keydown.enter)="selectNovel(contender)"
+                    tabindex="0"
+                    role="button"
+                    [attr.aria-label]="'عرض رواية ' + contender.title"
+                    class="flex-1 rounded-3xl p-6 liquid-glass-card border border-white/10 hover:border-rose-500/30 shadow-md cursor-pointer flex flex-col justify-between group transition-all duration-300"
+                  >
+                    <div class="space-y-2.5">
+                      <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-bold text-rose-300 px-2.5 py-0.5 rounded-md bg-stone-900/80 border border-white/10">
+                          المركز #{{ idx + 2 }} في {{ heroCategoryInfo().badge }}
+                        </span>
+                        <div class="flex items-center gap-1 text-amber-400 text-xs font-bold">
+                          <mat-icon class="text-xs">star</mat-icon>
+                          <span>{{ contender.rating || 4.8 }}</span>
+                        </div>
+                      </div>
+
+                      <!-- مؤلف - مترجم -->
+                      <div class="text-[11px] text-stone-400 font-sans flex items-center gap-1 pt-1">
+                        <mat-icon class="text-xs text-rose-400">person</mat-icon>
+                        <span>{{ contender.author }}</span>
+                        <span>·</span>
+                        <span class="text-stone-300">{{ contender.translator || 'الأصل العربي' }}</span>
+                      </div>
+
+                      <h3 class="text-lg font-bold font-amiri text-white leading-snug group-hover:text-rose-300 transition-colors">
+                        {{ contender.title }}
+                      </h3>
+
+                      <p class="text-xs text-stone-400 line-clamp-2 font-sans">
+                        {{ contender.description }}
+                      </p>
                     </div>
-                  }
-                </div>
 
-                <!-- Card Actions -->
-                <div class="pt-2 flex items-center gap-2">
-                  <button
-                    (click)="readNovel(novel.id)"
-                    class="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-stone-800 hover:bg-amber-600 hover:text-stone-950 text-stone-200 text-xs font-bold transition-all cursor-pointer"
-                  >
-                    <mat-icon class="text-base">chrome_reader_mode</mat-icon>
-                    <span>قراءة الرواية</span>
-                  </button>
-
-                  <button
-                    (click)="addChapterToNovel(novel.id)"
-                    title="كتابة فصل إضافي لهذه الرواية"
-                    class="p-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-amber-400 transition-colors cursor-pointer"
-                  >
-                    <mat-icon class="text-base">add_circle_outline</mat-icon>
-                  </button>
-
-                  @if (!novel.isPreloaded) {
-                    <button
-                      (click)="deleteNovel(novel.id)"
-                      title="حذف الرواية"
-                      class="p-2 rounded-xl bg-stone-800 hover:bg-rose-900/60 text-stone-400 hover:text-rose-300 transition-colors cursor-pointer"
-                    >
-                      <mat-icon class="text-base">delete_outline</mat-icon>
-                    </button>
-                  }
-                </div>
-
+                    <div class="pt-4 mt-3 border-t border-white/5 flex items-center justify-between text-xs text-stone-400">
+                      <span>{{ contender.chapters.length }} فصول · {{ contender.views }} قراءة</span>
+                      <span class="text-rose-400 group-hover:translate-x-1 transition-transform flex items-center gap-1 text-[11px] font-bold">
+                        <span>تصفح</span>
+                        <mat-icon class="text-xs">arrow_back</mat-icon>
+                      </span>
+                    </div>
+                  </div>
+                }
               </div>
-            </article>
-          } @empty {
-            <div class="col-span-full py-16 text-center text-stone-400 space-y-4">
-              <mat-icon class="text-5xl text-stone-600">search_off</mat-icon>
-              <p class="text-base">لا توجد روايات مطابقة لهذا التصنيف.</p>
-              <button
-                (click)="selectedCategory.set('all')"
-                class="px-4 py-2 bg-stone-800 hover:bg-stone-700 text-stone-200 rounded-lg text-xs"
-              >
-                عرض كافة الروايات
-              </button>
+
             </div>
           }
         </div>
       </section>
 
-      <!-- Educational feature: The MTX Architecture Breakdown -->
-      <section class="bg-stone-900 rounded-3xl border border-stone-800 p-8 space-y-6">
-        <div class="max-w-2xl">
-          <span class="text-xs font-mono-code text-amber-400 uppercase tracking-wider block">الابتكار التقني</span>
-          <h3 class="text-2xl font-bold font-amiri text-stone-100 mt-1">
-            كيف تعمل خوارزمية MTX لتقليص النصوص العربية بنسبة 70% إلى 80%؟
-          </h3>
-          <p class="text-xs text-stone-400 mt-2 leading-relaxed">
-            تعتمد صيغة MTX على معالجة ذكية لطبيعة اللغة العربية وتشكيلها، بدلاً من ترميز كل حرف وحركة بـ 2 إلى 4 بايتات كما في UTF-8:
-          </p>
+      <!-- ========================================================================= -->
+      <!-- 2. TOP LEADERBOARD CHART (المتصدرون والأكثر شعبية) -->
+      <!-- ========================================================================= -->
+      <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-800/80 pb-6">
+          <div class="flex items-center gap-3">
+            <div class="w-2.5 h-8 rounded-full bg-gradient-to-b from-rose-500 to-red-700"></div>
+            <div>
+              <h2 class="text-2xl sm:text-3xl font-bold font-amiri text-white tracking-wide">
+                قائمة الصدارة الأكثر قراءة
+              </h2>
+              <p class="text-xs text-stone-400 mt-1 font-sans">
+                الأعمال الأدبية الحائزة على أعلى تفاعل وتقييم في مقاتل الروايات
+              </p>
+            </div>
+          </div>
+
+          <span class="text-xs text-rose-400 font-sans hidden sm:inline">
+            تحديث مستمر
+          </span>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div class="p-5 bg-stone-950 rounded-2xl border border-stone-800/80 space-y-2">
-            <div class="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center font-bold">
-              1
+        <!-- Horizontal Ranking Strips / Leaderboard -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          @for (novel of topRankedNovels(); track novel.id; let i = $index) {
+            <div
+              (click)="selectNovel(novel)"
+              (keydown.enter)="selectNovel(novel)"
+              tabindex="0"
+              role="button"
+              [attr.aria-label]="'عرض تفاصيل ' + novel.title"
+              class="p-5 rounded-2xl liquid-glass-card border border-white/10 hover:border-rose-500/30 flex items-center gap-4 cursor-pointer group transition-all duration-300"
+            >
+              <!-- Numeric Rank -->
+              <div class="text-3xl sm:text-4xl font-extrabold font-mono-code text-rose-400/80 select-none w-10 text-center">
+                0{{ i + 1 }}
+              </div>
+
+              <!-- Cover Thumbnail with Soft Inner Shadow -->
+              <div [class]="'w-16 h-22 rounded-xl bg-gradient-to-br ' + novel.coverGradient + ' shrink-0 overflow-hidden relative border border-white/10 shadow-sm group-hover:scale-103 transition-transform'">
+                <div class="absolute inset-0 cover-inner-shadow"></div>
+                <div class="absolute bottom-1 right-1 text-[9px] font-bold text-white bg-black/70 px-1 rounded">
+                  ★ {{ novel.rating || 4.9 }}
+                </div>
+              </div>
+
+              <!-- Info: Title, Author - Translator, Chapters -->
+              <div class="flex-1 min-w-0 space-y-1.5">
+                <span class="text-[10px] text-rose-400 font-semibold block truncate">
+                  {{ novel.category }}
+                </span>
+
+                <h3 class="text-base font-bold font-amiri text-white truncate group-hover:text-rose-300 transition-colors">
+                  {{ novel.title }}
+                </h3>
+
+                <!-- مؤلف - مترجم -->
+                <div class="text-xs text-stone-400 truncate font-sans">
+                  <span>{{ novel.author }}</span>
+                  <span class="text-rose-500 mx-1">·</span>
+                  <span class="text-stone-300">{{ novel.translator || 'الأصل العربي' }}</span>
+                </div>
+
+                <div class="text-[11px] text-stone-400 flex items-center gap-2 pt-0.5 font-sans">
+                  <span>{{ novel.chapters.length }} فصول</span>
+                  <span>·</span>
+                  <span>{{ novel.views }} قراءة</span>
+                </div>
+              </div>
             </div>
-            <h4 class="text-sm font-bold text-stone-200 font-sans">
-              خريطة الترميز الديناميكية
-            </h4>
-            <p class="text-xs text-stone-400 leading-relaxed">
-              يقوم المحرك بمسح الفصل وتجميع المفردات واللواصق والحروف المشكلة (مثل كَ، كِ، كُ، كْ، م، ن) وربطها بمعرفات رقمية مدمجة بحجم بايت واحد للرموز الأكثر تكراراً.
-            </p>
+          }
+        </div>
+      </section>
+
+      <!-- ========================================================================= -->
+      <!-- 3. INTERACTIVE GENRE DISCOVERY & MODERN CARD GRID (تصفح وتوزيع البطاقات الحديث) -->
+      <!-- ========================================================================= -->
+      <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+        
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-800/80 pb-6">
+          <div class="flex items-center gap-3">
+            <div class="w-2.5 h-8 rounded-full bg-gradient-to-b from-amber-500 to-rose-600"></div>
+            <div>
+              <h2 class="text-2xl sm:text-3xl font-bold font-amiri text-white tracking-wide">
+                استكشاف مكتبة الروايات
+              </h2>
+              <p class="text-xs text-stone-400 mt-1 font-sans">
+                تصفح الروايات بتصاميم أغلفة عصرية وتظليل داخلي ناعم
+              </p>
+            </div>
           </div>
 
-          <div class="p-5 bg-stone-950 rounded-2xl border border-stone-800/80 space-y-2">
-            <div class="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold">
-              2
+          <!-- Dynamic Genre Filter Pills -->
+          <div class="flex flex-wrap items-center gap-2">
+            @for (genre of availableGenres; track genre.id) {
+              <button
+                type="button"
+                (click)="selectedGenre.set(genre.id)"
+                [class]="selectedGenre() === genre.id 
+                  ? 'bg-rose-600 text-white font-bold border-rose-500 shadow-sm' 
+                  : 'liquid-glass text-stone-300 hover:text-white border-white/10 hover:border-rose-500/30'"
+                class="px-4 py-2 rounded-xl text-xs transition-all duration-300 cursor-pointer border"
+              >
+                {{ genre.label }}
+              </button>
+            }
+          </div>
+        </div>
+
+        <!-- ===================================================================== -->
+        <!-- MODERN NOVEL CARDS GRID (توزيع البطاقات العصري بدون حواف حادة مع تظليل داخلي) -->
+        <!-- ===================================================================== -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 sm:gap-7">
+          @for (novel of filteredNovels(); track novel.id) {
+            <!-- Card with Soft Shading and Seamless Author/Translator Integration -->
+            <div
+              (click)="selectNovel(novel)"
+              (keydown.enter)="selectNovel(novel)"
+              tabindex="0"
+              role="button"
+              [attr.aria-label]="'عرض تفاصيل رواية ' + novel.title"
+              class="group relative h-[380px] sm:h-[420px] rounded-3xl overflow-hidden cursor-pointer liquid-glass-card shadow-md transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-rose-500 hover:-translate-y-1.5"
+            >
+              <!-- Background Artistic Book Cover Gradient -->
+              <div [class]="'absolute inset-0 bg-gradient-to-br ' + novel.coverGradient + ' transition-transform duration-500 group-hover:scale-105'">
+                <!-- Subtle Texture Motif -->
+                <div class="absolute inset-0 opacity-10 bg-[radial-gradient(#e11d48_1px,transparent_1px)] [background-size:16px_16px]"></div>
+              </div>
+
+              <!-- Deep Inner Shading Vignette (تظليل داخلي ناعم بدون حواف حادة) -->
+              <div class="absolute inset-0 cover-inner-shadow pointer-events-none"></div>
+
+              <!-- Top Floating Badge: Category & Rating -->
+              <div class="absolute top-4 right-4 left-4 flex items-center justify-between z-10">
+                <span class="px-2.5 py-1 rounded-lg liquid-glass text-rose-300 border border-white/10 text-[10px] font-bold shadow-sm backdrop-blur-md">
+                  {{ novel.badge || novel.category }}
+                </span>
+
+                <div class="flex items-center gap-1 px-2.5 py-1 rounded-lg liquid-glass text-amber-400 text-[11px] font-bold border border-white/10">
+                  <mat-icon class="text-xs">star</mat-icon>
+                  <span>{{ novel.rating || 4.8 }}</span>
+                </div>
+              </div>
+
+              <!-- Bottom Merged Content: Author - Translator & Novel Title seamlessly blended -->
+              <div class="absolute bottom-0 inset-x-0 p-5 z-10 space-y-2">
+                
+                <!-- مؤلف - مترجم (as explicitly requested) -->
+                <div class="text-[11px] text-rose-300 font-medium tracking-wide flex items-center gap-1.5 drop-shadow">
+                  <mat-icon class="text-xs text-rose-400">person</mat-icon>
+                  <span class="truncate">{{ novel.author }}</span>
+                  <span class="text-rose-500">·</span>
+                  <span class="text-stone-300 truncate">{{ novel.translator || 'الأصل العربي' }}</span>
+                </div>
+
+                <!-- اسم الرواية مدموج بتظليل داخلي مع غلاف الرواية بشكل جميل بدون حواف حادة -->
+                <h3 class="text-lg sm:text-xl font-bold font-amiri text-white leading-snug drop-shadow-md group-hover:text-rose-300 transition-colors line-clamp-2">
+                  {{ novel.title }}
+                </h3>
+
+                <!-- Metadata Bar -->
+                <div class="pt-2.5 flex items-center justify-between text-[11px] text-stone-400 border-t border-white/10 font-sans">
+                  <span class="flex items-center gap-1">
+                    <mat-icon class="text-xs text-rose-400">menu_book</mat-icon>
+                    <span>{{ novel.chapters.length }} فصول</span>
+                  </span>
+
+                  <span class="flex items-center gap-1 text-stone-400 group-hover:text-rose-300 transition-colors">
+                    <mat-icon class="text-xs">visibility</mat-icon>
+                    <span>{{ novel.views }}</span>
+                  </span>
+                </div>
+
+              </div>
             </div>
-            <h4 class="text-sm font-bold text-stone-200 font-sans">
-              حفظ الحركات بدقة 100%
-            </h4>
-            <p class="text-xs text-stone-400 leading-relaxed">
-              لا تفقد الصيغة أي فتحة أو ضمة أو كسرة أو شدة. يتم تمييز الحرف مع حركته ككيان لغوي كامل يُعاد تركيبه دون أدنى تغيير في مواضعه الأصلية.
-            </p>
+          }
+        </div>
+
+      </section>
+
+      <!-- ========================================================================= -->
+      <!-- 4. RECENT CHAPTER RELEASES FEED (أحدث الفصول الصادرة) -->
+      <!-- ========================================================================= -->
+      <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+        <div class="flex items-center justify-between border-b border-stone-800/80 pb-6">
+          <div class="flex items-center gap-3">
+            <div class="w-2.5 h-8 rounded-full bg-gradient-to-b from-emerald-500 to-rose-600"></div>
+            <div>
+              <h2 class="text-2xl sm:text-3xl font-bold font-amiri text-white tracking-wide">
+                أحدث الفصول المضافة
+              </h2>
+              <p class="text-xs text-stone-400 mt-1 font-sans">
+                فصول جديدة بانتظارك للقراءة المباشرة
+              </p>
+            </div>
           </div>
 
-          <div class="p-5 bg-stone-950 rounded-2xl border border-stone-800/80 space-y-2">
-            <div class="w-8 h-8 rounded-lg bg-sky-500/10 text-sky-400 flex items-center justify-center font-bold">
-              3
-            </div>
-            <h4 class="text-sm font-bold text-stone-200 font-sans">
-              تشفير أمان وفك فوري
-            </h4>
-            <p class="text-xs text-stone-400 leading-relaxed">
-              تُحفظ البيانات مشفرة بقناع تدفق ديناميكي لمنع الاستخراج العشوائي، وتُفك داخل المتصفح خلال أجزاء من الألف من الثانية عبر مصفوفات الذاكرة السريعة.
-            </p>
-          </div>
+          <span class="text-xs text-rose-400 font-sans hidden sm:inline">
+            محدث باستمرار
+          </span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          @for (novel of latestUpdatedNovels(); track novel.id) {
+            @if (novel.chapters.length > 0) {
+              <div class="p-5 rounded-2xl liquid-glass border border-white/10 hover:border-rose-500/30 flex items-center justify-between gap-4 group transition-all duration-300">
+                <div class="flex items-center gap-3.5 min-w-0">
+                  <div [class]="'w-13 h-16 rounded-xl bg-gradient-to-br ' + novel.coverGradient + ' shrink-0 overflow-hidden relative border border-white/10'">
+                    <div class="absolute inset-0 cover-inner-shadow"></div>
+                  </div>
+
+                  <div class="min-w-0 space-y-1">
+                    <span class="text-[10px] text-rose-400 font-semibold block">
+                      {{ novel.title }}
+                    </span>
+                    <h4 class="text-xs font-bold text-white truncate group-hover:text-rose-300 transition-colors font-amiri">
+                      {{ novel.chapters[novel.chapters.length - 1].title }}
+                    </h4>
+                    <span class="text-[10px] text-stone-400 block truncate font-sans">
+                      {{ novel.author }} · {{ novel.translator || 'الأصل العربي' }}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  (click)="readSpecificChapter(novel, novel.chapters[novel.chapters.length - 1].id)"
+                  class="px-3.5 py-2 rounded-xl bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 text-xs font-bold transition-all shrink-0 cursor-pointer"
+                >
+                  قراءة
+                </button>
+              </div>
+            }
+          }
         </div>
       </section>
 
@@ -291,76 +464,120 @@ export class NovelLibrary {
   readonly store = inject(NovelStore);
   private readonly router = inject(Router);
 
-  readonly selectedCategory = signal<string>('all');
+  readonly selectedGenre = signal<string>('all');
+  readonly heroMode = signal<HeroMode>('most_read');
 
-  readonly categories = computed(() => [
+  readonly availableGenres = [
     { id: 'all', label: 'كافة الروايات' },
-    { id: 'tashkeel', label: 'مختبر التشكيل (كَ وكِ)' },
-    { id: 'history', label: 'تاريخ وغموض' },
-    { id: 'adventure', label: 'خيال ومغامرة' },
-  ]);
+    { id: 'fantasy', label: 'فانتازيا وخيال' },
+    { id: 'translated', label: 'روايات مترجمة' },
+    { id: 'mystery', label: 'غموض وتشويق' },
+    { id: 'history', label: 'تاريخ وأدب عربي' },
+  ];
+
+  private parseViews(viewsStr?: string): number {
+    if (!viewsStr) return 0;
+    const num = parseFloat(viewsStr.replace(/[^0-9.]/g, ''));
+    if (viewsStr.includes('K') || viewsStr.includes('k')) return num * 1000;
+    if (viewsStr.includes('M') || viewsStr.includes('m')) return num * 1000000;
+    return num || 0;
+  }
+
+  readonly mostReadNovels = computed(() => {
+    const list = [...this.store.novels()];
+    return list.sort((a, b) => this.parseViews(b.views) - this.parseViews(a.views));
+  });
+
+  readonly topRatedNovels = computed(() => {
+    const list = [...this.store.novels()];
+    return list.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
+  });
+
+  readonly mostChaptersNovels = computed(() => {
+    const list = [...this.store.novels()];
+    return list.sort((a, b) => b.chapters.length - a.chapters.length);
+  });
+
+  readonly activeHeroChampion = computed(() => {
+    const mode = this.heroMode();
+    if (mode === 'most_read') return this.mostReadNovels()[0] || null;
+    if (mode === 'top_rated') return this.topRatedNovels()[0] || null;
+    return this.mostChaptersNovels()[0] || null;
+  });
+
+  readonly activeHeroContenders = computed(() => {
+    const mode = this.heroMode();
+    if (mode === 'most_read') return this.mostReadNovels().slice(1, 3);
+    if (mode === 'top_rated') return this.topRatedNovels().slice(1, 3);
+    return this.mostChaptersNovels().slice(1, 3);
+  });
+
+  readonly heroCategoryInfo = computed(() => {
+    const mode = this.heroMode();
+    switch (mode) {
+      case 'most_read':
+        return {
+          badge: 'الأكثر قراءة وتفاعلاً',
+          icon: 'local_fire_department',
+          description: 'الروايات التي حصدت أعلى معدلات القراءة والتفاعل في مقاتل الروايات',
+        };
+      case 'top_rated':
+        return {
+          badge: 'الأعلى تقييماً بإجماع القراء',
+          icon: 'star',
+          description: 'الروايات الحائزة على أعلى الدرجات والتقييمات النقدية من القراء',
+        };
+      case 'most_chapters':
+        return {
+          badge: 'الملحمة الأطول والأكثر فصولاً',
+          icon: 'auto_stories',
+          description: 'السلاسل الروائية الأضخم من حيث الفصول والأحداث المستمرة',
+        };
+    }
+  });
+
+  readonly topRankedNovels = computed(() => {
+    return this.mostReadNovels().slice(0, 6);
+  });
 
   readonly filteredNovels = computed(() => {
     const list = this.store.novels();
-    const filter = this.selectedCategory();
-
-    if (filter === 'all') return list;
-    if (filter === 'tashkeel') return list.filter(n => n.id.includes('tashkeel') || n.category.includes('تشكيل'));
-    if (filter === 'history') return list.filter(n => n.category.includes('تاريخ') || n.category.includes('غموض'));
-    if (filter === 'adventure') return list.filter(n => n.category.includes('خيال') || n.category.includes('مغامرات'));
+    const genre = this.selectedGenre();
+    if (genre === 'all') return list;
+    if (genre === 'fantasy') return list.filter(n => n.category.includes('فانتازيا') || n.category.includes('خيال'));
+    if (genre === 'translated') return list.filter(n => n.category.includes('مترجم') || (n.translator && n.translator !== 'الأصل العربي'));
+    if (genre === 'mystery') return list.filter(n => n.category.includes('غموض') || n.category.includes('سايبر'));
+    if (genre === 'history') return list.filter(n => n.category.includes('تاريخ') || n.category.includes('عربي'));
     return list;
   });
 
-  formatBytes(bytes: number): string {
-    if (bytes < 1024) return `${bytes} B`;
-    return `${(bytes / 1024).toFixed(1)} KB`;
+  readonly latestUpdatedNovels = computed(() => {
+    const list = this.store.novels();
+    return list.slice(0, 6);
+  });
+
+  setHeroMode(mode: HeroMode): void {
+    this.heroMode.set(mode);
   }
 
-  getNovelMtxTotal(novel: Novel): number {
-    return novel.chapters.reduce((sum, ch) => sum + ch.mtxBytes, 0);
+  selectNovel(novel: Novel): void {
+    this.store.selectNovel(novel.id);
+    this.router.navigate(['/novel', novel.id]);
   }
 
-  getNovelAverageSavings(novel: Novel): number {
-    const totalUtf8 = novel.chapters.reduce((sum, ch) => sum + ch.utf8Bytes, 0);
-    const totalMtx = novel.chapters.reduce((sum, ch) => sum + ch.mtxBytes, 0);
-    if (totalUtf8 === 0) return 0;
-    return Math.round(((totalUtf8 - totalMtx) / totalUtf8) * 1000) / 10;
-  }
-
-  readNovel(novelId: string): void {
-    this.store.selectNovel(novelId);
-    this.router.navigate(['/reader']);
-  }
-
-  readChapter(novelId: string, chapterId: string): void {
-    this.store.selectChapter(novelId, chapterId);
-    this.router.navigate(['/reader']);
-  }
-
-  openLatestNovel(): void {
-    const novels = this.store.novels();
-    if (novels.length > 0) {
-      this.store.selectNovel(novels[0].id);
-      this.router.navigate(['/reader']);
+  readNovel(novel: Novel): void {
+    this.store.selectNovel(novel.id);
+    const chapterId = novel.chapters.length > 0 ? novel.chapters[0].id : '';
+    if (chapterId) {
+      this.router.navigate(['/reader', novel.id, chapterId]);
+    } else {
+      this.router.navigate(['/reader', novel.id]);
     }
   }
 
-  goToEditor(): void {
-    this.router.navigate(['/editor']);
-  }
-
-  goToLab(): void {
-    this.router.navigate(['/lab']);
-  }
-
-  addChapterToNovel(novelId: string): void {
-    this.store.selectNovel(novelId);
-    this.router.navigate(['/editor']);
-  }
-
-  deleteNovel(novelId: string): void {
-    if (confirm('هل أنت متأكد من حذف هذه الرواية من المكتبة المحلية؟')) {
-      this.store.deleteNovel(novelId);
-    }
+  readSpecificChapter(novel: Novel, chapterId: string): void {
+    this.store.selectNovel(novel.id);
+    this.store.selectChapter(novel.id, chapterId);
+    this.router.navigate(['/reader', novel.id, chapterId]);
   }
 }

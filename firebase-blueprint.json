@@ -1,0 +1,56 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "معلومات الملف الشخصي للمستخدم المسجل",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "معرف المستخدم الفريد UID" },
+        "email": { "type": "string", "description": "البريد الإلكتروني" },
+        "displayName": { "type": "string", "description": "اسم العرض للقارئ" },
+        "photoURL": { "type": "string", "description": "رابط الصورة الشخصية" },
+        "createdAt": { "type": "string", "description": "تاريخ إنشاء الحساب" },
+        "updatedAt": { "type": "string", "description": "تاريخ آخر تحديث" }
+      },
+      "required": ["id", "email"]
+    },
+    "Bookmark": {
+      "title": "Bookmark",
+      "description": "الروايات المحفوظة في مفضلة المستخدم",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "معرف صاحب المفضلة" },
+        "novelId": { "type": "string", "description": "معرف الرواية المحفوظة" },
+        "novelTitle": { "type": "string", "description": "عنوان الرواية" },
+        "createdAt": { "type": "string", "description": "تاريخ الحفظ" }
+      },
+      "required": ["userId", "novelId"]
+    },
+    "UserRating": {
+      "title": "UserRating",
+      "description": "تقييم المستخدم للرواية",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "معرف المستخدم المقيم" },
+        "novelId": { "type": "string", "description": "معرف الرواية" },
+        "rating": { "type": "number", "description": "قيمة التقييم من 1 إلى 5" },
+        "createdAt": { "type": "string", "description": "تاريخ التقييم" }
+      },
+      "required": ["userId", "novelId", "rating"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "ملف المستخدم الخاص"
+    },
+    "/users/{userId}/bookmarks/{bookmarkId}": {
+      "schema": "Bookmark",
+      "description": "المفضلة الخاصة بالمستخدم"
+    },
+    "/users/{userId}/ratings/{ratingId}": {
+      "schema": "UserRating",
+      "description": "تقييمات المستخدم للروايات"
+    }
+  }
+}

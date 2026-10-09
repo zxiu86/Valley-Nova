@@ -1,119 +1,193 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { NovelStore } from '../core/novel-store';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-footer',
-  imports: [MatIconModule],
+  imports: [RouterLink, MatIconModule],
   template: `
-    <footer class="bg-stone-950 border-t border-stone-800 text-stone-400 py-12 px-4 sm:px-6 lg:px-8 mt-16">
-      <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
+    <footer class="relative mt-24 border-t border-rose-500/15 bg-gradient-to-b from-stone-950/80 via-stone-950 to-black text-stone-300">
+      
+      <!-- Subtle Crimson Ambient Backlight -->
+      <div class="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-rose-500/40 to-transparent"></div>
+      <div class="absolute -top-24 right-1/4 w-72 h-40 bg-rose-900/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         
-        <!-- Brand & Vision -->
-        <div class="md:col-span-2 space-y-4">
-          <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-lg bg-amber-600 flex items-center justify-center text-stone-950 font-bold">
-              <mat-icon class="text-xl">auto_stories</mat-icon>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10 lg:gap-8">
+          
+          <!-- Column 1: Brand & Bio (2 cols wide on desktop) -->
+          <div class="lg:col-span-2 space-y-4">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-rose-600 via-rose-800 to-stone-950 flex items-center justify-center font-amiri font-bold text-white text-xl shadow-md border border-rose-500/30">
+                م
+              </div>
+              <div class="flex flex-col">
+                <span class="text-2xl font-bold font-amiri text-white tracking-wide">
+                  مقاتل الروايات
+                </span>
+                <span class="text-[10px] text-rose-400 font-sans tracking-widest font-semibold uppercase -mt-1">
+                  Muqatil Al-Riwayat
+                </span>
+              </div>
             </div>
-            <span class="text-xl font-bold text-white font-amiri">روايات MTX</span>
-            <span class="text-xs bg-amber-950 text-amber-400 border border-amber-800 px-2 py-0.5 rounded font-mono-code">
-              Dynamic Dictionary Engine
-            </span>
-          </div>
-          <p class="text-sm leading-relaxed text-stone-400 max-w-md">
-            موقع إلكتروني لقراءة ونشر الروايات بنظام ذكي. تم ابتكار صيغة MTX (.mtx) لتقليص استهلاك البيانات بنسبة تتجاوز 75% مع فك تشفير وتجميع فوري في المتصفح، وحفظ تام لكافة الحركات والتشكيل (كَ، كِ، كُ، كْ، م، ن) دون أي فقدان للبيانات.
-          </p>
-          <div class="flex items-center gap-4 text-xs text-stone-500">
-            <span>· نظام خفيف وسريع</span>
-            <span>· بدون أي تسجيل دخول</span>
-            <span>· تخزين وفك تشفير محلي 100%</span>
-          </div>
-        </div>
 
-        <!-- MTX Protocol Specs -->
-        <div class="space-y-3">
-          <h4 class="text-sm font-semibold text-stone-200 uppercase tracking-wider flex items-center gap-1.5">
-            <mat-icon class="text-amber-500 text-sm">memory</mat-icon>
-            <span>مواصفات صيغة MTX</span>
-          </h4>
-          <ul class="space-y-2 text-xs">
-            <li class="flex items-center justify-between">
-              <span class="text-stone-400">توفير الحجم:</span>
-              <span class="text-emerald-400 font-mono-code font-bold">70% إلى 85%</span>
-            </li>
-            <li class="flex items-center justify-between">
-              <span class="text-stone-400">سرعة فك التشفير:</span>
-              <span class="text-amber-400 font-mono-code font-bold">&lt; 0.5 مللي ثانية</span>
-            </li>
-            <li class="flex items-center justify-between">
-              <span class="text-stone-400">دقة التشكيل (الحركات):</span>
-              <span class="text-sky-400 font-bold">100% بدون فقدان (Lossless)</span>
-            </li>
-            <li class="flex items-center justify-between">
-              <span class="text-stone-400">طبقة الأمان:</span>
-              <span class="text-stone-300">تشفير XOR ديناميكي متسلسل</span>
-            </li>
-          </ul>
-        </div>
+            <p class="text-xs sm:text-sm text-stone-400 leading-relaxed max-w-sm font-sans">
+              منصة أدبية عربية حديثة تحتضن أروع الروايات الخيالية، المترجمة، والتاريخية. صُممت خصيصاً لتوفر للقارئ العربي ملاذاً بصرياً أنيقاً ومريحاً مع أفضل تجربة قراءة تفاعلية.
+            </p>
 
-        <!-- Quick Reset & Statistics -->
-        <div class="space-y-3">
-          <h4 class="text-sm font-semibold text-stone-200 uppercase tracking-wider flex items-center gap-1.5">
-            <mat-icon class="text-amber-500 text-sm">analytics</mat-icon>
-            <span>إحصائيات المكتبة</span>
-          </h4>
-          <div class="p-3 bg-stone-900 rounded-xl border border-stone-800 text-xs space-y-2">
-            <div class="flex justify-between">
-              <span>إجمالي الروايات:</span>
-              <span class="font-bold text-white">{{ store.globalStats().totalNovels }}</span>
-            </div>
-            <div class="flex justify-between">
-              <span>إجمالي الفصول:</span>
-              <span class="font-bold text-white">{{ store.globalStats().totalChapters }}</span>
-            </div>
-            <div class="flex justify-between">
-              <span>حجم UTF-8 الأصلي:</span>
-              <span class="font-mono-code text-stone-300">{{ formatBytes(store.globalStats().totalUtf8Bytes) }}</span>
-            </div>
-            <div class="flex justify-between">
-              <span>حجم بصيغة MTX:</span>
-              <span class="font-mono-code text-emerald-400 font-bold">{{ formatBytes(store.globalStats().totalMtxBytes) }}</span>
+            <div class="flex flex-wrap gap-2 pt-2">
+              <span class="px-2.5 py-1 rounded-lg liquid-glass border border-white/5 text-[11px] text-rose-300 flex items-center gap-1">
+                <mat-icon class="text-xs text-rose-400">auto_stories</mat-icon>
+                <span>مكتبة متجددة</span>
+              </span>
+              <span class="px-2.5 py-1 rounded-lg liquid-glass border border-white/5 text-[11px] text-stone-300 flex items-center gap-1">
+                <mat-icon class="text-xs text-rose-400">dark_mode</mat-icon>
+                <span>وضع ليلي مريح</span>
+              </span>
+              <span class="px-2.5 py-1 rounded-lg liquid-glass border border-white/5 text-[11px] text-stone-300 flex items-center gap-1">
+                <mat-icon class="text-xs text-rose-400">offline_bolt</mat-icon>
+                <span>قراءة فورية بدون انتظار</span>
+              </span>
             </div>
           </div>
-          <button
-            (click)="resetSampleData()"
-            class="text-xs text-stone-400 hover:text-amber-400 flex items-center gap-1 transition-colors cursor-pointer pt-1"
-          >
-            <mat-icon class="text-sm">restart_alt</mat-icon>
-            <span>استعادة الروايات الافتراضية</span>
-          </button>
+
+          <!-- Column 2: Categories / Genres -->
+          <div class="space-y-3">
+            <h4 class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2 border-b border-rose-500/15 pb-2">
+              <mat-icon class="text-rose-400 text-sm">category</mat-icon>
+              <span>أقسام الروايات</span>
+            </h4>
+            <ul class="space-y-2 text-xs text-stone-400">
+              <li>
+                <a routerLink="/" class="hover:text-rose-300 transition-colors flex items-center gap-1.5">
+                  <span class="w-1 h-1 rounded-full bg-rose-500"></span>
+                  <span>فانتازيا وخيال ملحمي</span>
+                </a>
+              </li>
+              <li>
+                <a routerLink="/" class="hover:text-rose-300 transition-colors flex items-center gap-1.5">
+                  <span class="w-1 h-1 rounded-full bg-rose-500"></span>
+                  <span>روايات مترجمة حصرية</span>
+                </a>
+              </li>
+              <li>
+                <a routerLink="/" class="hover:text-rose-300 transition-colors flex items-center gap-1.5">
+                  <span class="w-1 h-1 rounded-full bg-rose-500"></span>
+                  <span>غموض وتشويق</span>
+                </a>
+              </li>
+              <li>
+                <a routerLink="/" class="hover:text-rose-300 transition-colors flex items-center gap-1.5">
+                  <span class="w-1 h-1 rounded-full bg-rose-500"></span>
+                  <span>أدب وتاريخ عربي</span>
+                </a>
+              </li>
+              <li>
+                <a routerLink="/" class="hover:text-rose-300 transition-colors flex items-center gap-1.5">
+                  <span class="w-1 h-1 rounded-full bg-rose-500"></span>
+                  <span>خيال علمي وسايبربانك</span>
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Column 3: Reader Navigation -->
+          <div class="space-y-3">
+            <h4 class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2 border-b border-rose-500/15 pb-2">
+              <mat-icon class="text-rose-400 text-sm">menu_book</mat-icon>
+              <span>تجربة القارئ</span>
+            </h4>
+            <ul class="space-y-2 text-xs text-stone-400">
+              <li>
+                <a routerLink="/" class="hover:text-rose-300 transition-colors">
+                  الروايات الأكثر قراءة
+                </a>
+              </li>
+              <li>
+                <a routerLink="/reader" class="hover:text-rose-300 transition-colors">
+                  متابعة الفصل الحالي
+                </a>
+              </li>
+              <li>
+                <a routerLink="/login" class="hover:text-rose-300 transition-colors">
+                  حساب القارئ وتسجيل الدخول
+                </a>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  (click)="resetSampleData()"
+                  class="text-left hover:text-rose-300 transition-colors cursor-pointer flex items-center gap-1"
+                >
+                  <mat-icon class="text-xs">restore</mat-icon>
+                  <span>استعادة الروايات الافتراضية</span>
+                </button>
+              </li>
+            </ul>
+          </div>
+
+          <!-- Column 4: Platform & Support -->
+          <div class="space-y-3">
+            <h4 class="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2 border-b border-rose-500/15 pb-2">
+              <mat-icon class="text-rose-400 text-sm">info</mat-icon>
+              <span>عن المنصة</span>
+            </h4>
+            <ul class="space-y-2 text-xs text-stone-400">
+              <li class="hover:text-rose-300 transition-colors cursor-pointer">
+                عن مقاتل الروايات
+              </li>
+              <li class="hover:text-rose-300 transition-colors cursor-pointer">
+                دليل المترجمين والمؤلفين
+              </li>
+              <li class="hover:text-rose-300 transition-colors cursor-pointer">
+                سياسة الخصوصية والاستخدام
+              </li>
+              <li class="hover:text-rose-300 transition-colors cursor-pointer">
+                اتصل بفريق المنصة
+              </li>
+            </ul>
+          </div>
+
         </div>
 
-      </div>
+        <!-- Bottom Copyright Bar -->
+        <div class="mt-14 pt-8 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-stone-500">
+          <div class="flex items-center gap-2">
+            <span>© 2026 مقاتل الروايات. جميع حقوق الأعمال الأدبية محفوظة لمؤلفيها ومترجميها.</span>
+          </div>
 
-      <div class="max-w-7xl mx-auto border-t border-stone-800/80 mt-8 pt-6 flex flex-col sm:flex-row items-center justify-between text-xs text-stone-400">
-        <div>
-          منصة روايات MTX · تم التطوير بأحدث تقنيات Angular ونظام التشفير الثنائي العربي.
+          <div class="flex items-center gap-4 text-stone-400">
+            <span>صُنع بشغف للأدب العربي</span>
+            <button
+              type="button"
+              (click)="scrollToTop()"
+              aria-label="الرجوع لأعلى الصفحة"
+              class="w-8 h-8 rounded-xl liquid-glass flex items-center justify-center text-rose-300 hover:text-white border border-rose-500/20 cursor-pointer transition-all"
+            >
+              <mat-icon class="text-sm">arrow_upward</mat-icon>
+            </button>
+          </div>
         </div>
-        <div class="mt-2 sm:mt-0 font-mono-code text-stone-400">
-          Magic Header: 0x4D 0x54 0x58 0x31 [MTX1]
-        </div>
+
       </div>
     </footer>
   `,
 })
 export class Footer {
-  readonly store = inject(NovelStore);
+  private readonly store = inject(NovelStore);
 
-  formatBytes(bytes: number): string {
-    if (bytes < 1024) return `${bytes} B`;
-    return `${(bytes / 1024).toFixed(1)} KB`;
+  resetSampleData(): void {
+    if (confirm('هل تريد استعادة الروايات الافتراضية في المكتبة؟')) {
+      this.store.resetToDefault();
+    }
   }
 
-  async resetSampleData(): Promise<void> {
-    if (confirm('هل ترغب في إعادة ضبط الروايات إلى حالتها الافتراضية؟')) {
-      await this.store.resetToDefault();
+  scrollToTop(): void {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   }
 }
