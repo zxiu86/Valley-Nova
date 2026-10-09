@@ -263,8 +263,8 @@ export interface RecentChapterItem {
           </span>
         </div>
 
-        <!-- 3x3: ثلاث فوق ثلاث (6 عناصر: 3 أعمدة في صفين) -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
+        <!-- 3x3: ثلاث فوق ثلاث (6 عناصر: 3 أعمدة في صفين - شبكة 6x6 مخصصة) -->
+        <div class="parent">
           @for (novel of topRankedNovels(); track novel.id; let i = $index) {
             <div
               (click)="selectNovel(novel)"
@@ -272,7 +272,7 @@ export interface RecentChapterItem {
               tabindex="0"
               role="button"
               [attr.aria-label]="'عرض تفاصيل ' + novel.title"
-              class="p-3.5 rounded-2xl liquid-glass-card border border-white/10 hover:border-rose-500/30 flex items-center gap-3 cursor-pointer group transition-all duration-300"
+              [class]="'div' + (i + 1) + ' p-3.5 rounded-2xl liquid-glass-card border border-white/10 hover:border-rose-500/30 flex items-center gap-3 cursor-pointer group transition-all duration-300'"
             >
               <!-- Numeric Rank Badge -->
               <div class="text-xl sm:text-2xl font-extrabold font-mono-code text-rose-400/90 select-none w-7 text-center shrink-0">
@@ -342,8 +342,8 @@ export interface RecentChapterItem {
           </span>
         </div>
 
-        <!-- 3x3: ثلاث فوق ثلاث (6 عناصر: 3 أعمدة في صفين) -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
+        <!-- 3x3: ثلاث فوق ثلاث (6 عناصر: 3 أعمدة في صفين - شبكة 6x6 مخصصة) -->
+        <div class="parent">
           @for (novel of latestAddedNovels(); track novel.id; let i = $index) {
             <div
               (click)="selectNovel(novel)"
@@ -351,7 +351,7 @@ export interface RecentChapterItem {
               tabindex="0"
               role="button"
               [attr.aria-label]="'عرض تفاصيل رواية ' + novel.title"
-              class="p-3.5 rounded-2xl liquid-glass-card border border-white/10 hover:border-amber-500/30 flex items-center gap-3 cursor-pointer group transition-all duration-300"
+              [class]="'div' + (i + 1) + ' p-3.5 rounded-2xl liquid-glass-card border border-white/10 hover:border-amber-500/30 flex items-center gap-3 cursor-pointer group transition-all duration-300'"
             >
               <!-- New Badge or Sparkle -->
               <div class="w-7 text-center shrink-0 flex items-center justify-center">
@@ -463,8 +463,8 @@ export interface RecentChapterItem {
           </div>
         </div>
 
-        <!-- 3x3: ثلاث فوق ثلاث (6 عناصر: 3 أعمدة في صفين بنفس التوزيع المريح) -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
+        <!-- 3x3: ثلاث فوق ثلاث (6 عناصر: 3 أعمدة في صفين - شبكة 6x6 مخصصة) -->
+        <div class="parent">
           @for (novel of filteredNovels(); track novel.id; let i = $index) {
             <div
               (click)="selectNovel(novel)"
@@ -472,7 +472,7 @@ export interface RecentChapterItem {
               tabindex="0"
               role="button"
               [attr.aria-label]="'عرض تفاصيل رواية ' + novel.title"
-              class="p-3.5 rounded-2xl liquid-glass-card border border-white/10 hover:border-rose-500/30 flex items-center gap-3 cursor-pointer group transition-all duration-300"
+              [class]="'div' + (i + 1) + ' p-3.5 rounded-2xl liquid-glass-card border border-white/10 hover:border-rose-500/30 flex items-center gap-3 cursor-pointer group transition-all duration-300'"
             >
               <!-- Index or Category Marker -->
               <div class="w-7 text-center shrink-0 flex items-center justify-center">
