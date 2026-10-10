@@ -1,5 +1,7 @@
 import { Routes } from '@angular/router';
 import { NovelLibrary } from './components/novel-library';
+import { RiwaqNovels } from './components/riwaq-novels';
+import { RiwaqEpics } from './components/riwaq-epics';
 import { NovelReader } from './components/novel-reader';
 import { NovelEditor } from './components/novel-editor';
 import { NovelDetails } from './components/novel-details';
@@ -9,6 +11,14 @@ import { UserProfile } from './components/user-profile';
 export const routes: Routes = [
   { path: '', component: NovelLibrary },
   { path: 'library', component: NovelLibrary },
+  { path: 'riwaq-al-riwayat', component: RiwaqNovels },
+  { path: 'riwaq/riwayat', component: RiwaqNovels },
+  { path: 'novels', component: RiwaqNovels },
+  { path: 'corridor-novels', component: RiwaqNovels },
+  { path: 'riwaq-al-malahim', component: RiwaqEpics },
+  { path: 'riwaq/malahim', component: RiwaqEpics },
+  { path: 'epics', component: RiwaqEpics },
+  { path: 'corridor-epics', component: RiwaqEpics },
   { path: 'novel/:id', component: NovelDetails },
   { path: 'details/:id', component: NovelDetails },
   { path: 'details', component: NovelDetails },

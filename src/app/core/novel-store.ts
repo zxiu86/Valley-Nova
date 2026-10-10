@@ -2,6 +2,12 @@ import { Injectable, computed, signal } from '@angular/core';
 import { ChapterSummary, Novel, ReaderSettings } from './novel-models';
 import { SAMPLE_NOVELS } from './sample-novels';
 import {
+  MASTER_RIWAQ_CATALOG,
+} from './riwaq-novels-data';
+import {
+  MASTER_EPICS_CATALOG,
+} from './riwaq-epics-data';
+import {
   base64ToUint8Array,
   compressToMtx,
   decompressFromMtx,
@@ -404,7 +410,41 @@ export class NovelStore {
   }
 
   selectNovel(novelId: string): void {
-    const novel = this.novels().find(n => n.id === novelId) || null;
+    let novel = this.novels().find(n => n.id === novelId) || null;
+    if (!novel) {
+      const riwaqItem = MASTER_RIWAQ_CATALOG.find(b => b.id === novelId);
+      const epicItem = MASTER_EPICS_CATALOG.find(b => b.id === novelId);
+      const matchedItem = riwaqItem || epicItem;
+
+      if (matchedItem) {
+        const fallbackChapters = this.novels()[0]?.chapters || [];
+        novel = {
+          id: matchedItem.id,
+          title: matchedItem.title,
+          author: matchedItem.author || (epicItem ? 'رواة الملاحم الكبرى' : 'أديب الأروقة'),
+          authorBio: epicItem
+            ? 'سفر ملحمي أصيل من خزائن البطولات وألواح الحضارات القديمة.'
+            : 'كاتب ومحقق نصوص بارز في صرح أروقة الخلود.',
+          category: matchedItem.category || (epicItem ? 'ملحمة أسطورية وبطولية' : 'رواية سيكولوجية غامضة'),
+          riwaqId: epicItem ? 'riwaq-al-malahim' : 'riwaq-al-riwayat',
+          riwaqName: epicItem ? 'رواق الملاحم' : 'رواق الروايات',
+          coverGradient: epicItem ? 'from-amber-950 via-stone-900 to-indigo-950' : 'from-rose-950 via-stone-900 to-black',
+          coverImage: matchedItem.coverImage,
+          accentColor: epicItem ? '#e9c349' : '#ffb2bd',
+          rating: 4.95,
+          ratingCount: 3450,
+          views: '240K',
+          badge: matchedItem.badge || (epicItem ? 'ملحمة خالدة' : 'سفر مختار'),
+          description: matchedItem.description || matchedItem.quote || 'سفرٌ سردي من نفائس الصرح، حيث يرقد الحرف ليعاود النهوض حياً في ضمير القارئ.',
+          chapters: fallbackChapters,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          isPreloaded: true,
+        };
+        this.novels.update(list => [novel!, ...list.filter(item => item.id !== novel!.id)]);
+      }
+    }
+
     this.selectedNovel.set(novel);
     if (novel && novel.chapters.length > 0) {
       this.selectChapter(novel.id, novel.chapters[0].id);

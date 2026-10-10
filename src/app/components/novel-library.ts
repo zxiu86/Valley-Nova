@@ -543,6 +543,16 @@ export class NovelLibrary {
   }
 
   filterBySanctuary(sanctuaryId: string): void {
+    if (sanctuaryId === 'riwaq-al-riwayat') {
+      this.router.navigate(['/riwaq-al-riwayat']);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    if (sanctuaryId === 'riwaq-al-malahim') {
+      this.router.navigate(['/riwaq-al-malahim']);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     const el = document.getElementById(sanctuaryId);
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });

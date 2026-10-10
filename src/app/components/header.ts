@@ -2,13 +2,12 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { Router, RouterLink } from '@angular/router';
 import { NovelStore } from '../core/novel-store';
 import { AuthStore } from '../core/auth-store';
-import { FormsModule } from '@angular/forms';
 import { SANCTUARIES_DATA } from '../core/sample-novels';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-header',
-  imports: [RouterLink, FormsModule],
+  imports: [RouterLink],
   host: {
     '(window:scroll)': 'onWindowScroll()',
   },
@@ -30,15 +29,26 @@ import { SANCTUARIES_DATA } from '../core/sample-novels';
         <div class="h-20 w-full px-4 sm:px-6 md:px-12 flex items-center justify-between gap-4">
           
           <!-- RIGHT: Website Identity & Brand -->
-          <div class="flex items-center gap-6 shrink-0">
+          <div class="flex items-center gap-3 sm:gap-4 shrink-0">
             <a routerLink="/" class="flex items-baseline gap-2.5 group cursor-pointer select-none">
               <span class="font-noto-serif text-2xl font-bold text-[#e5e1e4] tracking-wide group-hover:text-[#ffb2bd] transition-colors">
                 أروقة الخلود
               </span>
+              <span class="w-1.5 h-1.5 rounded-full bg-[#e9c349] inline-block shadow-[0_0_8px_rgba(233,195,73,0.8)]"></span>
+            </a>
+            @if (activeRiwaq() === 'riwaq-al-riwayat') {
+              <span class="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full bg-[#881337]/80 text-[#ffb2bd] text-[11px] font-semibold tracking-wider border border-[#ffb2bd]/30 shadow-sm animate-in fade-in">
+                رواق الروايات
+              </span>
+            } @else if (activeRiwaq() === 'riwaq-al-malahim') {
+              <span class="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full bg-[#af8d11]/80 text-[#e9c349] text-[11px] font-semibold tracking-wider border border-[#e9c349]/30 shadow-sm animate-in fade-in">
+                رواق الملاحم
+              </span>
+            } @else {
               <span class="hidden sm:inline-block text-[11px] font-medium text-[#e9c349] tracking-widest opacity-80 select-none">
                 الصرح السردي
               </span>
-            </a>
+            }
           </div>
 
           <!-- CENTER: Sanctuaries Navigation (Desktop Glass Bar) -->
@@ -94,8 +104,8 @@ import { SANCTUARIES_DATA } from '../core/sample-novels';
               </span>
               <input
                 type="text"
-                [(ngModel)]="searchQuery"
-                (input)="onSearchInput()"
+                [value]="searchQuery()"
+                (input)="onSearchInput($event)"
                 (focus)="isSearchOpen.set(true)"
                 class="w-48 lg:w-64 pl-3 pr-9 py-1.5 bg-[#1c1b1d]/80 text-[#e5e1e4] placeholder-[#debfc2]/50 text-xs rounded-full border border-white/[0.08] focus:outline-none focus:w-72 focus:bg-[#201f22] focus:border-[#e9c349]/40 transition-all duration-300 shadow-inner backdrop-blur-sm"
                 placeholder="ابحث في الأسفار والمخطوطات..."
@@ -169,8 +179,8 @@ import { SANCTUARIES_DATA } from '../core/sample-novels';
             <span class="material-symbols-outlined text-[#debfc2]/60 text-[20px]">search</span>
             <input
               type="text"
-              [(ngModel)]="searchQuery"
-              (input)="onSearchInput()"
+              [value]="searchQuery()"
+              (input)="onSearchInput($event)"
               (focus)="isSearchOpen.set(true)"
               class="flex-1 bg-transparent text-sm text-[#e5e1e4] placeholder-[#debfc2]/50 focus:outline-none"
               placeholder="ابحث في الأسفار والمخطوطات..."
@@ -346,6 +356,23 @@ export class Header {
   private lastScrollY = 0;
   readonly isHeaderHidden = signal<boolean>(false);
 
+  constructor() {
+    this.updateActiveFromUrl(this.router.url);
+    this.router.events.subscribe(() => {
+      this.updateActiveFromUrl(this.router.url);
+    });
+  }
+
+  private updateActiveFromUrl(url: string): void {
+    if (url.includes('riwaq-al-riwayat') || url.includes('novels') || url.includes('corridor-novels')) {
+      this.activeRiwaq.set('riwaq-al-riwayat');
+    } else if (url.includes('riwaq-al-malahim') || url.includes('epics') || url.includes('corridor-epics')) {
+      this.activeRiwaq.set('riwaq-al-malahim');
+    } else {
+      this.activeRiwaq.set('all');
+    }
+  }
+
   readonly searchResults = computed(() => {
     const q = this.searchQuery().trim().toLowerCase();
     if (!q) return [];
@@ -378,7 +405,13 @@ export class Header {
     this.lastScrollY = currentY;
   }
 
-  onSearchInput(): void {
+  onSearchInput(event?: Event): void {
+    if (event) {
+      const target = event.target as HTMLInputElement;
+      if (target) {
+        this.searchQuery.set(target.value);
+      }
+    }
     if (this.searchQuery().trim()) {
       this.isSearchOpen.set(true);
     }
@@ -389,6 +422,17 @@ export class Header {
     this.isMobileMenuOpen.set(false);
     this.novelStore.selectedCategoryFilter.set(riwaqId);
     
+    if (riwaqId === 'riwaq-al-riwayat') {
+      this.router.navigate(['/riwaq-al-riwayat']);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    if (riwaqId === 'riwaq-al-malahim') {
+      this.router.navigate(['/riwaq-al-malahim']);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
     // Smooth scroll to the target sanctuary anchor if on home, or navigate home first
     if (this.router.url === '/' || this.router.url.startsWith('/#')) {
       const el = document.getElementById(riwaqId);

@@ -14,44 +14,46 @@ import { RouterLink } from '@angular/router';
           <div class="md:col-span-5 flex flex-col gap-3">
             <div class="flex items-baseline gap-2">
               <span class="font-noto-serif text-2xl font-bold text-[#e5e1e4]">أروقة الخلود</span>
-              <span class="text-xs text-[#e9c349] font-medium opacity-80">معبد الحرف وسلطة السرد</span>
+              <span class="w-1.5 h-1.5 rounded-full bg-[#e9c349] inline-block shadow-[0_0_8px_rgba(233,195,73,0.8)]"></span>
             </div>
             <p class="text-sm text-[#debfc2]/80 leading-relaxed max-w-md">
-              منصة سينمائية للأدب الإنساني والعربي الخالد. نلغي الضجيج الرقمي لنفسح المجال أمام جلال النص وعظمة التراث ونقاء الفكر التأملي.
+              معبد بصري وسينمائي تلتقي فيه أزمنة الأدب العربي والإنساني بتجربة جمالية نقية. نلغي الضجيج الرقمي لنفسح المجال أمام جلال النص وعظمة التراث.
             </p>
+            <blockquote class="font-noto-serif text-sm text-[#debfc2]/90 italic border-r-2 border-[#e9c349]/60 pr-3 mt-2">
+              «والحرفُ يبقى بعد موتِ رواتهِ دهراً، وتفنى في الترابِ العظامُ»
+            </blockquote>
           </div>
 
           <!-- Column 2: The Four Sanctuaries -->
           <div class="md:col-span-4 flex flex-col gap-3">
             <span class="text-xs font-bold text-[#e9c349] tracking-wider uppercase">الأروقة الأربعة</span>
-            <div class="grid grid-cols-2 gap-2 text-sm">
+            <div class="flex flex-col gap-2 text-sm">
               <a
-                routerLink="/"
-                fragment="riwaq-al-riwayat"
+                routerLink="/riwaq-al-riwayat"
                 class="text-[#debfc2]/80 hover:text-[#ffb2bd] transition-colors cursor-pointer"
               >
-                رواق الروايات
+                رواق الروايات (Crimson Noir)
               </a>
               <a
                 routerLink="/"
                 fragment="riwaq-al-malahim"
                 class="text-[#debfc2]/80 hover:text-[#e9c349] transition-colors cursor-pointer"
               >
-                رواق الملاحم
+                رواق الملاحم (Mythic Bronze)
               </a>
               <a
                 routerLink="/"
                 fragment="riwaq-al-hikma"
                 class="text-[#debfc2]/80 hover:text-white transition-colors cursor-pointer"
               >
-                رواق الحكمة
+                رواق الحكمة (Ivory Sanctuary)
               </a>
               <a
                 routerLink="/"
                 fragment="riwaq-al-turath"
                 class="text-[#debfc2]/80 hover:text-[#7bd8b1] transition-colors cursor-pointer"
               >
-                رواق التراث
+                رواق التراث (Manuscript Emerald)
               </a>
             </div>
           </div>

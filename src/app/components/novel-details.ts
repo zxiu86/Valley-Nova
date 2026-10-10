@@ -2,6 +2,15 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NovelStore } from '../core/novel-store';
 import { ChapterSummary, Novel } from '../core/novel-models';
+import {
+  ALL_SERENDIPITY_POOL,
+  FANTASY_BOOKS,
+  FEATURED_SELECTION_BOOKS,
+  MOST_READ_BOOKS,
+  MYSTERY_BOOKS,
+  SCIFI_BOOKS,
+  SPOTLIGHT_BOOK,
+} from '../core/riwaq-novels-data';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -246,7 +255,42 @@ export class NovelDetails {
   readonly currentNovel = computed<Novel | null>(() => {
     const id = this.novelIdParam();
     if (!id) return this.novelStore.novels()[0] || null;
-    return this.novelStore.novels().find(n => n.id === id) || this.novelStore.novels()[0] || null;
+    const found = this.novelStore.novels().find(n => n.id === id);
+    if (found) return found;
+
+    // Check if it's one of the Riwaq books
+    const allRiwaq = [
+      SPOTLIGHT_BOOK,
+      ...FEATURED_SELECTION_BOOKS,
+      ...FANTASY_BOOKS,
+      ...MYSTERY_BOOKS,
+      ...SCIFI_BOOKS,
+      ...ALL_SERENDIPITY_POOL,
+      ...MOST_READ_BOOKS.map(m => m.book),
+    ];
+    const riwaqItem = allRiwaq.find(b => b.id === id);
+    if (riwaqItem) {
+      const fallbackChapters = this.novelStore.novels()[0]?.chapters || [];
+      return {
+        id: riwaqItem.id,
+        title: riwaqItem.title,
+        author: riwaqItem.author || 'أديب الأروقة',
+        authorBio: 'كاتب ومحقق نصوص بارز في صرح أروقة الخلود.',
+        category: riwaqItem.category || 'رواية سيكولوجية غامضة',
+        riwaqId: 'riwaq-al-riwayat',
+        riwaqName: 'رواق الروايات',
+        coverGradient: 'from-rose-950 via-stone-900 to-black',
+        coverImage: riwaqItem.coverImage,
+        accentColor: '#ffb2bd',
+        rating: 4.9,
+        ratingCount: 2340,
+        views: '120K',
+        description: riwaqItem.description || riwaqItem.quote || 'سفرٌ سردي من نفائس رواق الروايات، حيث يرقد الحرف ليعاود النهوض حياً في ضمير القارئ.',
+        chapters: fallbackChapters,
+      } as Novel;
+    }
+
+    return this.novelStore.novels()[0] || null;
   });
 
   readonly relatedBooks = computed<Novel[]>(() => {
