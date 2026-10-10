@@ -532,7 +532,7 @@ export class Footer {
     if (typeof window !== 'undefined') {
       window.scrollTo({ top: 400, behavior: 'smooth' });
     }
-    this.showToast(`تم تطبيق فلتر: ${this.getCategoryLabel(genreId)}`);
+    this.showToast(`تم تفعيل تصنيف: ${this.getCategoryLabel(genreId)}`);
   }
 
   private getCategoryLabel(id: string): string {

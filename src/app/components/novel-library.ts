@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { ChangeDetectionStrategy, Component, computed, inject, signal, OnInit } from '@angular/core';
+import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { NovelStore } from '../core/novel-store';
 import { Novel } from '../core/novel-models';
@@ -21,7 +21,32 @@ export interface RecentChapterItem {
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-novel-library',
-  imports: [MatIconModule],
+  imports: [RouterLink, MatIconModule],
+  styles: [`
+    .novels-grid,
+    .parent {
+      display: grid !important;
+      grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+      gap: 18px !important;
+      direction: rtl !important;
+      width: 100% !important;
+      box-sizing: border-box !important;
+    }
+
+    .novels-grid > *,
+    .parent > * {
+      direction: rtl !important;
+      min-width: 0 !important;
+      box-sizing: border-box !important;
+    }
+
+    @media (max-width: 640px) {
+      .novels-grid,
+      .parent {
+        gap: 10px !important;
+      }
+    }
+  `],
   template: `
     <div class="space-y-16 sm:space-y-20 pb-28 text-stone-100">
       
@@ -241,9 +266,67 @@ export interface RecentChapterItem {
       </section>
 
       <!-- ========================================================================= -->
-      <!-- 2. LEADERBOARD: قائمة الصدارة الأكثر قراءة (توزيع 3x3 ثلاث فوق ثلاث مع غلافات مصغرة) -->
+      <!-- WEBSITE PORTAL DIRECTORY: دليل تصفح أقسام الموقع الإلكتروني -->
       <!-- ========================================================================= -->
-      <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5">
+      <nav aria-label="أقسام الموقع الرئيسية" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="p-3.5 sm:p-4 rounded-2xl liquid-glass border border-white/10 flex flex-wrap items-center justify-between gap-3 shadow-xl">
+          <div class="flex items-center gap-2.5">
+            <div class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></div>
+            <span class="text-xs sm:text-sm font-bold text-stone-200 font-sans">تصفح موقع مقاتل الروايات:</span>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              (click)="scrollToSection('leaderboard')"
+              class="px-3 py-1.5 rounded-xl bg-stone-900/90 hover:bg-rose-950/60 border border-white/10 hover:border-rose-500/40 text-xs text-stone-300 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+            >
+              <mat-icon class="text-xs text-amber-400">trending_up</mat-icon>
+              <span>قائمة الصدارة</span>
+            </button>
+
+            <button
+              type="button"
+              (click)="scrollToSection('latest-additions')"
+              class="px-3 py-1.5 rounded-xl bg-stone-900/90 hover:bg-rose-950/60 border border-white/10 hover:border-rose-500/40 text-xs text-stone-300 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+            >
+              <mat-icon class="text-xs text-rose-400">auto_awesome</mat-icon>
+              <span>آخر الإضافات</span>
+            </button>
+
+            <button
+              type="button"
+              (click)="scrollToSection('explore')"
+              class="px-3 py-1.5 rounded-xl bg-stone-900/90 hover:bg-rose-950/60 border border-white/10 hover:border-rose-500/40 text-xs text-stone-300 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+            >
+              <mat-icon class="text-xs text-sky-400">explore</mat-icon>
+              <span>استكشاف الروايات</span>
+            </button>
+
+            <button
+              type="button"
+              (click)="scrollToSection('latest-chapters')"
+              class="px-3 py-1.5 rounded-xl bg-stone-900/90 hover:bg-rose-950/60 border border-white/10 hover:border-rose-500/40 text-xs text-stone-300 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+            >
+              <mat-icon class="text-xs text-emerald-400">menu_book</mat-icon>
+              <span>أحدث الفصول</span>
+            </button>
+
+            <a
+              routerLink="/editor"
+              class="px-3.5 py-1.5 rounded-xl bg-gradient-to-l from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-xs font-bold text-white shadow-md transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <mat-icon class="text-xs">edit_note</mat-icon>
+              <span>نشر رواية جديدة</span>
+            </a>
+          </div>
+        </div>
+      </nav>
+
+      <!-- ========================================================================= -->
+      <!-- 2. LEADERBOARD: قائمة الصدارة الأكثر قراءة (شبكة 3 أعمدة × صفين لـ 6 روايات) -->
+      <!-- ========================================================================= -->
+      <section id="leaderboard" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5 scroll-mt-24">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-800/60 pb-4">
           <div class="flex items-center gap-3">
             <div class="w-2.5 h-7 rounded-full bg-gradient-to-b from-rose-500 to-red-700"></div>
@@ -257,14 +340,23 @@ export interface RecentChapterItem {
             </div>
           </div>
 
-          <span class="text-xs text-rose-400 font-sans hidden sm:inline flex items-center gap-1">
-            <mat-icon class="text-sm">trending_up</mat-icon>
-            <span>ترتيب المشاهدات</span>
-          </span>
+          <div class="flex items-center gap-4">
+            <span class="text-xs text-rose-400 font-sans hidden sm:inline flex items-center gap-1">
+              <mat-icon class="text-sm">trending_up</mat-icon>
+              <span>ترتيب المشاهدات</span>
+            </span>
+            <a
+              routerLink="/library"
+              class="text-xs text-rose-400 hover:text-rose-300 font-sans flex items-center gap-1 cursor-pointer transition-colors"
+            >
+              <span>المكتبة الشاملة</span>
+              <mat-icon class="text-xs">arrow_back</mat-icon>
+            </a>
+          </div>
         </div>
 
-        <!-- 3x3: ثلاث فوق ثلاث (6 عناصر: 3 أعمدة في صفين - شبكة 6x6 مخصصة) -->
-        <div class="parent">
+        <!-- شبكة ثابتة: 3 أعمدة × صفين (6 عناصر بترتيب RTL من اليمين لليسار) -->
+        <div class="novels-grid parent">
           @for (novel of topRankedNovels(); track novel.id; let i = $index) {
             <div
               (click)="selectNovel(novel)"
@@ -272,57 +364,83 @@ export interface RecentChapterItem {
               tabindex="0"
               role="button"
               [attr.aria-label]="'عرض تفاصيل ' + novel.title"
-              [class]="'div' + (i + 1) + ' p-3.5 rounded-2xl liquid-glass-card border border-white/10 hover:border-rose-500/30 flex items-center gap-3 cursor-pointer group transition-all duration-300'"
+              class="p-1.5 sm:p-2.5 lg:p-3 rounded-2xl sm:rounded-3xl liquid-glass-card border border-white/10 hover:border-rose-500/40 flex flex-col justify-between cursor-pointer group transition-all duration-300 shadow-xl min-w-0 h-full"
             >
-              <!-- Numeric Rank Badge -->
-              <div class="text-xl sm:text-2xl font-extrabold font-mono-code text-rose-400/90 select-none w-7 text-center shrink-0">
-                0{{ i + 1 }}
-              </div>
+              <!-- غلاف الرواية البارز والواضح بنسبة عمودية فخمة ومساحة مكبّرة -->
+              <div class="relative w-full aspect-[2/3] rounded-xl sm:rounded-2xl overflow-hidden bg-stone-900 border border-white/10 shadow-lg group-hover:border-rose-500/40 transition-all">
+                <div [class]="'absolute inset-0 bg-gradient-to-br ' + novel.coverGradient">
+                  <div class="absolute inset-0 opacity-20 bg-[radial-gradient(#e11d48_1px,transparent_1px)] [background-size:12px_12px] pointer-events-none"></div>
+                </div>
 
-              <!-- Compact Cover Thumbnail (صغر حجم الغلاف) -->
-              <div [class]="'w-11 h-15 rounded-lg bg-gradient-to-br ' + novel.coverGradient + ' shrink-0 overflow-hidden relative border border-white/10 shadow-sm group-hover:scale-105 transition-transform'">
-                <div class="absolute inset-0 cover-inner-shadow"></div>
-                <div class="absolute bottom-0.5 right-0.5 text-[8px] font-bold text-white bg-black/80 px-1 rounded font-mono">
-                  ★ {{ novel.rating || 4.9 }}
+                @if (novel.coverImage) {
+                  <img
+                    [src]="novel.coverImage"
+                    [alt]="novel.title"
+                    class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
+                  />
+                }
+
+                <div class="absolute inset-0 cover-inner-shadow pointer-events-none"></div>
+                <div class="absolute inset-y-0 right-0 w-1.5 bg-gradient-to-l from-black/40 to-transparent pointer-events-none"></div>
+
+                <!-- شارة الترتيب في قائمة الصدارة (أعلى اليمين) بحجم 4px كحد أقصى -->
+                <div class="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 z-10">
+                  <span class="badge-micro px-1 py-0.5 rounded-sm bg-stone-950/90 text-rose-400 border border-rose-500/35 font-mono-code font-extrabold shadow-md backdrop-blur-md">
+                    0{{ i + 1 }}
+                  </span>
+                </div>
+
+                <!-- شارة نوع العمل: [مترجم] أو [مؤلف] بحجم 4px (أعلى اليسار) -->
+                <div class="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 z-10">
+                  @if (isTranslated(novel)) {
+                    <span class="badge-micro inline-flex items-center gap-0.5 px-1 py-0.5 rounded-sm bg-stone-950/90 text-indigo-300 border border-indigo-400/35 font-bold backdrop-blur-md shadow-md">
+                      <mat-icon class="text-indigo-400">translate</mat-icon>
+                      <span>مترجم</span>
+                    </span>
+                  } @else {
+                    <span class="badge-micro inline-flex items-center gap-0.5 px-1 py-0.5 rounded-sm bg-stone-950/90 text-rose-300 border border-rose-400/35 font-bold backdrop-blur-md shadow-md">
+                      <mat-icon class="text-rose-400">edit_note</mat-icon>
+                      <span>مؤلف</span>
+                    </span>
+                  }
+                </div>
+
+                <!-- وسم التقييم فوق صورة الرواية مباشرة بحجم 4px (أسفل اليمين) -->
+                <div class="absolute bottom-1.5 right-1.5 sm:bottom-2 sm:right-2 z-10">
+                  <span class="badge-micro inline-flex items-center gap-0.5 px-1 py-0.5 rounded-sm bg-stone-950/90 text-amber-300 border border-amber-500/30 font-bold shadow-md backdrop-blur-md">
+                    <mat-icon class="text-amber-400">star</mat-icon>
+                    <span class="font-mono font-extrabold">{{ novel.rating || 4.9 }}</span>
+                  </span>
                 </div>
               </div>
 
-              <!-- Novel Details -->
-              <div class="flex-1 min-w-0 space-y-0.5">
-                <span class="text-[9px] text-rose-400 font-semibold block truncate">
-                  {{ novel.category }}
+              <!-- تفاصيل الرواية: مؤلف/مترجم + عنوان بدقة ديناميكية والتفاف كامل -->
+              <div class="pt-2 px-0.5 space-y-1">
+                <span class="text-[10px] sm:text-xs text-rose-400 font-semibold block truncate">
+                  {{ isTranslated(novel) ? ('ترجمة: ' + novel.translator) : ('المؤلف: ' + novel.author) }}
                 </span>
 
-                <h3 class="text-xs sm:text-sm font-bold font-amiri text-white truncate group-hover:text-rose-300 transition-colors">
-                  {{ novel.title }}
-                </h3>
-
-                <!-- Author - Translator -->
-                <div class="text-[10px] text-stone-400 truncate font-sans">
-                  <span>{{ novel.author }}</span>
-                  <span class="text-rose-500 mx-1">·</span>
-                  <span class="text-stone-300">{{ novel.translator || 'الأصل العربي' }}</span>
-                </div>
-
-                <div class="text-[10px] text-stone-400 flex items-center gap-2 pt-0.5 font-sans">
-                  <span>{{ novel.chapters.length }} فصول</span>
-                  <span>·</span>
-                  <span>{{ novel.views }} قراءة</span>
+                <!-- العنوان مع نظام قياس ديناميكي والتفاف كامل لمنع الاقتطاع -->
+                <div class="min-h-[2.4rem] sm:min-h-[3rem] flex items-center py-0.5">
+                  <h3
+                    [class]="getTitleClass(novel.title)"
+                    class="font-amiri text-white leading-snug break-words line-clamp-2 group-hover:text-rose-300 transition-colors w-full"
+                    [title]="novel.title"
+                  >
+                    {{ novel.title }}
+                  </h3>
                 </div>
               </div>
-
-              <mat-icon class="text-stone-600 group-hover:text-rose-400 text-base transition-colors shrink-0">
-                chevron_left
-              </mat-icon>
             </div>
           }
         </div>
       </section>
 
       <!-- ========================================================================= -->
-      <!-- 3. LATEST ADDITIONS: قسم آخر الإضافات (توزيع 3x3 ثلاث فوق ثلاث للروايات الجديدة) -->
+      <!-- 3. LATEST ADDITIONS: قسم آخر الإضافات (شبكة 3 أعمدة × صفين لـ 6 روايات) -->
       <!-- ========================================================================= -->
-      <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5">
+      <section id="latest-additions" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5 scroll-mt-24">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-800/60 pb-4">
           <div class="flex items-center gap-3">
             <div class="w-2.5 h-7 rounded-full bg-gradient-to-b from-amber-500 to-rose-500"></div>
@@ -336,14 +454,23 @@ export interface RecentChapterItem {
             </div>
           </div>
 
-          <span class="text-xs text-amber-400 font-sans hidden sm:inline flex items-center gap-1">
-            <mat-icon class="text-sm">auto_awesome</mat-icon>
-            <span>أعمال جديدة</span>
-          </span>
+          <div class="flex items-center gap-4">
+            <span class="text-xs text-amber-400 font-sans hidden sm:inline flex items-center gap-1">
+              <mat-icon class="text-sm">auto_awesome</mat-icon>
+              <span>أعمال جديدة</span>
+            </span>
+            <a
+              routerLink="/library"
+              class="text-xs text-amber-400 hover:text-amber-300 font-sans flex items-center gap-1 cursor-pointer transition-colors"
+            >
+              <span>تصفح الكل</span>
+              <mat-icon class="text-xs">arrow_back</mat-icon>
+            </a>
+          </div>
         </div>
 
-        <!-- 3x3: ثلاث فوق ثلاث (6 عناصر: 3 أعمدة في صفين - شبكة 6x6 مخصصة) -->
-        <div class="parent">
+        <!-- شبكة ثابتة: 3 أعمدة × صفين (6 عناصر بترتيب RTL من اليمين لليسار) -->
+        <div class="novels-grid parent">
           @for (novel of latestAddedNovels(); track novel.id; let i = $index) {
             <div
               (click)="selectNovel(novel)"
@@ -351,59 +478,76 @@ export interface RecentChapterItem {
               tabindex="0"
               role="button"
               [attr.aria-label]="'عرض تفاصيل رواية ' + novel.title"
-              [class]="'div' + (i + 1) + ' p-3.5 rounded-2xl liquid-glass-card border border-white/10 hover:border-amber-500/30 flex items-center gap-3 cursor-pointer group transition-all duration-300'"
+              class="p-1.5 sm:p-2.5 lg:p-3 rounded-2xl sm:rounded-3xl liquid-glass-card border border-white/10 hover:border-amber-500/40 flex flex-col justify-between cursor-pointer group transition-all duration-300 shadow-xl min-w-0 h-full"
             >
-              <!-- New Badge or Sparkle -->
-              <div class="w-7 text-center shrink-0 flex items-center justify-center">
-                <span class="px-1.5 py-0.5 rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[9px] font-bold">
-                  جديد
+              <!-- غلاف الرواية بدون إشارة جديد مع حجم مكبّر وبارز -->
+              <div class="relative w-full aspect-[2/3] rounded-xl sm:rounded-2xl overflow-hidden bg-stone-900 border border-white/10 shadow-lg group-hover:border-amber-500/40 transition-all">
+                <div [class]="'absolute inset-0 bg-gradient-to-br ' + novel.coverGradient">
+                  <div class="absolute inset-0 opacity-20 bg-[radial-gradient(#f59e0b_1px,transparent_1px)] [background-size:12px_12px] pointer-events-none"></div>
+                </div>
+
+                @if (novel.coverImage) {
+                  <img
+                    [src]="novel.coverImage"
+                    [alt]="novel.title"
+                    class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
+                  />
+                }
+
+                <div class="absolute inset-0 cover-inner-shadow pointer-events-none"></div>
+                <div class="absolute inset-y-0 right-0 w-1.5 bg-gradient-to-l from-black/40 to-transparent pointer-events-none"></div>
+
+                <!-- شارة نوع العمل: [مترجم] أو [مؤلف] بحجم 4px (أعلى اليمين) -->
+                <div class="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 z-10">
+                  @if (isTranslated(novel)) {
+                    <span class="badge-micro inline-flex items-center gap-0.5 px-1 py-0.5 rounded-sm bg-stone-950/90 text-indigo-300 border border-indigo-400/35 font-bold backdrop-blur-md shadow-md">
+                      <mat-icon class="text-indigo-400">translate</mat-icon>
+                      <span>مترجم</span>
+                    </span>
+                  } @else {
+                    <span class="badge-micro inline-flex items-center gap-0.5 px-1 py-0.5 rounded-sm bg-stone-950/90 text-rose-300 border border-rose-400/35 font-bold backdrop-blur-md shadow-md">
+                      <mat-icon class="text-rose-400">edit_note</mat-icon>
+                      <span>مؤلف</span>
+                    </span>
+                  }
+                </div>
+
+                <!-- وسم التقييم فوق صورة الرواية مباشرة بحجم 4px (أسفل اليمين) -->
+                <div class="absolute bottom-1.5 right-1.5 sm:bottom-2 sm:right-2 z-10">
+                  <span class="badge-micro inline-flex items-center gap-0.5 px-1 py-0.5 rounded-sm bg-stone-950/90 text-amber-300 border border-amber-500/30 font-bold shadow-md backdrop-blur-md">
+                    <mat-icon class="text-amber-400">star</mat-icon>
+                    <span class="font-mono font-extrabold">{{ novel.rating || 4.9 }}</span>
+                  </span>
+                </div>
+              </div>
+
+              <!-- تفاصيل الرواية -->
+              <div class="pt-2 px-0.5 space-y-1">
+                <span class="text-[10px] sm:text-xs text-rose-400 font-semibold block truncate">
+                  {{ isTranslated(novel) ? ('ترجمة: ' + novel.translator) : ('المؤلف: ' + novel.author) }}
                 </span>
-              </div>
 
-              <!-- Compact Cover Thumbnail (صغر حجم الغلاف) -->
-              <div [class]="'w-11 h-15 rounded-lg bg-gradient-to-br ' + novel.coverGradient + ' shrink-0 overflow-hidden relative border border-white/10 shadow-sm group-hover:scale-105 transition-transform'">
-                <div class="absolute inset-0 cover-inner-shadow"></div>
-                <div class="absolute bottom-0.5 right-0.5 text-[8px] font-bold text-white bg-black/80 px-1 rounded font-mono">
-                  ★ {{ novel.rating || 4.9 }}
+                <!-- العنوان مع نظام قياس ديناميكي والتفاف كامل لمنع الاقتطاع -->
+                <div class="min-h-[2.4rem] sm:min-h-[3rem] flex items-center py-0.5">
+                  <h3
+                    [class]="getTitleClass(novel.title)"
+                    class="font-amiri text-white leading-snug break-words line-clamp-2 group-hover:text-amber-300 transition-colors w-full"
+                    [title]="novel.title"
+                  >
+                    {{ novel.title }}
+                  </h3>
                 </div>
               </div>
-
-              <!-- Novel Details -->
-              <div class="flex-1 min-w-0 space-y-0.5">
-                <span class="text-[9px] text-amber-400/90 font-semibold block truncate">
-                  {{ novel.category }}
-                </span>
-
-                <h3 class="text-xs sm:text-sm font-bold font-amiri text-white truncate group-hover:text-amber-300 transition-colors">
-                  {{ novel.title }}
-                </h3>
-
-                <!-- Author - Translator -->
-                <div class="text-[10px] text-stone-400 truncate font-sans">
-                  <span>{{ novel.author }}</span>
-                  <span class="text-amber-500 mx-1">·</span>
-                  <span class="text-stone-300">{{ novel.translator || 'الأصل العربي' }}</span>
-                </div>
-
-                <div class="text-[10px] text-stone-400 flex items-center gap-2 pt-0.5 font-sans">
-                  <span>{{ novel.chapters.length }} فصول</span>
-                  <span>·</span>
-                  <span>{{ novel.views }} قراءة</span>
-                </div>
-              </div>
-
-              <mat-icon class="text-stone-600 group-hover:text-amber-400 text-base transition-colors shrink-0">
-                chevron_left
-              </mat-icon>
             </div>
           }
         </div>
       </section>
 
       <!-- ========================================================================= -->
-      <!-- 4. ALL NOVELS EXPLORER: استكشاف كافة الروايات (توزيع 3x3 ثلاث فوق ثلاث) -->
+      <!-- 4. ALL NOVELS EXPLORER: استكشاف كافة الروايات (شبكة 3 أعمدة × صفين لـ 6 روايات) -->
       <!-- ========================================================================= -->
-      <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5">
+      <section id="explore" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5 scroll-mt-24">
         
         <!-- Header with Search & Filter Pills -->
         <div class="space-y-4 border-b border-stone-800/60 pb-4">
@@ -463,8 +607,8 @@ export interface RecentChapterItem {
           </div>
         </div>
 
-        <!-- 3x3: ثلاث فوق ثلاث (6 عناصر: 3 أعمدة في صفين - شبكة 6x6 مخصصة) -->
-        <div class="parent">
+        <!-- شبكة ثابتة: 3 أعمدة × صفين (6 عناصر بترتيب RTL من اليمين لليسار) -->
+        <div class="novels-grid parent">
           @for (novel of filteredNovels(); track novel.id; let i = $index) {
             <div
               (click)="selectNovel(novel)"
@@ -472,48 +616,67 @@ export interface RecentChapterItem {
               tabindex="0"
               role="button"
               [attr.aria-label]="'عرض تفاصيل رواية ' + novel.title"
-              [class]="'div' + (i + 1) + ' p-3.5 rounded-2xl liquid-glass-card border border-white/10 hover:border-rose-500/30 flex items-center gap-3 cursor-pointer group transition-all duration-300'"
+              class="p-1.5 sm:p-2.5 lg:p-3 rounded-2xl sm:rounded-3xl liquid-glass-card border border-white/10 hover:border-rose-500/40 flex flex-col justify-between cursor-pointer group transition-all duration-300 shadow-xl min-w-0 h-full"
             >
-              <!-- Index or Category Marker -->
-              <div class="w-7 text-center shrink-0 flex items-center justify-center">
-                <span class="w-2 h-2 rounded-full bg-rose-500/60 group-hover:scale-125 transition-transform"></span>
-              </div>
+              <!-- غلاف الرواية مع حجم مكبّر وبارز -->
+              <div class="relative w-full aspect-[2/3] rounded-xl sm:rounded-2xl overflow-hidden bg-stone-900 border border-white/10 shadow-lg group-hover:border-rose-500/40 transition-all">
+                <div [class]="'absolute inset-0 bg-gradient-to-br ' + novel.coverGradient">
+                  <div class="absolute inset-0 opacity-20 bg-[radial-gradient(#e11d48_1px,transparent_1px)] [background-size:12px_12px] pointer-events-none"></div>
+                </div>
 
-              <!-- Compact Cover Thumbnail (صغر حجم الغلاف) -->
-              <div [class]="'w-11 h-15 rounded-lg bg-gradient-to-br ' + novel.coverGradient + ' shrink-0 overflow-hidden relative border border-white/10 shadow-sm group-hover:scale-105 transition-transform'">
-                <div class="absolute inset-0 cover-inner-shadow"></div>
-                <div class="absolute bottom-0.5 right-0.5 text-[8px] font-bold text-white bg-black/80 px-1 rounded font-mono">
-                  ★ {{ novel.rating || 4.8 }}
+                @if (novel.coverImage) {
+                  <img
+                    [src]="novel.coverImage"
+                    [alt]="novel.title"
+                    class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    loading="lazy"
+                  />
+                }
+
+                <div class="absolute inset-0 cover-inner-shadow pointer-events-none"></div>
+                <div class="absolute inset-y-0 right-0 w-1.5 bg-gradient-to-l from-black/40 to-transparent pointer-events-none"></div>
+
+                <!-- شارة نوع العمل: [مترجم] أو [مؤلف] بحجم 4px (أعلى اليسار) -->
+                <div class="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 z-10">
+                  @if (isTranslated(novel)) {
+                    <span class="badge-micro inline-flex items-center gap-0.5 px-1 py-0.5 rounded-sm bg-stone-950/90 text-indigo-300 border border-indigo-400/35 font-bold backdrop-blur-md shadow-md">
+                      <mat-icon class="text-indigo-400">translate</mat-icon>
+                      <span>مترجم</span>
+                    </span>
+                  } @else {
+                    <span class="badge-micro inline-flex items-center gap-0.5 px-1 py-0.5 rounded-sm bg-stone-950/90 text-rose-300 border border-rose-400/35 font-bold backdrop-blur-md shadow-md">
+                      <mat-icon class="text-rose-400">edit_note</mat-icon>
+                      <span>مؤلف</span>
+                    </span>
+                  }
+                </div>
+
+                <!-- وسم التقييم فوق صورة الرواية مباشرة بحجم 4px (أسفل اليمين) -->
+                <div class="absolute bottom-1.5 right-1.5 sm:bottom-2 sm:right-2 z-10">
+                  <span class="badge-micro inline-flex items-center gap-0.5 px-1 py-0.5 rounded-sm bg-stone-950/90 text-amber-300 border border-amber-500/30 font-bold shadow-md backdrop-blur-md">
+                    <mat-icon class="text-amber-400">star</mat-icon>
+                    <span class="font-mono font-extrabold">{{ novel.rating || 4.8 }}</span>
+                  </span>
                 </div>
               </div>
 
-              <!-- Novel Details -->
-              <div class="flex-1 min-w-0 space-y-0.5">
-                <span class="text-[9px] text-rose-400 font-semibold block truncate">
-                  {{ novel.category }}
+              <!-- تفاصيل الرواية -->
+              <div class="pt-2 px-0.5 space-y-1">
+                <span class="text-[10px] sm:text-xs text-rose-400 font-semibold block truncate">
+                  {{ isTranslated(novel) ? ('ترجمة: ' + novel.translator) : ('المؤلف: ' + novel.author) }}
                 </span>
 
-                <h3 class="text-xs sm:text-sm font-bold font-amiri text-white truncate group-hover:text-rose-300 transition-colors">
-                  {{ novel.title }}
-                </h3>
-
-                <!-- Author - Translator -->
-                <div class="text-[10px] text-stone-400 truncate font-sans">
-                  <span>{{ novel.author }}</span>
-                  <span class="text-rose-500 mx-1">·</span>
-                  <span class="text-stone-300">{{ novel.translator || 'الأصل العربي' }}</span>
-                </div>
-
-                <div class="text-[10px] text-stone-400 flex items-center gap-2 pt-0.5 font-sans">
-                  <span>{{ novel.chapters.length }} فصول</span>
-                  <span>·</span>
-                  <span>{{ novel.views }} قراءة</span>
+                <!-- العنوان مع نظام قياس ديناميكي والتفاف كامل لمنع الاقتطاع -->
+                <div class="min-h-[2.4rem] sm:min-h-[3rem] flex items-center py-0.5">
+                  <h3
+                    [class]="getTitleClass(novel.title)"
+                    class="font-amiri text-white leading-snug break-words line-clamp-2 group-hover:text-rose-300 transition-colors w-full"
+                    [title]="novel.title"
+                  >
+                    {{ novel.title }}
+                  </h3>
                 </div>
               </div>
-
-              <mat-icon class="text-stone-600 group-hover:text-rose-400 text-base transition-colors shrink-0">
-                chevron_left
-              </mat-icon>
             </div>
           } @empty {
             <div class="col-span-full p-12 text-center liquid-glass rounded-3xl border border-white/10 space-y-3">
@@ -535,10 +698,10 @@ export interface RecentChapterItem {
       </section>
 
       <!-- ========================================================================= -->
-      <!-- 5. ENHANCED RECENT CHAPTER RELEASES FEED (ماعدى قسم أحدث الفصول - تصميم فسيح ومحسن) -->
+      <!-- 5. ENHANCED RECENT CHAPTER RELEASES FEED (شبكة 3 أعمدة × صفين لـ 6 فصول) -->
       <!-- ========================================================================= -->
-      <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5">
-        <div class="flex items-center justify-between border-b border-stone-800/60 pb-4">
+      <section id="latest-chapters" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-5 scroll-mt-24">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-stone-800/60 pb-4">
           <div class="flex items-center gap-3">
             <div class="w-2.5 h-7 rounded-full bg-gradient-to-b from-emerald-500 to-rose-600"></div>
             <div>
@@ -551,59 +714,93 @@ export interface RecentChapterItem {
             </div>
           </div>
 
-          <span class="text-xs text-emerald-400 font-sans hidden sm:inline flex items-center gap-1">
-            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>تحديث فوري</span>
-          </span>
+          <div class="flex items-center gap-4">
+            <span class="text-xs text-emerald-400 font-sans hidden sm:inline flex items-center gap-1">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span>تحديث فوري</span>
+            </span>
+            <a
+              routerLink="/reader"
+              class="text-xs text-emerald-400 hover:text-emerald-300 font-sans flex items-center gap-1 cursor-pointer transition-colors"
+            >
+              <span>متابعة القراءة</span>
+              <mat-icon class="text-xs">arrow_back</mat-icon>
+            </a>
+          </div>
         </div>
 
-        <!-- Enhanced Chapter Feed Grid (عمودان واسعان فسيحان - استثناء عن توزيع 3x3 لراحة العنوان) -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- شبكة ثابتة: 3 أعمدة × صفين (6 عناصر بترتيب RTL من اليمين لليسار) -->
+        <div class="novels-grid parent">
           @for (item of latestChapterFeed(); track item.chapterId) {
-            <div class="p-4 rounded-2xl liquid-glass border border-white/10 hover:border-emerald-500/40 flex items-center justify-between gap-4 group transition-all duration-300 shadow-md">
-              
-              <!-- Left Info with Cover Thumbnail -->
-              <div class="flex items-center gap-3.5 min-w-0">
-                <!-- Mini Cover -->
-                <div [class]="'w-12 h-16 rounded-xl bg-gradient-to-br ' + item.novelCoverGradient + ' shrink-0 overflow-hidden relative border border-white/10 shadow-sm'">
-                  <div class="absolute inset-0 cover-inner-shadow"></div>
+            <div
+              (click)="selectNovelById(item.novelId)"
+              (keydown.enter)="selectNovelById(item.novelId)"
+              tabindex="0"
+              role="button"
+              [attr.aria-label]="'عرض تفاصيل ' + item.novelTitle"
+              class="p-1.5 sm:p-2.5 lg:p-3 rounded-2xl sm:rounded-3xl liquid-glass-card border border-white/10 hover:border-emerald-500/40 flex flex-col justify-between cursor-pointer group transition-all duration-300 shadow-xl min-w-0 h-full"
+            >
+              <!-- غلاف الرواية مع حجم مكبّر وبارز -->
+              <div class="relative w-full aspect-[2/3] rounded-xl sm:rounded-2xl overflow-hidden bg-stone-900 border border-white/10 shadow-lg group-hover:border-emerald-500/40 transition-all">
+                <div [class]="'absolute inset-0 bg-gradient-to-br ' + item.novelCoverGradient">
+                  <div class="absolute inset-0 opacity-20 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:12px_12px] pointer-events-none"></div>
                 </div>
 
-                <!-- Text metadata -->
-                <div class="min-w-0 space-y-1">
-                  <a
-                    (click)="selectNovelById(item.novelId)"
-                    (keydown.enter)="selectNovelById(item.novelId)"
-                    tabindex="0"
-                    role="button"
-                    class="text-[11px] text-rose-400 hover:text-rose-300 font-semibold block truncate cursor-pointer transition-colors"
-                  >
-                    {{ item.novelTitle }}
-                  </a>
-                  
-                  <h4 class="text-xs sm:text-sm font-bold text-white truncate group-hover:text-emerald-300 transition-colors font-amiri">
-                    فصل {{ item.chapterIndex }}: {{ item.chapterTitle }}
-                  </h4>
+                <div class="absolute inset-0 cover-inner-shadow pointer-events-none"></div>
+                <div class="absolute inset-y-0 right-0 w-1.5 bg-gradient-to-l from-black/40 to-transparent pointer-events-none"></div>
 
-                  <div class="text-[10px] text-stone-400 flex items-center gap-2 font-sans truncate">
-                    <span>{{ item.wordCount }} كلمة</span>
-                    <span>·</span>
-                    <span class="truncate">بقلم {{ item.author }}</span>
-                  </div>
+                <!-- شارة رقم الفصل (أعلى اليمين) بحجم 4px كحد أقصى -->
+                <div class="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 z-10">
+                  <span class="badge-micro inline-flex items-center px-1 py-0.5 rounded-sm bg-stone-950/90 text-emerald-300 border border-emerald-500/30 font-mono font-bold shadow-md backdrop-blur-md">
+                    فصل {{ item.chapterIndex }}
+                  </span>
+                </div>
+
+                <!-- شارة نوع العمل: [مترجم] أو [مؤلف] بحجم 4px (أعلى اليسار) -->
+                <div class="absolute top-1.5 left-1.5 sm:top-2 sm:left-2 z-10">
+                  @if (isTranslated(item)) {
+                    <span class="badge-micro inline-flex items-center gap-0.5 px-1 py-0.5 rounded-sm bg-stone-950/90 text-indigo-300 border border-indigo-400/35 font-bold backdrop-blur-md shadow-md">
+                      <mat-icon class="text-indigo-400">translate</mat-icon>
+                      <span>مترجم</span>
+                    </span>
+                  } @else {
+                    <span class="badge-micro inline-flex items-center gap-0.5 px-1 py-0.5 rounded-sm bg-stone-950/90 text-rose-300 border border-rose-400/35 font-bold backdrop-blur-md shadow-md">
+                      <mat-icon class="text-rose-400">edit_note</mat-icon>
+                      <span>مؤلف</span>
+                    </span>
+                  }
+                </div>
+
+                <!-- وسم عدد الكلمات فوق صورة الرواية مباشرة بحجم 4px (أسفل اليمين) -->
+                <div class="absolute bottom-1.5 right-1.5 sm:bottom-2 sm:right-2 z-10">
+                  <span class="badge-micro inline-flex items-center gap-0.5 px-1 py-0.5 rounded-sm bg-stone-950/90 text-emerald-300 border border-emerald-500/30 font-bold shadow-md backdrop-blur-md">
+                    <mat-icon class="text-emerald-400">menu_book</mat-icon>
+                    <span class="font-mono font-extrabold">{{ item.wordCount }} كلمة</span>
+                  </span>
                 </div>
               </div>
 
-              <!-- Direct Reading Button -->
-              <button
-                type="button"
-                (click)="readChapterDirect(item.novelId, item.chapterId)"
-                class="px-4 py-2 rounded-xl bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/30 text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5"
-                title="قراءة هذا الفصل مباشرة"
-              >
-                <mat-icon class="text-base">menu_book</mat-icon>
-                <span>اقرأ الفصل</span>
-              </button>
+              <!-- نصوص البطاقة المبسطة: مؤلف/مترجم باللون القرمزي + اسم الرواية وفصلها -->
+              <div class="pt-2 px-0.5 space-y-1">
+                <span class="text-[10px] sm:text-xs text-rose-400 font-semibold block truncate">
+                  {{ isTranslated(item) ? ('ترجمة: ' + item.translator) : ('المؤلف: ' + item.author) }}
+                </span>
 
+                <!-- العنوان مع نظام قياس ديناميكي والتفاف كامل لمنع الاقتطاع -->
+                <div class="min-h-[2.4rem] sm:min-h-[3rem] flex items-center py-0.5">
+                  <h3
+                    [class]="getTitleClass(item.novelTitle)"
+                    class="font-amiri text-white leading-snug break-words line-clamp-2 group-hover:text-emerald-300 transition-colors w-full"
+                    [title]="item.novelTitle"
+                  >
+                    {{ item.novelTitle }}
+                  </h3>
+                </div>
+
+                <p class="text-[9px] sm:text-[11px] text-stone-400 truncate font-sans">
+                  فصل {{ item.chapterIndex }}: {{ item.chapterTitle }}
+                </p>
+              </div>
             </div>
           }
         </div>
@@ -675,13 +872,33 @@ export interface RecentChapterItem {
     </div>
   `,
 })
-export class NovelLibrary {
+export class NovelLibrary implements OnInit {
   readonly store = inject(NovelStore);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   readonly selectedGenre = this.store.selectedCategoryFilter;
   readonly heroMode = signal<HeroMode>('most_read');
   readonly searchQuery = signal<string>('');
+
+  ngOnInit(): void {
+    const q = this.route.snapshot.queryParams['q'];
+    if (q) {
+      this.searchQuery.set(q);
+      setTimeout(() => {
+        const el = document.getElementById('explore');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 200);
+    }
+  }
+
+  scrollToSection(id: string, event?: Event): void {
+    if (event) event.preventDefault();
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
 
   readonly availableGenres = [
     { id: 'all', label: 'كافة الروايات', icon: 'auto_stories' },
@@ -856,5 +1073,22 @@ export class NovelLibrary {
     this.store.selectNovel(novelId);
     this.store.selectChapter(novelId, chapterId);
     this.router.navigate(['/reader', novelId, chapterId]);
+  }
+
+  isTranslated(novel: { translator?: string }): boolean {
+    const t = novel.translator?.trim();
+    return !!(t && t !== 'الأصل العربي');
+  }
+
+  getTitleClass(title?: string): string {
+    if (!title) return 'text-xs sm:text-base';
+    const len = title.trim().length;
+    if (len <= 16) {
+      return 'text-xs sm:text-base font-bold';
+    } else if (len <= 26) {
+      return 'text-[11.5px] sm:text-[14px] font-bold';
+    } else {
+      return 'text-[10px] sm:text-[12.5px] font-semibold';
+    }
   }
 }

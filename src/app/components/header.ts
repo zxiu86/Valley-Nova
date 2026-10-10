@@ -50,12 +50,83 @@ import { AuthStore } from '../core/auth-store';
             </a>
           </div>
 
-          <!-- MIDDLE: Completely Empty as explicitly requested (الوسط فارغ) -->
-          <div class="flex-1"></div>
+          <!-- MIDDLE: Desktop Website Navigation Links (شريط تنقل موقع الويب لسطح المكتب) -->
+          <nav aria-label="التنقل الرئيسي للموقع" class="hidden lg:flex items-center gap-1 xl:gap-2 mx-4">
+            <a
+              routerLink="/"
+              class="px-3 py-2 rounded-xl text-xs xl:text-sm font-semibold text-stone-300 hover:text-white hover:bg-white/5 transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <mat-icon class="text-base text-rose-400">home</mat-icon>
+              <span>الرئيسية</span>
+            </a>
 
-          <!-- FAR LEFT: User Account Quick Button + Hamburger Menu Button (أقصى اليسار) -->
+            <a
+              routerLink="/library"
+              class="px-3 py-2 rounded-xl text-xs xl:text-sm font-semibold text-stone-300 hover:text-white hover:bg-white/5 transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <mat-icon class="text-base text-rose-400">auto_stories</mat-icon>
+              <span>المكتبة الشاملة</span>
+            </a>
+
+            <button
+              type="button"
+              (click)="scrollToSection('leaderboard')"
+              class="px-3 py-2 rounded-xl text-xs xl:text-sm font-semibold text-stone-300 hover:text-white hover:bg-white/5 transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <mat-icon class="text-base text-amber-400">trending_up</mat-icon>
+              <span>الأكثر قراءة</span>
+            </button>
+
+            <button
+              type="button"
+              (click)="scrollToSection('latest-additions')"
+              class="px-3 py-2 rounded-xl text-xs xl:text-sm font-semibold text-stone-300 hover:text-white hover:bg-white/5 transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <mat-icon class="text-base text-rose-400">auto_awesome</mat-icon>
+              <span>آخر الإضافات</span>
+            </button>
+
+            <button
+              type="button"
+              (click)="scrollToSection('latest-chapters')"
+              class="px-3 py-2 rounded-xl text-xs xl:text-sm font-semibold text-stone-300 hover:text-white hover:bg-white/5 transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <mat-icon class="text-base text-emerald-400">menu_book</mat-icon>
+              <span>أحدث الفصول</span>
+            </button>
+
+            <a
+              routerLink="/editor"
+              class="px-3 py-2 rounded-xl text-xs xl:text-sm font-semibold text-rose-300 hover:text-white hover:bg-rose-950/40 border border-rose-500/20 hover:border-rose-500/40 transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <mat-icon class="text-base text-rose-400">edit_note</mat-icon>
+              <span>لوحة النشر</span>
+            </a>
+          </nav>
+
+          <!-- FAR LEFT: Search + User Account + Mobile Hamburger -->
           <div class="flex items-center gap-2 sm:gap-3">
             
+            <!-- Quick Desktop Search Input -->
+            <div class="relative hidden xl:block w-52">
+              <input
+                type="text"
+                placeholder="ابحث في الموقع..."
+                [value]="navSearchQuery()"
+                (input)="onNavSearchInput($event)"
+                (keydown.enter)="onNavSearchSubmit()"
+                class="w-full bg-stone-900/90 border border-white/10 focus:border-rose-500 rounded-xl pr-9 pl-3 py-1.5 text-xs text-white placeholder-stone-500 focus:outline-none transition-all shadow-inner"
+              />
+              <button
+                type="button"
+                (click)="onNavSearchSubmit()"
+                class="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-rose-400 cursor-pointer"
+                aria-label="بحث في الروايات"
+              >
+                <mat-icon class="text-base">search</mat-icon>
+              </button>
+            </div>
+
             <!-- Quick Auth Status Button in Desktop Navbar -->
             @if (authStore.isAuthenticated()) {
               <a
@@ -92,11 +163,11 @@ import { AuthStore } from '../core/auth-store';
               </a>
             }
 
-            <!-- Hamburger Button with Soft Rotation -->
+            <!-- Mobile Drawer Button (شاشات الهاتف والأجهزة اللوحية) -->
             <button
               (click)="toggleMenu()"
               aria-label="قائمة مقاتل الروايات"
-              class="w-11 h-11 rounded-2xl liquid-glass flex items-center justify-center text-rose-200 hover:text-white hover:bg-rose-950/40 border border-white/10 hover:border-rose-500/40 shadow-sm transition-all cursor-pointer"
+              class="lg:hidden w-11 h-11 rounded-2xl liquid-glass flex items-center justify-center text-rose-200 hover:text-white hover:bg-rose-950/40 border border-white/10 hover:border-rose-500/40 shadow-sm transition-all cursor-pointer"
             >
               <mat-icon class="text-2xl transition-transform duration-300" [class.rotate-90]="isMenuOpen()">
                 {{ isMenuOpen() ? 'close' : 'menu' }}
@@ -305,6 +376,39 @@ export class Header {
 
   readonly isMenuOpen = signal<boolean>(false);
   readonly logoFailed = signal<boolean>(false);
+  readonly navSearchQuery = signal<string>('');
+
+  onNavSearchInput(e: Event): void {
+    const val = (e.target as HTMLInputElement).value;
+    this.navSearchQuery.set(val);
+  }
+
+  onNavSearchSubmit(): void {
+    const q = this.navSearchQuery().trim();
+    if (q) {
+      this.router.navigate(['/library'], { queryParams: { q } });
+    }
+  }
+
+  scrollToSection(sectionId: string): void {
+    this.closeMenu();
+    const currentUrl = this.router.url;
+    if (currentUrl === '/' || currentUrl.startsWith('/#')) {
+      const el = document.getElementById(sectionId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+    }
+    this.router.navigate(['/'], { fragment: sectionId }).then(() => {
+      setTimeout(() => {
+        const el = document.getElementById(sectionId);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 150);
+    });
+  }
 
   toggleMenu(): void {
     this.isMenuOpen.update(v => !v);
