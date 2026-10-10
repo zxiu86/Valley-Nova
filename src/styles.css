@@ -1,9 +1,67 @@
 @import url('https://fonts.googleapis.com/icon?family=Material+Icons');
 @import "tailwindcss";
 
+@theme {
+  --color-background: #131315;
+  --color-surface: #131315;
+  --color-surface-dim: #131315;
+  --color-surface-bright: #39393b;
+  --color-surface-variant: #353437;
+  --color-surface-container-lowest: #0e0e10;
+  --color-surface-container-low: #1c1b1d;
+  --color-surface-container: #201f22;
+  --color-surface-container-high: #2a2a2c;
+  --color-surface-container-highest: #353437;
+  --color-on-surface: #e5e1e4;
+  --color-on-surface-variant: #debfc2;
+  --color-primary: #ffb2bd;
+  --color-primary-container: #881337;
+  --color-on-primary-container: #ff93a6;
+  --color-primary-fixed: #ffd9dd;
+  --color-primary-fixed-dim: #ffb2bd;
+  --color-on-primary: #670024;
+  --color-secondary: #e9c349;
+  --color-secondary-container: #af8d11;
+  --color-on-secondary: #3c2f00;
+  --color-on-secondary-fixed: #241a00;
+  --color-secondary-fixed: #ffe088;
+  --color-secondary-fixed-dim: #e9c349;
+  --color-tertiary: #7bd8b1;
+  --color-tertiary-container: #005039;
+  --color-on-tertiary: #003827;
+  --color-tertiary-fixed: #97f5cc;
+  --color-tertiary-fixed-dim: #7bd8b1;
+  --color-inverse-surface: #e5e1e4;
+  --color-inverse-on-surface: #313032;
+
+  --font-display-hero: "Noto Serif", "Amiri", serif;
+  --font-headline-lg: "Noto Serif", "Amiri", serif;
+  --font-headline-md: "Noto Serif", "Amiri", serif;
+  --font-headline-sm: "Noto Serif", "Amiri", serif;
+  --font-title-lg: "Noto Serif", "Amiri", serif;
+  --font-body-lg: "IBM Plex Sans", "Noto Kufi Arabic", sans-serif;
+  --font-body-md: "IBM Plex Sans", "Noto Kufi Arabic", sans-serif;
+  --font-body-sm: "IBM Plex Sans", "Noto Kufi Arabic", sans-serif;
+  --font-label-md: "IBM Plex Sans", "Noto Kufi Arabic", sans-serif;
+  --font-label-sm: "IBM Plex Sans", "Noto Kufi Arabic", sans-serif;
+
+  --spacing-margin: 3rem;
+  --spacing-margin-mobile: 1.25rem;
+  --spacing-gutter: 1.5rem;
+  --spacing-gutter-mobile: 1rem;
+  --spacing-space-xs: 0.25rem;
+  --spacing-space-sm: 0.5rem;
+  --spacing-space-md: 1rem;
+  --spacing-space-lg: 1.5rem;
+  --spacing-space-xl: 2.5rem;
+}
+
 @layer utilities {
   .font-amiri {
     font-family: 'Amiri', serif;
+  }
+  .font-noto-serif {
+    font-family: 'Noto Serif', 'Amiri', serif;
   }
   .font-cairo {
     font-family: 'Cairo', sans-serif;
@@ -21,7 +79,7 @@
     font-family: 'JetBrains Mono', monospace;
   }
 
-  /* Liquid Glass & Refined Dark Aesthetics (بدون توهجات فاقعة) */
+  /* Liquid Glass & Monumental Sanctuary Aesthetics */
   .liquid-glass {
     background: rgba(18, 16, 20, 0.75);
     backdrop-filter: blur(16px);
@@ -31,103 +89,112 @@
   }
 
   .liquid-glass-header {
-    background: rgba(12, 10, 15, 0.85);
+    background: rgba(14, 14, 16, 0.85);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     border-bottom: 1px solid rgba(255, 255, 255, 0.07);
     box-shadow: 0 4px 20px -5px rgba(0, 0, 0, 0.6);
   }
 
-  .liquid-glass-crimson {
-    background: linear-gradient(145deg, rgba(38, 18, 26, 0.7) 0%, rgba(20, 14, 20, 0.9) 100%);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(225, 29, 72, 0.2);
-    box-shadow: 0 10px 25px -10px rgba(0, 0, 0, 0.6);
+  .scrollbar-none::-webkit-scrollbar {
+    display: none !important;
+  }
+  .scrollbar-none {
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
   }
 
-  .liquid-glass-card {
-    background: linear-gradient(180deg, rgba(28, 23, 29, 0.6) 0%, rgba(15, 13, 17, 0.85) 100%);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  /* Typography helper classes */
+  .text-display-hero {
+    font-size: clamp(34px, 5.2vw, 56px);
+    line-height: 1.18;
+    letter-spacing: -0.02em;
+    font-weight: 700;
   }
-  .liquid-glass-card:hover {
-    border-color: rgba(225, 29, 72, 0.35);
-    box-shadow: 0 12px 28px -10px rgba(0, 0, 0, 0.7);
-    transform: translateY(-3px);
+  .text-headline-lg {
+    font-size: clamp(26px, 3.6vw, 36px);
+    line-height: 1.32;
+    font-weight: 600;
+  }
+  .text-headline-md {
+    font-size: clamp(20px, 2.6vw, 28px);
+    line-height: 1.38;
+    font-weight: 600;
+  }
+  .text-headline-sm {
+    font-size: 21px;
+    line-height: 30px;
+    font-weight: 600;
+  }
+  .text-title-lg {
+    font-size: 18px;
+    line-height: 26px;
+    font-weight: 600;
+  }
+  .text-body-lg {
+    font-size: 18px;
+    line-height: 1.85;
+  }
+  .text-body-md {
+    font-size: 16px;
+    line-height: 1.7;
+  }
+  .text-body-sm {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .text-label-md {
+    font-size: 13px;
+    line-height: 18px;
+    letter-spacing: 0.03em;
+    font-weight: 500;
+  }
+  .text-label-sm {
+    font-size: 11px;
+    line-height: 16px;
+    letter-spacing: 0.05em;
+    font-weight: 500;
   }
 
-  /* Cover Inner Shadow (تظليل داخلي خفيف وناعم يدمج الغلاف بسلاسة) */
-  .cover-inner-shadow {
-    box-shadow: inset 0 -45px 35px -10px rgba(10, 8, 14, 0.7);
-  }
-
-  .crimson-glow {
-    filter: drop-shadow(0 2px 8px rgba(225, 29, 72, 0.25));
-  }
-
-  /* Micro Badges (وسوم فائقة الصغر 4px كحد أقصى مع أيقونات 4px) */
-  .badge-micro {
-    font-size: 4px !important;
-    line-height: 1 !important;
-  }
-  .badge-micro mat-icon {
-    font-size: 4px !important;
-    width: 4px !important;
-    height: 4px !important;
-    min-width: 4px !important;
-    min-height: 4px !important;
-    line-height: 1 !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-  }
-}
-
-/* Unified 3x2 Novels Grid (ثلاثة أعمدة متساوية × صفان - اتجاه اليمين لليسار RTL) */
-.novels-grid,
-.parent {
-  display: grid !important;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-  gap: 18px !important;
-  direction: rtl !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
-}
-
-.novels-grid > *,
-.parent > * {
-  direction: rtl !important;
-  min-width: 0 !important;
-  box-sizing: border-box !important;
-}
-
-@media (max-width: 640px) {
-  .novels-grid,
-  .parent {
-    gap: 10px !important;
+  .material-symbols-outlined {
+    font-family: 'Material Symbols Outlined';
+    font-weight: normal;
+    font-style: normal;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    text-transform: none;
+    letter-spacing: normal;
+    word-wrap: normal;
+    white-space: nowrap;
+    direction: ltr;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: 'liga';
   }
 }
 
 html, body {
   overflow-x: hidden;
   max-width: 100vw;
+  background-color: #131315;
+  color: #e5e1e4;
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 /* Custom modern scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: rgba(10, 8, 12, 0.5);
+  background: rgba(14, 14, 16, 0.7);
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(225, 29, 72, 0.3);
+  background: rgba(233, 195, 73, 0.25);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(244, 63, 94, 0.6);
+  background: rgba(233, 195, 73, 0.5);
 }

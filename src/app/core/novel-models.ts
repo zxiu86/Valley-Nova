@@ -27,6 +27,8 @@ export interface Novel {
   description: string;
   coverGradient: string;
   coverImage?: string;
+  riwaqId?: string;
+  riwaqName?: string;
   accentColor: string;
   rating?: number;
   ratingCount?: number;

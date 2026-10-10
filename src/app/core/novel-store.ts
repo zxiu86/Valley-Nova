@@ -13,12 +13,12 @@ import { auth, db } from './firebase';
 import { collection, deleteDoc, doc, getDocs, setDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 
-const STORAGE_KEY_NOVELS = 'muqatil_novels_catalog_v1';
-const STORAGE_KEY_SETTINGS = 'muqatil_reader_settings_v1';
-const STORAGE_KEY_BOOKMARKS = 'muqatil_bookmarks_v1';
-const STORAGE_KEY_RATINGS = 'muqatil_ratings_v1';
-const STORAGE_KEY_HISTORY = 'muqatil_reading_history_v1';
-const STORAGE_KEY_COMMENTS = 'muqatil_chapter_comments_v1';
+const STORAGE_KEY_NOVELS = 'arwiqa_alkhulud_catalog_v2';
+const STORAGE_KEY_SETTINGS = 'arwiqa_reader_settings_v2';
+const STORAGE_KEY_BOOKMARKS = 'arwiqa_bookmarks_v2';
+const STORAGE_KEY_RATINGS = 'arwiqa_ratings_v2';
+const STORAGE_KEY_HISTORY = 'arwiqa_reading_history_v2';
+const STORAGE_KEY_COMMENTS = 'arwiqa_chapter_comments_v2';
 
 export interface ReadHistoryItem {
   novelId: string;
@@ -80,6 +80,98 @@ export class NovelStore {
   readonly isDecoding = signal<boolean>(false);
   readonly isEncoding = signal<boolean>(false);
   readonly isInitialized = signal<boolean>(false);
+
+  // Soundscape Ambient Audio state
+  readonly soundscapeActive = signal<boolean>(false);
+  private audioCtx: AudioContext | null = null;
+  private audioNodes: { stop: () => void } | null = null;
+
+  getNovelsByRiwaq(riwaqId: string): Novel[] {
+    return this.novels().filter(n => n.riwaqId === riwaqId);
+  }
+
+  toggleSoundscape(): void {
+    if (this.soundscapeActive()) {
+      this.stopSoundscape();
+    } else {
+      this.startSoundscape();
+    }
+  }
+
+  startSoundscape(): void {
+    if (typeof window === 'undefined') return;
+    try {
+      const AudioCtxClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!this.audioCtx) {
+        this.audioCtx = new AudioCtxClass();
+      }
+      if (this.audioCtx.state === 'suspended') {
+        this.audioCtx.resume();
+      }
+      this.stopSoundscapeNodes();
+
+      const ctx = this.audioCtx;
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      const filter = ctx.createBiquadFilter();
+
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(108, ctx.currentTime);
+      osc2.type = 'triangle';
+      osc2.frequency.setValueAtTime(162, ctx.currentTime);
+
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(260, ctx.currentTime);
+
+      gain1.gain.setValueAtTime(0.001, ctx.currentTime);
+      gain1.gain.exponentialRampToValueAtTime(0.04, ctx.currentTime + 2.5);
+
+      osc1.connect(filter);
+      osc2.connect(filter);
+      filter.connect(gain1);
+      gain1.connect(ctx.destination);
+
+      osc1.start();
+      osc2.start();
+
+      this.audioNodes = {
+        stop: () => {
+          try {
+            gain1.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 1.2);
+            setTimeout(() => {
+              try {
+                osc1.stop();
+                osc2.stop();
+                osc1.disconnect();
+                osc2.disconnect();
+              } catch {
+                // ignore
+              }
+            }, 1300);
+          } catch {
+            // ignore
+          }
+        }
+      };
+
+      this.soundscapeActive.set(true);
+    } catch (e) {
+      console.warn('Soundscape could not start:', e);
+    }
+  }
+
+  stopSoundscape(): void {
+    this.stopSoundscapeNodes();
+    this.soundscapeActive.set(false);
+  }
+
+  private stopSoundscapeNodes(): void {
+    if (this.audioNodes) {
+      this.audioNodes.stop();
+      this.audioNodes = null;
+    }
+  }
 
   // Computed global statistics & user derived state
   readonly totalChaptersReadCount = computed(() => this.readHistory().length);
@@ -267,6 +359,9 @@ export class NovelStore {
         category: raw.category,
         description: raw.description,
         coverGradient: raw.coverGradient,
+        coverImage: raw.coverImage,
+        riwaqId: raw.riwaqId,
+        riwaqName: raw.riwaqName,
         accentColor: raw.accentColor,
         rating: raw.rating ?? 4.9,
         ratingCount: raw.ratingCount ?? 1420,

@@ -1,12 +1,11 @@
-<div class="min-h-screen w-full max-w-full overflow-x-hidden flex flex-col bg-stone-950 text-stone-100 font-sans">
+<div class="min-h-screen w-full max-w-full overflow-x-hidden flex flex-col bg-[#131315] text-[#e5e1e4]">
   @if (!isReaderRoute()) {
     <app-header />
   }
-  <div class="flex-1">
+  <div class="flex-1" [class.pt-20]="!isReaderRoute()">
     <router-outlet />
   </div>
   @if (!isReaderRoute()) {
     <app-footer />
   }
 </div>
-

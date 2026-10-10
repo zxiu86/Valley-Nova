@@ -1,294 +1,169 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { MatIconModule } from '@angular/material/icon';
 import { NovelStore } from '../core/novel-store';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-novel-editor',
-  imports: [ReactiveFormsModule, MatIconModule],
+  imports: [ReactiveFormsModule],
   template: `
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 text-stone-100">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 md:px-12 py-10 space-y-8 bg-[#131315] text-[#e5e1e4]">
       
       <!-- Studio Header -->
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-rose-500/20 pb-5">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.08] pb-6">
         <div>
-          <div class="flex items-center gap-2 text-xs text-rose-400 font-semibold">
-            <span>استوديو كتابة الروايات</span>
-            <span aria-hidden="true">·</span>
-            <span>مقاتل الروايات</span>
+          <div class="flex items-center gap-2 text-xs text-[#e9c349] font-semibold mb-1">
+            <span>ديوان الإنشاء والتدوين</span>
+            <span>•</span>
+            <span>أروقة الخلود</span>
           </div>
-          <h1 class="text-2xl sm:text-3xl font-bold font-amiri text-white mt-1">
-            كتابة ونشر فصل جديد
+          <h1 class="font-noto-serif text-2xl sm:text-3xl font-bold text-white">
+            تدوين سفر أو فصل جديد
           </h1>
-          <p class="text-xs text-stone-400 mt-1 max-w-xl">
-            أضف فصلاً جديداً لرواية قائمة أو أنشئ عملاً أدبياً جديداً. يتم حفظ النصوص محلياً مع دعم كامل لكافة حركات التشكيل.
+          <p class="text-xs text-[#debfc2]/70 mt-1 max-w-xl">
+            دوّن نصوصك وألحقها بأحد الأروقة الأربعة. يتم ضغط النصوص محلياً بتقنية MTX الفائقة مع الحفاظ الكامل على علامات التشكيل.
           </p>
         </div>
 
-        <!-- Action Button -->
         <div class="flex items-center gap-3">
           <button
             type="button"
             (click)="publishChapter()"
             [disabled]="editorForm.invalid || isProcessing()"
-            class="flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-500 hover:to-red-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs sm:text-sm font-bold shadow-lg shadow-rose-950/60 transition-all cursor-pointer"
+            class="px-6 py-2.5 rounded-xl bg-[#e9c349] hover:bg-[#ffe088] disabled:opacity-40 disabled:cursor-not-allowed text-[#241a00] text-xs font-bold shadow-lg transition-all cursor-pointer flex items-center gap-2"
           >
-            <mat-icon class="text-base">publish</mat-icon>
-            <span>نشر في المكتبة</span>
+            <span class="material-symbols-outlined text-[18px]">publish</span>
+            <span>نشر في الرواق</span>
           </button>
         </div>
       </div>
 
-      <!-- Live Text Stats Bar -->
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div class="p-4 rounded-2xl liquid-glass border border-white/5 space-y-1">
-          <span class="text-[11px] text-stone-400 block">إجمالي الكلمات</span>
-          <div class="text-xl font-bold font-mono-code text-white">
+      <!-- Live Statistics Cards -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="p-4 rounded-xl bg-[#1c1b1d] border border-white/[0.06]">
+          <span class="text-[11px] text-[#debfc2]/60 block mb-1">إجمالي الكلمات</span>
+          <div class="text-xl font-bold font-mono text-white">
             {{ getWordCount() }}
           </div>
-          <span class="text-[10px] text-stone-500">كلمة عربية</span>
+          <span class="text-[10px] text-[#debfc2]/50">كلمة عربية</span>
         </div>
 
-        <div class="p-4 rounded-2xl liquid-glass border border-white/5 space-y-1">
-          <span class="text-[11px] text-stone-400 block">عدد الأحرف</span>
-          <div class="text-xl font-bold font-mono-code text-rose-300">
+        <div class="p-4 rounded-xl bg-[#1c1b1d] border border-white/[0.06]">
+          <span class="text-[11px] text-[#debfc2]/60 block mb-1">عدد الأحرف</span>
+          <div class="text-xl font-bold font-mono text-[#ffb2bd]">
             {{ editorForm.get('content')?.value?.length || 0 }}
           </div>
-          <span class="text-[10px] text-stone-500">حرف مع الحركات</span>
+          <span class="text-[10px] text-[#debfc2]/50">حرف مع التشكيل</span>
         </div>
 
-        <div class="p-4 rounded-2xl liquid-glass border border-white/5 space-y-1">
-          <span class="text-[11px] text-stone-400 block">وقت القراءة التقريبي</span>
-          <div class="text-xl font-bold font-mono-code text-amber-400">
-            {{ getReadingTime() }} دقيقة
+        <div class="p-4 rounded-xl bg-[#1c1b1d] border border-white/[0.06]">
+          <span class="text-[11px] text-[#debfc2]/60 block mb-1">علامات التشكيل</span>
+          <div class="text-xl font-bold font-mono text-[#7bd8b1]">
+            {{ getDiacriticsCount() }}
           </div>
-          <span class="text-[10px] text-stone-500">بمعدل 200 كلمة/دقيقة</span>
+          <span class="text-[10px] text-[#debfc2]/50">حركة مضبوطة</span>
         </div>
 
-        <div class="p-4 rounded-2xl liquid-glass border border-white/5 space-y-1">
-          <span class="text-[11px] text-stone-400 block">حالة النص</span>
-          <div class="text-sm font-bold text-emerald-400 flex items-center gap-1.5 pt-1">
-            <mat-icon class="text-base text-emerald-400">check_circle</mat-icon>
-            <span>{{ editorForm.valid ? 'جاهز للنشر' : 'في انتظار الإكمال' }}</span>
+        <div class="p-4 rounded-xl bg-[#1c1b1d] border border-white/[0.06]">
+          <span class="text-[11px] text-[#debfc2]/60 block mb-1">توفير MTX التقديري</span>
+          <div class="text-xl font-bold font-mono text-[#e9c349]">
+            75%+
           </div>
-          <span class="text-[10px] text-stone-500">حفظ تلقائي محلي</span>
+          <span class="text-[10px] text-[#debfc2]/50">ضغط فوري فائق السرعة</span>
         </div>
       </div>
 
-      <!-- Main Editor Form -->
-      <form [formGroup]="editorForm" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <!-- Editor Form -->
+      <form [formGroup]="editorForm" class="space-y-5 bg-[#1c1b1d]/80 border border-white/[0.08] p-6 rounded-2xl shadow-xl">
         
-        <!-- Left: Text Area (Main Editor) -->
-        <div class="lg:col-span-2 space-y-4">
-          
-          <div class="space-y-2">
-            <div class="flex items-center justify-between">
-              <label for="chapter-content-area" class="text-xs font-semibold text-stone-300">
-                محتوى الفصل (يدعم التشكيل والحركات):
-              </label>
-
-              <button
-                type="button"
-                (click)="loadSampleText()"
-                class="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1 cursor-pointer"
-              >
-                <mat-icon class="text-sm">auto_stories</mat-icon>
-                <span>إدراج نص تجريبي</span>
-              </button>
-            </div>
-
-            <textarea
-              id="chapter-content-area"
-              formControlName="content"
-              rows="18"
-              placeholder="اكتب هنا فصل روايتك بالعربية... يمكنك كتابة الحوارات وتنسيق الفقرات والحركات بدقة تامة..."
-              class="w-full bg-stone-900/90 text-stone-100 border border-stone-800 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 rounded-2xl p-5 font-amiri text-lg leading-loose resize-y shadow-inner focus:outline-none placeholder:text-stone-600"
-            ></textarea>
-
-            @if (editorForm.get('content')?.touched && editorForm.get('content')?.invalid) {
-              <p class="text-xs text-rose-400 mt-1">يجب كتابة محتوى الفصل (10 أحرف على الأقل).</p>
-            }
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="space-y-1.5">
+            <label for="editor-novel-select" class="text-xs font-semibold text-[#debfc2]">اختر السفر التابع له</label>
+            <select
+              id="editor-novel-select"
+              formControlName="novelId"
+              class="w-full px-3.5 py-2.5 rounded-xl bg-[#0e0e10] border border-white/10 text-xs text-white focus:outline-none focus:border-[#e9c349]"
+            >
+              @for (novel of novelStore.novels(); track novel.id) {
+                <option [value]="novel.id">{{ novel.title }} ({{ novel.riwaqName }})</option>
+              }
+            </select>
           </div>
 
-        </div>
-
-        <!-- Right: Chapter & Novel Metadata Sidebar -->
-        <div class="space-y-5">
-          
-          <div class="p-6 liquid-glass rounded-3xl border border-rose-500/20 space-y-4 shadow-xl">
-            <h3 class="text-base font-bold font-amiri text-white flex items-center gap-2">
-              <mat-icon class="text-rose-400">bookmark</mat-icon>
-              <span>بيانات الرواية والفصل</span>
-            </h3>
-
-            <!-- Novel Destination -->
-            <div class="space-y-1">
-              <label for="novel-select-control" class="text-xs text-stone-300 block">إضافة إلى رواية:</label>
-              <select
-                id="novel-select-control"
-                formControlName="novelId"
-                class="w-full bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 text-xs text-stone-200 focus:border-rose-500 focus:outline-none"
-              >
-                <option value="new">+ إنشاء رواية جديدة</option>
-                @for (n of store.novels(); track n.id) {
-                  <option [value]="n.id">{{ n.title }} ({{ n.chapters.length }} فصول)</option>
-                }
-              </select>
-            </div>
-
-            <!-- Novel Title (if new) -->
-            @if (editorForm.get('novelId')?.value === 'new') {
-              <div class="space-y-1">
-                <label for="novel-title-control" class="text-xs text-stone-300 block">عنوان الرواية الجديدة:</label>
-                <input
-                  id="novel-title-control"
-                  type="text"
-                  formControlName="novelTitle"
-                  placeholder="مثال: أصداء الماضي"
-                  class="w-full bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 text-xs text-stone-100 focus:border-rose-500 focus:outline-none"
-                />
-              </div>
-
-              <div class="space-y-1">
-                <label for="author-control" class="text-xs text-stone-300 block">اسم المؤلف:</label>
-                <input
-                  id="author-control"
-                  type="text"
-                  formControlName="author"
-                  placeholder="اسم المؤلف"
-                  class="w-full bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 text-xs text-stone-100 focus:border-rose-500 focus:outline-none"
-                />
-              </div>
-
-              <div class="space-y-1">
-                <label for="translator-control" class="text-xs text-stone-300 block">اسم المترجم (اختياري):</label>
-                <input
-                  id="translator-control"
-                  type="text"
-                  formControlName="translator"
-                  placeholder="اتركه فارغاً إذا كان عملاً عربياً أصلياً"
-                  class="w-full bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 text-xs text-stone-100 focus:border-rose-500 focus:outline-none"
-                />
-              </div>
-
-              <div class="space-y-1">
-                <label for="category-control" class="text-xs text-stone-300 block">تصنيف الرواية:</label>
-                <input
-                  id="category-control"
-                  type="text"
-                  formControlName="category"
-                  placeholder="مثال: فانتازيا ملحمية، غموض، تاريخ"
-                  class="w-full bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 text-xs text-stone-100 focus:border-rose-500 focus:outline-none"
-                />
-              </div>
-            }
-
-            <!-- Chapter Title -->
-            <div class="space-y-1">
-              <label for="chapter-title-control" class="text-xs text-stone-300 block">عنوان الفصل:</label>
-              <input
-                id="chapter-title-control"
-                type="text"
-                formControlName="chapterTitle"
-                placeholder="مثال: الفصل الأول: لقاء عند الفجر"
-                class="w-full bg-stone-950 border border-stone-800 rounded-xl px-3 py-2 text-xs text-stone-100 focus:border-rose-500 focus:outline-none"
-              />
-            </div>
-
-            <!-- Submit Button Inside Sidebar -->
-            <div class="pt-3">
-              <button
-                type="button"
-                (click)="publishChapter()"
-                [disabled]="editorForm.invalid || isProcessing()"
-                class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs shadow-md transition-all cursor-pointer"
-              >
-                <mat-icon class="text-base">publish</mat-icon>
-                <span>نشر والانتقال للقراءة</span>
-              </button>
-            </div>
-
+          <div class="space-y-1.5">
+            <label for="editor-chapter-title" class="text-xs font-semibold text-[#debfc2]">عنوان الفصل أو المخطوطة</label>
+            <input
+              id="editor-chapter-title"
+              type="text"
+              formControlName="title"
+              placeholder="مثال: الفصل الثالث: شروق الحكمة في ديوان الزمان"
+              class="w-full px-3.5 py-2.5 rounded-xl bg-[#0e0e10] border border-white/10 text-xs text-white focus:outline-none focus:border-[#e9c349]"
+            />
           </div>
-
         </div>
 
+        <div class="space-y-1.5">
+          <label for="editor-chapter-content" class="text-xs font-semibold text-[#debfc2]">متن النص (يقبل كافة الحركات والتشكيل العربي الأصيل)</label>
+          <textarea
+            id="editor-chapter-content"
+            formControlName="content"
+            rows="12"
+            placeholder="اكتب أو الصق النص هنا..."
+            class="w-full px-4 py-3 rounded-xl bg-[#0e0e10] border border-white/10 text-sm leading-relaxed text-white font-amiri focus:outline-none focus:border-[#e9c349]"
+          ></textarea>
+        </div>
+
+        @if (notice()) {
+          <div class="p-3 rounded-xl bg-[#005039]/50 border border-[#7bd8b1]/40 text-xs text-[#7bd8b1]">
+            {{ notice() }}
+          </div>
+        }
       </form>
-
     </div>
   `,
 })
 export class NovelEditor {
-  readonly store = inject(NovelStore);
+  readonly novelStore = inject(NovelStore);
   private readonly router = inject(Router);
 
   readonly isProcessing = signal<boolean>(false);
+  readonly notice = signal<string | null>(null);
 
   readonly editorForm = new FormGroup({
-    novelId: new FormControl<string>('new', { nonNullable: true, validators: [Validators.required] }),
-    novelTitle: new FormControl<string>('رواية جديدة', { nonNullable: true }),
-    author: new FormControl<string>('الكاتب', { nonNullable: true }),
-    translator: new FormControl<string>('الأصل العربي', { nonNullable: true }),
-    category: new FormControl<string>('أدب وروائع', { nonNullable: true }),
-    chapterTitle: new FormControl<string>('الفصل الأول', { nonNullable: true, validators: [Validators.required] }),
-    content: new FormControl<string>('', { nonNullable: true, validators: [Validators.required, Validators.minLength(10)] }),
+    novelId: new FormControl(this.novelStore.novels()[0]?.id || '', [Validators.required]),
+    title: new FormControl('', [Validators.required, Validators.minLength(3)]),
+    content: new FormControl('', [Validators.required, Validators.minLength(10)]),
   });
-
-  constructor() {
-    const selected = this.store.selectedNovel();
-    if (selected) {
-      this.editorForm.patchValue({
-        novelId: selected.id,
-        chapterTitle: `الفصل ${selected.chapters.length + 1}`,
-      });
-    }
-
-    this.loadSampleText();
-  }
 
   getWordCount(): number {
     const text = this.editorForm.get('content')?.value || '';
     return text.trim().split(/\s+/).filter(Boolean).length;
   }
 
-  getReadingTime(): number {
-    const words = this.getWordCount();
-    return Math.max(1, Math.ceil(words / 200));
-  }
-
-  loadSampleText(): void {
-    this.editorForm.patchValue({
-      content: `كَانَ الكَاتِبُ كَرِيمٌ يَقِفُ عِنْدَ نَافِذَةِ مَكْتَبِهِ القَدِيمِ، يَنْظُرُ إِلَى الأُفُقِ البَعِيدِ، وَفِي يَدِهِ كِتَابٌ أَصْفَرُ الوَرَقِ.
-كَانَ يُرَدِّدُ فِي سِرِّهِ: «كَمْ مِنْ كَلِمَةٍ كَتَبَهَا كَاتِبٌ فَكَانَتْ كَالنُّورِ لِمَنْ يَقْرَأُ، وَكَمْ مِنْ كِتَابٍ أَنَارَ كَوْنًا كَانَ غَارِقًا فِي العَتَمَةِ».
-
-كَرِيمٌ كَانَ يُدْرِكُ أَنَّ اللُّغَةَ العَرَبِيَّةَ رُوحٌ تَنْبِضُ بِالحَرَكَاتِ؛ وَالتَّشْكِيلُ هُوَ الرَّوْنَقُ الَّذِي يَحْفَظُ حَقَّ كُلِّ حَرْفٍ.
-مَضَتِ السَّاعَاتُ وَهُوَ يَدُونُ فِي كُرَّاسَتِهِ دُرُوسَ الأَيَّامِ وَحِكَايَاتِ العَابِرِينَ، مُتَيَقِّنًا أَنَّ الأَدَبَ هُوَ الأَثَرُ البَاقِي.`,
-    });
+  getDiacriticsCount(): number {
+    const text = this.editorForm.get('content')?.value || '';
+    return (text.match(/[\u064B-\u065F\u0670]/g) || []).length;
   }
 
   async publishChapter(): Promise<void> {
-    if (this.editorForm.invalid || this.isProcessing()) return;
-
+    if (this.editorForm.invalid) return;
     this.isProcessing.set(true);
-    try {
-      const val = this.editorForm.getRawValue();
-      const novelId = val.novelId === 'new' ? `novel-${Date.now()}` : val.novelId;
-      await this.store.publishChapter(
-        novelId,
-        val.chapterTitle,
-        val.content,
-        {
-          title: val.novelTitle,
-          author: val.author,
-          category: val.category,
-          description: `رواية ${val.novelTitle} بقلم ${val.author}`,
-        }
-      );
 
-      this.router.navigate(['/reader']);
-    } catch (err) {
-      console.error('Error publishing chapter:', err);
+    const val = this.editorForm.value;
+    const novelId = val.novelId!;
+    const title = val.title!;
+    const content = val.content!;
+
+    try {
+      await this.novelStore.publishChapter(novelId, title, content);
+      this.notice.set('تم تشفير الفصل بنجاح عبر خوارزمية MTX وإلحاقه بالسفر!');
+      setTimeout(() => {
+        this.router.navigate(['/novel', novelId]);
+      }, 1500);
+    } catch (e) {
+      console.error(e);
+      this.notice.set('حدث خطأ أثناء تشفير ونشر الفصل.');
     } finally {
       this.isProcessing.set(false);
     }

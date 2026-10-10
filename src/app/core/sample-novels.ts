@@ -18,320 +18,462 @@ export interface RawNovelData {
   category: string;
   description: string;
   coverGradient: string;
+  coverImage: string;
+  riwaqId: string;
+  riwaqName: string;
   accentColor: string;
   rating?: number;
   ratingCount?: number;
   views?: string;
   badge?: string;
-  section: 'featured' | 'trending' | 'translated' | 'fantasy';
+  section: string;
   chapters: RawChapterData[];
 }
 
-export const SAMPLE_NOVELS: RawNovelData[] = [
+export const SANCTUARIES_DATA = [
   {
-    id: 'novel-valley-chronicles',
-    title: 'سجلات مقاتل الظلال والقرمز',
-    author: 'ألكسندر فاليري',
-    authorAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?q=80&w=300&auto=format&fit=crop',
-    authorCover: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=1500&auto=format&fit=crop',
-    authorBio: 'كاتب فانتازيا ملحمية بريطاني، حائز على جوائز في أدب الخيال الأسطوري وصاحب ملحمة معاقل الظلال.',
-    translator: 'فريق مقاتل الروايات',
-    translatorAvatar: 'assist/img/logo.png',
-    translatorCover: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?q=80&w=1500&auto=format&fit=crop',
-    translatorBio: 'فريق الترجمة والتعريب الرسمي لمنصة مقاتل الروايات؛ تعريب حصري متقن يحافظ على روح وفصاحة الضاد.',
-    category: 'فانتازيا ملحمية',
-    section: 'featured',
-    rating: 4.92,
-    ratingCount: 2840,
-    views: '240K',
-    badge: 'الأكثر فصولاً',
-    description: 'في معاقل الجبال القرمزية، تكتشف سلالة قديمة مخطوطات مشفرة بلغة الأثير. ملحمة أدبية تحبس الأنفاس بين الحقيقة والأساطير المنسية لصراع مقاتلي الظلال.',
+    id: 'riwaq-al-riwayat',
+    name: 'رواق الروايات',
+    subtitle: 'قرمزي داكن وفحم',
+    badge: 'البوابة الأولى',
+    tagColor: 'primary',
+    bgImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBhuTKbcv3DDAOmL6x29mLQ2E1h9qzTJKxRh98CGBL9S0cxLlLuJknlnmELv1BPuHrchLgYYIMGXlZT0ABzb3XJlu2hQwgtLMtzDTZkjXxBpsEiX0FYkTeb5AW-SRybvbJJ3No4Fgu2qeBISTjBt2zLuH1y02Rx_p5NIK6jn26omWouHTS1QvKYyotcUyRin1LgymXW1zs6qqewN8jK-onh2SvHVl71JxjyZAO7frkv3HPXYvzzhsE1GA',
+    btnBgImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBhuTKbcv3DDAOmL6x29mLQ2E1h9qzTJKxRh98CGBL9S0cxLlLuJknlnmELv1BPuHrchLgYYIMGXlZT0ABzb3XJlu2hQwgtLMtzDTZkjXxBpsEiX0FYkTeb5AW-SRybvbJJ3No4Fgu2qeBISTjBt2zLuH1y02Rx_p5NIK6jn26omWouHTS1QvKYyotcUyRin1LgymXW1zs6qqewN8jK-onh2SvHVl71JxjyZAO7frkv3HPXYvzzhsE1GA',
+    btnGradient: 'from-[#881337]/90 via-[#400014]/80 to-[#131315]/90',
+    btnBorder: 'border-[#ffb2bd]/35 hover:border-[#ffb2bd]/80',
+    btnTextColor: 'text-[#ffd9dd]',
+    lore: 'ليل درامي وتوتر مسرحي يستحضر هيبة السرد الإنساني وصراع الأقدار وشجون النفس الحائرة بين النور والعتمة.',
+    quote: '«في دهاليز الخيال تتشكل حيوات لم نعشها، ونختبر مصائر لا تنتهي قبل أن يرتد إلينا طرفنا.»',
+    accent: '#ffb2bd',
+    btnBg: 'bg-primary-container text-on-primary-container hover:bg-primary hover:text-on-primary',
+    actionText: 'ادخل رواق الروايات',
+  },
+  {
+    id: 'riwaq-al-malahim',
+    name: 'رواق الملاحم',
+    subtitle: 'برونز وأزرق ليلي',
+    badge: 'البوابة الثانية',
+    tagColor: 'secondary',
+    bgImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBDdhqc3I7gyCxIu2Zf6NduqtEQWE1etB38c8EY_J5-jMQnJzDzO7BzGMLFnZ-ip1NSUgMVOtisScbGQ04qYkzwsa4oUZAepemoPxUtRtxf--Hw1D_nfAs66nAU594mLUjgimne6Eu7yc8tb7j1tyfypiO__DtAoXpnMunN8H6i-XKxc6SSzeMHV8n6U3gmywovVLqniRnBxeJYF91Q96eWB3_7GXVrBtXjdMsG5K89sX25PBklhmHihw',
+    btnBgImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBDdhqc3I7gyCxIu2Zf6NduqtEQWE1etB38c8EY_J5-jMQnJzDzO7BzGMLFnZ-ip1NSUgMVOtisScbGQ04qYkzwsa4oUZAepemoPxUtRtxf--Hw1D_nfAs66nAU594mLUjgimne6Eu7yc8tb7j1tyfypiO__DtAoXpnMunN8H6i-XKxc6SSzeMHV8n6U3gmywovVLqniRnBxeJYF91Q96eWB3_7GXVrBtXjdMsG5K89sX25PBklhmHihw',
+    btnGradient: 'from-[#af8d11]/85 via-[#3c2f00]/80 to-[#131315]/90',
+    btnBorder: 'border-[#e9c349]/40 hover:border-[#e9c349]/80',
+    btnTextColor: 'text-[#ffe088]',
+    lore: 'سماء أسطورية تحتضن بطولات الأولين، صهيل الجيوش القديمة، وألواح الطين المنقوشة بأسماء مَن قهروا الزمان.',
+    quote: '«هو الذي رأى كل شيء فبلغت به الحكمة أقاصي الأرض، وعاد يروي ما كان قبل الطوفان العظيم.»',
+    accent: '#e9c349',
+    btnBg: 'bg-secondary-container text-on-secondary hover:bg-secondary hover:text-on-secondary-fixed',
+    actionText: 'ادخل رواق الملاحم',
+  },
+  {
+    id: 'riwaq-al-hikma',
+    name: 'رواق الحكمة',
+    subtitle: 'عاجي نقي وفحم',
+    badge: 'البوابة الثالثة',
+    tagColor: 'on-surface',
+    bgImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA7PEOsDpl6CigcOGZqFJrjcbmFDm5aJTDYga2fShxU90T-jtawAhiDhsb2osDZbThxifuqEbWPKj1tkwNsLoxsDn8f0gIoMR58u_rwLgAC4Q1EOh7DHtPKQV7CsIGwKEyq6oeQG3-KWIJjTa5R4GXkZx82xgwa9xxliRhcDi84w5mA7wA6lQkQu4hcE0xZ5Ve8YTUR-K2jDl1uKqlrIh_N0Z8Ru8Guw6fN136LM9yKeXvm7lAGaMYVsw',
+    btnBgImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA7PEOsDpl6CigcOGZqFJrjcbmFDm5aJTDYga2fShxU90T-jtawAhiDhsb2osDZbThxifuqEbWPKj1tkwNsLoxsDn8f0gIoMR58u_rwLgAC4Q1EOh7DHtPKQV7CsIGwKEyq6oeQG3-KWIJjTa5R4GXkZx82xgwa9xxliRhcDi84w5mA7wA6lQkQu4hcE0xZ5Ve8YTUR-K2jDl1uKqlrIh_N0Z8Ru8Guw6fN136LM9yKeXvm7lAGaMYVsw',
+    btnGradient: 'from-[#39393b]/85 via-[#201f22]/80 to-[#131315]/90',
+    btnBorder: 'border-white/25 hover:border-white/70',
+    btnTextColor: 'text-white',
+    lore: 'فضاء تأملي مشرق بسكينة العقل والمنطق؛ أمهات الفلسفة والتساؤل الوجودي في تجرد تام عن زيف الحواس.',
+    quote: '«ليست الغاية المعرفة بما قاله الآخرون، بل البحث عن حقيقة الوجود وحرية البصيرة الكامنة فينا.»',
+    accent: '#e5e1e4',
+    btnBg: 'bg-surface-container-high text-on-surface hover:bg-inverse-surface hover:text-inverse-on-surface',
+    actionText: 'ادخل رواق الحكمة',
+  },
+  {
+    id: 'riwaq-al-turath',
+    name: 'رواق التراث',
+    subtitle: 'زمردي ونحاس أثري',
+    badge: 'البوابة الرابعة',
+    tagColor: 'tertiary',
+    bgImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCethOeRiCH5aVUzklgBRZoRvhplRvmSGpKr23Sj5gX6tZ8dXHbVCbLOyQYfnA71A-zCiHvrJeU3eiHSbIh7FlL8T_U_s6S4IaFEZqAflkN4w-NqJhj7lYjHuMEwuu3beZLq7LDccfe6O1t-5QRTxk96boY3xN03MYN6354XH8tn2wtSLV85rItgMouRY04HcxUzj2PLY49hlYVjfSRPfzn058OiUliDOsdy89WjrLWpsYLAz4LZZaTaQ',
+    btnBgImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCethOeRiCH5aVUzklgBRZoRvhplRvmSGpKr23Sj5gX6tZ8dXHbVCbLOyQYfnA71A-zCiHvrJeU3eiHSbIh7FlL8T_U_s6S4IaFEZqAflkN4w-NqJhj7lYjHuMEwuu3beZLq7LDccfe6O1t-5QRTxk96boY3xN03MYN6354XH8tn2wtSLV85rItgMouRY04HcxUzj2PLY49hlYVjfSRPfzn058OiUliDOsdy89WjrLWpsYLAz4LZZaTaQ',
+    btnGradient: 'from-[#005039]/85 via-[#002115]/80 to-[#131315]/90',
+    btnBorder: 'border-[#7bd8b1]/35 hover:border-[#7bd8b1]/80',
+    btnTextColor: 'text-[#97f5cc]',
+    lore: 'مهابة خزائن المخطوطات النادرة، عيون الشعر العربي، ونفائس المصنفات الأندلسية والمشرقية المحفوظة بعناية.',
+    quote: '«جمع بين الهزل والجد، وظاهره أدب وباطنه حكمة، كنزٌ تتوارثه العصور دون أن ينضب بهاؤه.»',
+    accent: '#7bd8b1',
+    btnBg: 'bg-tertiary-container text-on-tertiary-container hover:bg-tertiary hover:text-on-tertiary',
+    actionText: 'ادخل رواق التراث',
+  },
+];
+
+export const SAMPLE_NOVELS: RawNovelData[] = [
+  // 1. رواق الروايات
+  {
+    id: 'novel-obsidian-labyrinth',
+    title: 'متاهة السج',
+    author: 'أديب الأروقة',
+    authorBio: 'كاتب وروائي يستلهم من متاهات النفس البشرية وعوالم الظلال حبكات غامرة.',
+    category: 'رواية سيكولوجية غامضة',
+    riwaqId: 'riwaq-al-riwayat',
+    riwaqName: 'رواق الروايات',
     coverGradient: 'from-rose-950 via-stone-900 to-black',
-    accentColor: '#e11d48',
+    coverImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuClEpwsOHB6J9NY6vqIZ76GZZvpQppiB8yR60TMuJqm3PNazgJYTYDicH9U8oekTetWdhyxKcDMt3cc6EaBQcg8e7Bp6mNpJtJQCmBu88962tyM46wA8cQMaVOPGE3a_qs8YOF-zr60HbLTFNuV4lAgCJGf5f1kFHzXMHohAn4v4BeWzS5ro6vO2OIJ44zu1PDhB36zryUy8g18NA3vmOMiydlzaEHIdeu0TJtD1vmt8vn4ZuugVPRZ4w',
+    accentColor: '#ffb2bd',
+    rating: 4.9,
+    ratingCount: 3120,
+    views: '185K',
+    badge: 'سفر القرمزي',
+    section: 'riwaq-al-riwayat',
+    description: 'في دهاليز قصر قديم مهجور، يجد باحث مخطوطات نفسه محاصراً بين جدران عاكسة تعيد سرد ذكريات لم يعشها، حيث يرقد الحرف ليعاود النهوض حياً في ضمير القارئ.',
     chapters: [
       {
         chapterIndex: 1,
-        title: 'الفصل الأول: الباب الحجري ذو النقوش السبعة',
-        content: `كَانَ الكَاتِبُ كَرِيمٌ يَقِفُ عِنْدَ نَافِذَةِ مَكْتَبِهِ القَدِيمِ، يَنْظُرُ إِلَى الأُفُقِ البَعِيدِ، وَفِي يَدِهِ كِتَابٌ أَصْفَرُ الوَرَقِ.
-كَانَ يُرَدِّدُ فِي سِرِّهِ: «كَمْ مِنْ كَلِمَةٍ كَتَبَهَا كَاتِبٌ فَكَانَتْ كَالنُّورِ لِمَنْ يَقْرَأُ، وَكَمْ مِنْ كِتَابٍ أَنَارَ كَوْنًا كَانَ غَارِقًا فِي العَتَمَةِ».
+        title: 'الفصل الأول: الباب الموصد بالحبر الأسود',
+        content: `كَانَتِ الخُطُوَاتُ تَرِنُّ فِي مَمَرِّ السَّجِّ كَأَنَّهَا صَدَى دَقَّاتِ قَلْبٍ مُحْتَضَرٍ.
+وَقَفَ البَاحِثُ أَمَامَ الجِدَارِ الرُّخَامِيِّ، وَقَدْ أَمْسَكَ بِمِصْبَاحِهِ الصَّغِيرِ الَّذِي يَلْفِظُ شُعَاعَهُ الأَخِيرَ نَحْوَ نُقُوشٍ غَائِرَةٍ لَمْ تَرَ الشَّمْسَ مُنْذُ قُرُونٍ.
 
-كَرِيمٌ كَانَ يُدْرِكُ أَنَّ اللُّغَةَ العَرَبِيَّةَ لَيْسَتْ مُجَرَّدَ حُرُوفٍ جَامِدَةٍ؛ بَلْ هِيَ رُوحٌ تَنْبِضُ بِالحَرَكَاتِ:
-فَالـ «كَ» المَفْتُوحَةُ فِي «كَانَ» وَ«كَرَمٍ» وَ«كَشْفٍ» تَبْعَثُ فِي السَّمْعِ صَدًى خَفِيفًا،
-بَيْنَمَا الـ «كِ» المَكْسُورَةُ فِي «كِتَابٍ» وَ«كِيَانٍ» وَ«كِسْوَةٍ» تَحْمِلُ عُمْقًا وَهَيْبَةً لَا يُخْطِئُهَا لَبِيبٌ!
-وَالـ «كُ» المَضْمُومَةُ فِي «كُتُبٍ» وَ«كُرَةٍ» وَ«كُلٍّ» تَضُمُّ المَعْنَى ضَمًّا رَصِينًا،
-وَالـ «كْ» السَّاكِنَةُ فِي «تَذْكُرُ» وَ«يَشْكُرُ» تَقِفُ بِاتِّزَانٍ رَائِعٍ.
+«لَيْسَتِ الرِّوَايَةُ مَهْرَبًا مِنَ الوَاقِعِ»، تَرَدَّدَ الصَّوْتُ فِي خَلَدِهِ، «بَلْ هِيَ النَّافِذَةُ الوَحِيدَةُ الَّتِي نُطِلُّ مِنْهَا عَلَى أَعْمَاقِنَا المَوْؤُودَةِ».
+كَانَ الحِبْرُ عَلَى الوَرَقِ لَا يَزَالُ يَفُوحُ بِرَائِحَةِ المِسْكِ وَالبَرَكِ، وَكَأَنَّ اليَدَ الَّتِي خَطَّتْ هَذِهِ الكَلِمَاتِ انْسَحَبَتْ لِتَوِّهَا مِنَ الغُرْفَةِ.
 
-كَذَلِكَ الـ «مَ» وَالـ «مِ» وَالـ «مُ»:
-مِنْ «مَطَرٍ» يَهْطِلُ عَلَى «مَدِينَةٍ»، إِلَى «مِفْتَاحٍ» يَفْتَحُ بَابَ «مَعْرِفَةٍ»، إِلَى «مُسْتَقْبَلٍ» يَنْتَظِرُ «مُشْرِقًا».
-وَالـ «نَ» وَالـ «نِ» وَالـ «نُ»:
-نَهْرٌ يَتَدَفَّقُ بِالنَّدَى، وَنِدَاءٌ صَادِقٌ يَحْمِلُ نُورًا خَالِدًا.
-
-قَالَ كَرِيمٌ لِصَدِيقِهِ نَادِرٍ:
-— هَلْ تَرَى كَيْفَ أَنَّ الحَرْفَ نَفْسَهُ يَتَغَيَّرُ مَعْنَاهُ تَمَامًا بِمُجَرَّدِ تَغَيُّرِ حَرَكَتِهِ؟
-أَجَابَهُ نَادِرٌ بَابْتِسَامَةٍ:
-— نَعَمْ يَا كَرِيمُ! هَذَا هُوَ سِرُّ اللُّغَةِ؛ كَلِمَةٌ وَاحِدَةٌ قَدْ تَكُونُ «عَلَمًا» أَوْ «عِلْمًا» أَوْ «عَلَّمَ»، وَالتَّشْكِيلُ هُوَ الرَّوْنَقُ الَّذِي يَحْفَظُ حَقَّ كُلِّ حَرْفٍ.
-
-مَضَتِ السَّاعَاتُ وَكَرِيمٌ يَدُونُ فِي كُرَّاسَتِهِ:
-«مَنْ طَلَبَ العِلَا سَهِرَ اللَّيَالِي، وَمَنْ أَرَادَ الحِكْمَةَ كَانَ لَهُ فِي كُلِّ سَطْرٍ مَعْنًى، وَفِي كُلِّ حَرَكَةٍ دَلَالَةٌ».
-كَانَ الصَّمْتُ يَسُودُ الغُرْفَةَ إِلَّا مِنْ حَفِيفِ الوَرَقِ، وَكَانَ كُلَّمَا وَصَلَ إِلَى نِهَايَةِ صَفْحَةٍ، عَادَ لِيَقْرَأَهَا بِصَوْتٍ عَالٍ لِيَتَأَكَّدَ مِنْ جَمَالِ السَّبْكِ وَدِقَّةِ الضَّبْطِ.`,
+مَدَّ يَدَهُ لِيَمَسَّ الحَرْفَ المَنْقُوشَ: كَانَ بَارِدًا كَالثَّلْجِ، لَكِنَّهُ سُرْعَانَ مَا انْبَعَثَتْ مِنْهُ حَرَارَةٌ غَامِضَةٌ تَسْرِي فِي أَنَامِلِهِ. هُنَا بَدَأَتِ المَتَاهَةُ تُفْصِحُ عَنْ أَسْرَارِهَا، حَيْثُ لَا فَرْقَ بَيْنَ القَارِئِ وَالكِتَابِ، وَلَا حَدَّ يَفْصِلُ بَيْنَ الخَيَالِ وَالحَقِيقَةِ.`
       },
       {
         chapterIndex: 2,
-        title: 'الفصل الثاني: همس الأروقة ومصباح النحاس',
-        content: `فِي الصَّبَاحِ التَّالِي، خَرَجَ كَرِيمٌ إِلَى بُسْتَانِ المَدِينَةِ.
-كَانَتِ الأَشْجَارُ تَتَمَايَلُ مَعَ نَسَمَاتِ الفَجْرِ، وَكَانَ صَوْتُ العَصَافِيرِ يُشْبِهُ قَصِيدَةً مُنْتَظِمَةَ الإِيقَاعِ.
-تَذَكَّرَ كَرِيمٌ سُؤَالَ صَدِيقِهِ عَنِ التَّكْرَارِ فِي النُّصُوصِ:
-«لِمَاذَا تَتَكَرَّرُ الكَلِمَاتُ فِي الرِّوَايَاتِ؟ لِمَاذَا نَجِدُ كَلِمَةَ (كَانَ) وَ(قَالَ) وَ(فِي) وَ(عَلَى) فِي كُلِّ سَطْرٍ؟»
+        title: 'الفصل الثاني: مرآة الذاكرة الغائرة',
+        content: `انْشَقَّ الجِدَارُ رُوَيْدًا رُوَيْدًا، لِيَكْشِفَ عَنْ رِوَاقٍ طَوِيلٍ تَتَرَاصُّ عَلَى جَانِبَيْهِ مَرَايَا مُحَاطَةٌ بِإِطَارَاتٍ قَرْمَزِيَّةٍ دَاكِنَةٍ.
+لَمْ تَكُنِ المَرَايَا تَعْكِسُ وَجْهَهُ، بَلْ كَانَتْ تَعْرِضُ وُجُوهَ شَخْصِيَّاتٍ رِوَائِيَّةٍ مَرَّتْ عَلَيْهِ فِي مَطَالَعَاتِ صِبَاهُ: هُنَا فَارِسٌ يَنْظُرُ بِأَسًى نَحْوَ قَلْعَةٍ مُحْتَرِقَةٍ، وَهُنَاكَ سَيِّدَةٌ تَنْتَظِرُ رِسَالَةً لَنْ تَصِلَ أَبَدًا.
 
-فَكَّرَ كَرِيمٌ وَقَالَ:
-«لِأَنَّ التَّكْرَارَ هُوَ نَسِيجُ الحِكَايَةِ. كُلَّمَا تَكَرَّرَتِ الكَلِمَةُ فِي مَوْضِعِهَا الصَّحِيحِ، رَسَّخَتِ المَعْنَى وَأَعْطَتِ النَّصَّ جَرْسًا مُوسِيقِيًّا فَرِيدًا».
-كَانَ يُعِيدُ قِرَاءَةَ النَّصِّ مَرَّةً بَعْدَ مَرَّةٍ:
-كَانَ كَرِيمٌ يَكْتُبُ، وَكَانَ نَادِرٌ يَسْمَعُ، وَكَانَ الصَّبَاحُ يُشْرِقُ، وَكَانَتِ الحُرُوفُ تَتَأَلَّقُ.
-كِتَابٌ بَعْدَ كِتَابٍ، وَفَصْلٌ بَعْدَ فَصْلٍ، وَفِكْرَةٌ تَلِيهَا فِكْرَةٌ.`,
-      },
-      {
-        chapterIndex: 3,
-        title: 'الفصل الثالث: خريطة الأودية السبعة',
-        content: `فَتَحَ كَرِيمٌ الخَرِيطَةَ الجِلْدِيَّةَ العَتِيقَةَ عَلَى طَاوِلَتِهِ.
-كَانَتِ الخُطُوطُ القَرْمَزِيَّةُ تَتَقَاطَعُ عِنْدَ نُقْطَةٍ وَاحِدَةٍ تُسَمَّى «وَادِي الشُّهْبِ».
-— إِنَّ الأَسْرَارَ لَا تُعْطِي نَفْسَهَا إِلَّا لِمَنْ يَصْبِرُ عَلَى مَشَقَّةِ الطَّرِيقِ.
-قَالَ نَادِرٌ ذَلِكَ وَهُوَ يُشِيرُ بِسَبَّابَتِهِ إِلَى مَمَرٍّ ضَيِّقٍ بَيْنَ جَبَلَيْنِ شَاهِقَيْنِ.
-عَزَمَ الِاثْنَانِ عَلَى الرَّحِيلِ قَبْلَ أَنْ يَنْتَصِفَ النَّهَارُ، فَالرِّيحُ كَانَتْ تُبَشِّرُ بِعَاصِفَةٍ لَنْ تَرْحَمَ مَنْ يَتَأَخَّرُ.`,
-      },
-      {
-        chapterIndex: 4,
-        title: 'الفصل الرابع: سيف النار والبلورة المضيئة',
-        content: `عِنْدَ مَدْخَلِ الكَهْفِ، تَوَهَّجَتِ البَلُّورَةُ بِلَوْنٍ أَحْمَرَ دَافِئٍ كَأَنَّهَا قَلْبٌ يَنْبِضُ بِالحَيَاةِ.
-رَفَعَ كَرِيمٌ يَدَهُ مُحَيِّيًا الحُرَّاسَ الصَّامِتِينَ المَنْحُوتِينَ فِي الصَّخْرِ.
-— لَقَدْ وَصَلْنَا إِلَى المَوْضِعِ الَّذِي ذَكَرَتْهُ المَخْطُوطَاتُ المَفْقُودَةُ.
-انْبَلَجَ ضَوْءٌ شَدِيدٌ كَشَفَ عَنْ دَرَجٍ حَجَرِيٍّ يَهْبِطُ نَحْوَ أَعْمَاقِ الأَرْضِ، حَيْثُ تَنْتَظِرُ الحَقِيقَةُ مَنْ يَجْرُؤُ عَلَى خَوْضِ المَجْهُولِ.`,
-      },
-      {
-        chapterIndex: 5,
-        title: 'الفصل الخامس: بزوغ شمس مقاتل الروايات',
-        content: `مَعَ انْقِشَاعِ الظَّلَامِ، خَرَجَ البَطَلَانِ إِلَى قِمَّةِ الجَبَلِ المُنْتَهَى.
-كَانَتِ الشَّمْسُ تُشْرِقُ عَلَى مَمْلَكَةٍ بَيْضَاءَ كَالثَّلْجِ، وَكَانَ كُلُّ سَطْرٍ كُتِبَ فِي هَذِهِ المَلْحَمَةِ شَاهِدًا عَلَى قُوَّةِ الإِرَادَةِ وَشَجَاعَةِ الصُّمُودِ.
-— هُنَا يَبْدَأُ الفَصْلُ الحَقِيقِيُّ، حَيْثُ تُصْبِحُ الحُرُوفُ سُيُوفًا، وَالكَلِمَاتُ دُرُوعًا لَا تُهْزَمُ.`,
-      },
-    ],
+كُلُّ خَطْوَةٍ فِي هَذَا الرِّوَاقِ كَانَتْ تُعِيدُ تَرْتِيبَ المَشَاعِرِ. لَقَدْ أَدْرَكَ أَنَّ الكَلِمَةَ أَقْوَى مِنَ المَوْتِ، وَأَنَّ الأَرْوَاحَ الَّتِي تَسْكُنُ بَيْنَ السُّطُورِ هِيَ أَبْقَى مِنْ أَجْسَادِ مَنْ سَطَّرُوهَا.`
+      }
+    ]
   },
   {
-    id: 'novel-sword-monarch',
-    title: 'سيد السيوف التسعة: ولادة الإمبراطور',
-    author: 'شين تشانغ لين',
-    authorAvatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=300&auto=format&fit=crop',
-    authorCover: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=1500&auto=format&fit=crop',
-    authorBio: 'مؤلف روايات الفنون القتالية الشرقية وشوان هوان، صاحب السلسلة الأسطورية سادة السيوف التسعة.',
-    translator: 'م. أحمد حسام',
-    translatorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=300&auto=format&fit=crop',
-    translatorCover: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?q=80&w=1500&auto=format&fit=crop',
-    translatorBio: 'مترجم متخصص في الروايات الآسيوية وعوالم الزراعة الروحية والأثير، تعريب عربي بليغ ومفصل.',
-    category: 'روايات مترجمة / شوان هوان',
-    section: 'translated',
-    rating: 4.88,
-    ratingCount: 3120,
-    views: '340K',
-    badge: 'الأكثر قراءة',
-    description: 'استيقظ لين في عالم يحكمه الأقوياء بطاقة التشي، ومعه تسعة أختام لسيف لا يقهر. رحلة الصعود من الحضيض إلى قمة العوالم التسعة.',
-    coverGradient: 'from-amber-950 via-stone-900 to-rose-950',
-    accentColor: '#f43f5e',
-    chapters: [
-      {
-        chapterIndex: 1,
-        title: 'الفصل الأول: رياح الشمال ترفع الأشرعة',
-        content: `وَقَفَ لِين فَوْقَ قِمَّةِ جَبَلِ السَّيْفِ، وَكَانَتِ الرِّيَاحُ البَارِدَةُ تَعْصِفُ بِرِدَائِهِ الأَسْوَدِ.
-فِي عَيْنَيْهِ كَانَ يَلْمَعُ بَرِيقٌ لَا يَنْطَفِئُ، بَرِيقُ عَزِيمَةٍ صُلْبَةٍ صَقَلَتْهَا المِحَنُ وَالشَّدَائِدُ.
-
-— لَقَدْ مَضَتْ عَشْرُ سَنَوَاتٍ كَامِلَةٍ مُنْذُ سُقُوطِ العَشِيرَةِ، وَلَكِنَّ هَذَا السَّيْفَ لَمْ يَنْسَ ثَأْرَهُ قَطّ.
-قَالَ لِين ذَلِكَ وَهُوَ يَسْحَبُ نَصْلَ السَّيْفِ القَرْمَزِيِّ مِنْ غِمْدِهِ، فَانْبَعَثَ مِنْهُ صَوْتُ رَنِينٍ شَجِيٍّ مَزَّقَ سُكُونَ اللَّيْلِ.
-
-فِي هَذَا العَالَمِ، القُوَّةُ هِيَ المِعْيَارُ الوَحِيدُ لِلحَقِيقَةِ؛ مَنْ يَمْلِكُ السَّيْفَ يَمْلِكُ القَرَارَ، وَمَنْ يَتَرَدَّدُ يَسْقُطُ تَحْتَ أَقْدَامِ العَابِرِينَ.
-تَقَدَّمَ لِين خُطْوَةً نَحْوَ الأَمَامِ، وَأَخَذَ نَفَسًا عَمِيقًا وَهُوَ يَتَأَمَّلُ نُورَ الفَجْرِ الَّذِي بَدَأَ يَنْبَلِجُ مِنْ خَلْفِ السُّحُبِ.`,
-      },
-    ],
-  },
-  {
-    id: 'novel-infinite-library',
-    title: 'مكتبة اللانهاية وأسرار الأثير',
-    author: 'جوليان موريس',
-    authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300&auto=format&fit=crop',
-    authorCover: 'https://images.unsplash.com/photo-1507842229451-7f01be7fe8e7?q=80&w=1500&auto=format&fit=crop',
-    authorBio: 'روائي خيال علمي وفلسفي بريطاني، تُرجمت رواياته إلى أكثر من 20 لغة حول العالم.',
-    translator: 'د. ليلى الشريف',
-    translatorAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=300&auto=format&fit=crop',
-    translatorCover: 'https://images.unsplash.com/photo-1519791883288-dc8bd696e667?q=80&w=1500&auto=format&fit=crop',
-    translatorBio: 'أستاذة الأدب المقارن والترجمة بجامعة السوربون، متخصصة في ترجمة الخيال العلمي الرفيع.',
-    category: 'غموض وخيال علمي',
-    section: 'trending',
+    id: 'novel-the-thief-and-dogs',
+    title: 'اللص والكلاب',
+    author: 'نجيب محفوظ',
+    authorBio: 'أديب نوبل العربي، رائد الرواية العربية الحديثة وصاحب التحف الخالدة في أدب الحارة والوجود.',
+    category: 'رواية وجودية درامية',
+    riwaqId: 'riwaq-al-riwayat',
+    riwaqName: 'رواق الروايات',
+    coverGradient: 'from-rose-900 via-stone-900 to-black',
+    coverImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDluJETcKo-a7UA3Uo2btZS90gHz7O4w-8I-Qbj-CGsp6zOh0YuFW9nO_DncHT9fOHYuOBYPZ9-wC25RcrYkA3cdvt4s1FbAF1esiu2mLLImM1YwQch-VEDbg-_7o-5BAeS8SuHCihgDqWtIM-Ugm8rBZyq44o0QED27xbLSoRQjNZ1GJYiEhYjX6GbWQocsYOKpJtTb7YXGQsKDSRVVf1jalFbUxyDGyh4X2yhuXqNOIdv2dCHR56rFQ',
+    accentColor: '#ff93a6',
     rating: 4.95,
-    ratingCount: 1890,
-    views: '98K',
-    badge: 'موصى به',
-    description: 'مكتبة تمتد عبر أبعاد موازية، كل رفٍ فيها يحتوي على حياة محتملة لشخص ما. هل تستطيع البطلة العثور على النسخة الوحيدة التي تُصلح الماضي؟',
-    coverGradient: 'from-purple-950 via-stone-900 to-rose-950',
-    accentColor: '#be123c',
+    ratingCount: 5200,
+    views: '320K',
+    badge: 'درة محفوظ',
+    section: 'riwaq-al-riwayat',
+    description: 'ملحمة سعيد مهران وصراعه المأساوي مع الخيانة والضياع؛ رواية التحليل النفسي والرمزية العميقة التي تجسد ذروة الفن السردي العربي الحديث.',
     chapters: [
       {
         chapterIndex: 1,
-        title: 'الفصل الأول: عند مفترق الرفوف الأزلية',
-        content: `لَمْ تَكُنِ المَكْتَبَةُ تُشْبِهُ أَيَّ مَكَانٍ عَرَفَتْهُ إِيلِينَا مِنْ قَبْلُ.
-كَانَتِ الأَعْمِدَةُ الرُّخَامِيَّةُ تَرْتَفِعُ إِلَى ارْتِفَاعَاتٍ شَاهِقَةٍ تَتَلَاشَى فِي ضَبَابٍ أُرْجُوَانِيٍّ دَافِئٍ، وَكَانَتِ الكُتُبُ تَصْطَفُّ عَلَى مَدِّ البَصَرِ دُونَ نِهَايَةٍ.
+        title: 'الفصل الأول: الخروج إلى شمس الظهيرة الحارقة',
+        content: `مَرَّةً أُخْرَى يَتَنَفَّسُ نَسِيمَ الحُرِّيَّةِ، وَلَكِنْ أَيُّ حُرِّيَّةٍ؟
+كَانَ الجَوُّ خَانِقًا، وَالقَيْظُ لَا يُطَاقُ، وَالغُبَارُ يَعْلَقُ بِالحُلْقِ كَأَنَّهُ حَسَرَاتُ السِّنِينَ المَاضِيَةِ فِي سِجْنِ طُرَة.
 
-تَنَفَّسَتْ إِيلِينَا عَبَقَ الحِبْرِ القَدِيمِ وَالوَرَقِ المُعَتَّقِ، وَقَالَتْ لِنَفْسِهَا:
-— كُلُّ كِتَابٍ هُنَا هُوَ حَيَاةٌ لَمْ أَعِشْهَا، وَكُلُّ صَفْحَةٍ هِيَ خِيَارٌ كَانَ يُمْكِنُ أَنْ يُغَيِّرَ مَصِيرِي.
-
-مَدَّتْ يَدَهَا المُرْتَجِفَةَ نَحْوَ مُجَلَّدٍ قَرْمَزِيِّ الغِلَافِ، فَانْبَعَثَ مِنْهُ وَمِيضٌ خَافِتٌ كَأَنَّهُ يَدْعُوهَا لِكَشْفِ سِرِّهِ المَكْنُونِ.`,
-      },
-    ],
+خَرَجَ سَعِيدُ مِهْرَانَ إِلَى الدُّنْيَا كَمَا يَخْرُجُ المَيِّتُ مِنْ قَبْرِهِ؛ كَانَ يَتَطَلَّعُ إِلَى الطَّرِيقِ بِمِشْيَةٍ وَاثِقَةٍ مَمْزُوجَةٍ بِحِقْدٍ دَفِينٍ.
+«الخِيَانَةُ تَغْسِلُهَا الدِّمَاءُ، وَالغَدْرُ لَا يُكَفِّرُ عَنْهُ إِلَّا القِصَاصُ».
+لَكِنَّ الأَيَّامَ لَيْسَتْ كَمَا كَانَتْ، وَالقَاهِرَةُ ارْتَدَتْ ثَوْبًا لَا يَعْرِفُهُ، حَتَّى الأَصْدِقَاءُ تَبَدَّلُوا وَصَارُوا سَادَةً فِي قُصُورٍ لَا مَكَانَ فِيهَا لِلْفُقَرَاءِ المَنْسِيِّينَ.`
+      }
+    ]
   },
   {
-    id: 'novel-crimson-alchemist',
-    title: 'كيميائي القرمز: حجر الأرواح',
-    author: 'فيكتور هوغو لوكليرك',
-    authorAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=300&auto=format&fit=crop',
-    authorCover: 'https://images.unsplash.com/photo-1507842229451-7f01be7fe8e7?q=80&w=1500&auto=format&fit=crop',
-    authorBio: 'روائي ومؤرخ أدبي فرنسي متخصص في الأدب القوطي والروايات التاريخية في عصر التنوير.',
-    translator: 'أحمد سامي الدروبي',
-    translatorAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=300&auto=format&fit=crop',
-    translatorCover: 'https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?q=80&w=1500&auto=format&fit=crop',
-    translatorBio: 'مترجم وباحث لغوي معتمد، عضو اتحاد المترجمين العرب، قام بنقل العديد من روائع الأدب العالمي إلى لغة الضاد.',
-    category: 'روايات مترجمة / أدب كلاسيكي',
-    section: 'fantasy',
-    rating: 4.75,
-    ratingCount: 1620,
-    views: '85K',
-    badge: 'روائع كلاسيكية',
-    description: 'في باريس القرن الثامن عشر، يبحث كيميائي معزول عن سر تحويل المعادن إلى وعي حي، ليدخل في صراع مع جمعيات سرية تسعى للخلود.',
-    coverGradient: 'from-rose-900 via-stone-950 to-stone-900',
-    accentColor: '#9f1239',
-    chapters: [
-      {
-        chapterIndex: 1,
-        title: 'الفصل الأول: الشعلة الزرقاء في القبو العتيق',
-        content: `كَانَ الدُّخَانُ يَتَصَاعَدُ مِنْ قَوَارِيرِ الزُّجَاجِ الدَّقِيقَةِ فِي قَبْوِ الكِيمْيَائِيِّ العَجُوزِ.
-عَلَى الطَّاوِلَةِ الخَشَبِيَّةِ المَمْلُوءَةِ بِالخَرَائِطِ الفَلَكِيَّةِ، كَانَتْ هُنَاكَ قِطْعَةٌ مَعْدِنِيَّةٌ غَرِيبَةٌ تَنْبِضُ بِلَوْنٍ قَرْمَزِيٍّ مُتَوَهِّجٍ.
-
-— لَقَدِ اقْتَرَبْتُ كَثِيرًا هَذِهِ المَرَّةَ.
-تَمْتَمَ فِيكْتُور بِصَوْتٍ مُتَحَشْرِجٍ، ثُمَّ أَمْسَكَ بِقَلَمِهِ الرِّيشِيِّ لِيُدَوِّنَ الحِسَابَاتِ المِعْيَارِيَّةَ قَبْلَ أَنْ تَخْبُوَ الشُّعْلَةُ.`,
-      },
-    ],
-  },
-  {
-    id: 'novel-desert-sultan',
-    title: 'سلطان رمال الفجر الذهبي',
-    author: 'طارق عبد العزيز',
-    authorAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=300&auto=format&fit=crop',
-    authorCover: 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?q=80&w=1500&auto=format&fit=crop',
-    authorBio: 'أديب وروائي عربي، يكتب الملاحم التاريخية العربية وأسرار الصحراء، حاصل على جائزة الرواية العربية المتميزة.',
-    translator: 'الأصل العربي',
-    category: 'تاريخ ورواية عربية',
-    section: 'trending',
-    rating: 4.9,
-    ratingCount: 1950,
-    views: '115K',
-    badge: 'رواية أصلية',
-    description: 'ملحمة عربية في أعماق الجزيرة ورمالها المتحركة، حيث تتصادم القبائل في صراع على البقاء والسيادة وشرف الكلمة.',
-    coverGradient: 'from-amber-900 via-stone-950 to-rose-950',
-    accentColor: '#e11d48',
-    chapters: [
-      {
-        chapterIndex: 1,
-        title: 'الفصل الأول: هبوب السوافي عند شروق الشمس',
-        content: `امْتَدَّتْ صَحْرَاءُ الفَجْرِ كَبَحْرٍ لَا سَاحِلَ لَهُ، تَتَلَأْلَأُ ذَرَّاتُ رِمَالِهَا الذَّهَبِيَّةِ مَعَ أَوَّلِ خُيُوطِ النَّهَارِ.
-كَانَ الفَارِسُ صَقْرٌ يَشُدُّ لِجَامَ فَرَسِهِ الأَصِيلَةِ، يَرْقُبُ أُفُقَ الوَادِي الفَسِيحَ.
-
-— لَنْ تَمُرَّ قَوَافِلُ الغُزَاةِ مِنْ هُنَا وَفِينَا عَيْنٌ تَطْرِفُ!
-قَالَهَا صَقْرٌ لِرِجَالِهِ، فَارْتَفَعَتْ صَيْحَاتُ التَّأْيِيدِ تَمْلَأُ الأَرْجَاءَ وَتُعْلِنُ بَدْءَ مَعْرَكَةِ الشَّرَفِ.`,
-      },
-    ],
-  },
-  {
-    id: 'novel-cyber-cairo',
-    title: 'القاهرة 2099: ذكريات السيليكون',
-    author: 'كريم المنشاوي',
-    authorAvatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?q=80&w=300&auto=format&fit=crop',
-    authorCover: 'https://images.unsplash.com/photo-1519501025264-65ba15a82390?q=80&w=1500&auto=format&fit=crop',
-    authorBio: 'كاتب خيال علمي ومهندس حوسبة متقدمة، يستكشف تقاطعات الهوية الإنسانية والذكاء السيبراني في الشرق الأوسط.',
-    translator: 'الأصل العربي',
-    category: 'سايبربانك وخيال علمي',
-    section: 'fantasy',
+    id: 'novel-memory-fragments',
+    title: 'شظايا الذاكرة',
+    author: 'حيدر حيدر',
+    authorBio: 'روائي سوري من رواد السرد العربي المعاصر، امتازت كتاباته بالغنائية الجارحة والغوص الفلسفي.',
+    category: 'رواية فكرية وتأملية',
+    riwaqId: 'riwaq-al-riwayat',
+    riwaqName: 'رواق الروايات',
+    coverGradient: 'from-rose-950 via-stone-900 to-black',
+    coverImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA13qP9qH844nkhgkIlcxV3lc1Uf4Ht32kd0EiFf2vfSWoo6AzeFWVHq0oU3-1CKRrqdVv50bz_REg3u_guoHc2dfjdWyKXeSk8I6mRXBT15C2YNgfEKvpe4ZbG8N8sLUS1al6ZI8gxgm1prMU3ZD9u5lGfeXfZLZkmZY7Ymm8QxXUmKMZbROdn49AaJbT6NkXrm2F18E8XJ1fpa_oZR7q_5-FRPRe670-Ws06mguY9_LpbWW87Pk1vxw',
+    accentColor: '#ffb2bd',
     rating: 4.88,
-    ratingCount: 1380,
-    views: '67K',
-    badge: 'سايبربانك',
-    description: 'في قاهرة المستقبل المكتظة بالأضواء النيونية والذكاء السيبراني، يبحث مهندس شبكات عصبية عن شظايا ذاكرة مشفرة كادت أن تُغير مصير الشرق الأوسط.',
-    coverGradient: 'from-cyan-950 via-stone-900 to-rose-950',
-    accentColor: '#f43f5e',
+    ratingCount: 1940,
+    views: '140K',
+    badge: 'سرد تأملي',
+    section: 'riwaq-al-riwayat',
+    description: 'تأملات حزينة ومكثفة في المنفى والوطن واسترجاع الأزمنة الضائعة؛ مرآة تتشظى لتجمع شتات الروح الحائرة بين الهجرة والانتماء.',
     chapters: [
       {
         chapterIndex: 1,
-        title: 'الفصل الأول: وميض النيون فوق كوبري قصر النيل',
-        content: `كَانَتِ الأَبْرَاجُ الزُّجَاجِيَّةُ تَعْكِسُ أَمْوَاجَ النِّيلِ المُتَلَأْلِئَةَ بِأَلْوَانِ النِّيُونِ الزَّرْقَاءِ وَالقَرْمَزِيَّةِ.
-عَلَى جِسْرِ قَصْرِ النِّيلِ المُعَلَّقِ، وَقَفَ عُمَر يَضْبِطُ عَدَسَتَهُ السِّيبِرَانِيَّةَ لِمُعَايَنَةِ بَيَانَاتِ البَثِّ المُشَفَّرَةِ.
+        title: 'الفصل الأول: رماد الأزمنة ورياح الشتاء',
+        content: `فِي لَيَالِي المَنْفَى الشَّاتِيَةِ، يَبْدُو الوَقْتُ كَخَيْطٍ رَفِيعٍ يَكَادُ يَنْقَطِعُ تَحْتَ وَطْأَةِ الصَّمْتِ.
+تَتَدَافَعُ الذِّكْرَيَاتُ مِثْلَ أَمْوَاجِ بَحْرٍ هَائِجٍ يَرْتَطِمُ بِصُخُورِ الشَّاطِئِ المَهْجُورِ.
+كُلُّ وَجْهٍ غَابَ كَانَ يَتْرُكُ خَلْفَهُ شَظِيَّةً فِي جِدَارِ الرُّوحِ، وَكُلُّ مَدِينَةٍ عَبَرْنَاهَا أَخَذَتْ مِنَّا شَيْئًا وَلَمْ تُعِدْهُ أَبَدًا.`
+      }
+    ]
+  },
 
-— تَدَفُّقُ البَيَانَاتِ الأَثِيرِيَّةِ يُسَجِّلُ نِسَبَ اسْتِقْرَارٍ قِيَاسِيَّةً فِي الخَوَادِمِ الشَّرْقِيَّةِ.
-هَمَسَ عُمَر فِي جِهَازِ الاتِّصَالِ المَزْرُوعِ خَلْفَ أُذُنِهِ، قَبْلَ أَنْ يَتَوَارَى فِي زِحَامِ المَدِينَةِ الفَوْضَوِيَّةِ.`,
+  // 2. رواق الملاحم
+  {
+    id: 'novel-gilgamesh',
+    title: 'جلجامش',
+    author: 'ألواح بابل وسومر',
+    authorBio: 'أقدم نص ملحمي عرفته البشرية، نُقش بالمسمارية على ألواح الطين في بلاد ما بين النهرين.',
+    category: 'ملحمة الخلود الكبرى',
+    riwaqId: 'riwaq-al-malahim',
+    riwaqName: 'رواق الملاحم',
+    coverGradient: 'from-amber-950 via-stone-900 to-indigo-950',
+    coverImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAXguqalKAYo_emgzQ4kIArKbg3u4gvKSf-L_tzqdpDfi8ZqGq69wG98l5bl_Xe1BQ1oLv3c_YAD_32EBhNv3yE7Rm4fd6ZtVOxip5leVRsvg54h0EMqUrlJ4m7VWY96QLZjdKG9RYamxH34-tCNzXkn9xceCUUlzxzs_HH6t8QF8efkUrzRj47ZtvoR8wHRyw52_qWqNR9XHz31l5avMe3ABcnnf0UDBHbZk12K9yDWF5YHQxIJIhbgA',
+    accentColor: '#e9c349',
+    rating: 4.98,
+    ratingCount: 6800,
+    views: '450K',
+    badge: 'تاج الملاحم',
+    section: 'riwaq-al-malahim',
+    description: 'رحلة ملك أوروك العظيم في البحث عن سر الخلود وفجيعته بفقدان صديقه إنكيدو؛ سفر الأسئلة الأزلية التي تواجه الإنسان أمام حتمية الفناء.',
+    chapters: [
+      {
+        chapterIndex: 1,
+        title: 'اللوح الأول: هو الذي رأى كل شيء',
+        content: `هُوَ الَّذِي رَأَى كُلَّ شَيْءٍ فَبَلَغَتْ بِهِ الحِكْمَةُ أَقَاصِي الأَرْضِ،
+عَرَفَ الأَسْرَارَ، وَكَشَفَ المَكْنُونَ، وَجَاءَ بِأَنْبَاءِ مَا كَانَ قَبْلَ الطُّوفَانِ العَظِيمِ.
+سَارَ فِي طَرِيقٍ بَعِيدٍ وَنَصَبَ وَتَعِبَ، ثُمَّ نَقَشَ عَلَى لَوْحٍ مِنَ الحَجَرِ جَمِيعَ مَتَاعِبِهِ.
+بَنَى أَسْوَارَ أُورُوكَ المَنِيعَةَ، وَشَيَّدَ هَيْكَلَ إِيَانَّا المُقَدَّسَ،
+انْظُرُوا إِلَى سُورِهَا كَيْفَ يَلْمَعُ كَالنُّحَاسِ، وَتَسَلَّقُوا دَرَجَاتِهِ الصَّلْدَةَ الَّتِي لَا يُدَانِيهَا بِنَاءٌ!`
       },
-    ],
+      {
+        chapterIndex: 2,
+        title: 'اللوح الثاني: لقاء إنكيدو وتحدي الوحش خومبابا',
+        content: `تَقَابَلَ الجَبَّارَانِ عِنْدَ بَوَّابَةِ المَدِينَةِ، وَاصْطَدَمَا كَثَوْرَيْنِ هَائِجَيْنِ تَهْتَزُّ لِوَقْعِهِمَا جُدْرَانُ السَّاحَاتِ.
+لَكِنَّ الصِّرَاعَ انْقَلَبَ إِلَى أُخُوَّةٍ لَمْ تَعْرِفِ الأَرْضُ لَهَا مَثِيلًا.
+قَالَ جِلْجَامِشُ لِإِنْكِيدُو: «هَيَّا بِنَا إِلَى غَابَةِ الأَرْزِ، لِنَقْطَعَ أَشْجَارَهَا وَنَقْضِيَ عَلَى الشَّرِّ، فَيَظَلَّ اسْمُنَا خَالِدًا مَا بَقِيَ الزَّمَانُ».`
+      }
+    ]
   },
   {
-    id: 'novel-astral-sovereign',
-    title: 'سيد الأثير: أسطورة النجوم التسعة',
-    author: 'ليان شينغ',
-    authorAvatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=300&auto=format&fit=crop',
-    authorCover: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=1500&auto=format&fit=crop',
-    authorBio: 'كاتب ومؤلف فنون قتالية صينية ملحمية (شوان هوان)، تُرجمت أعماله لملايين القراء حول العالم.',
-    translator: 'هشام كمال الدين',
-    translatorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300&auto=format&fit=crop',
-    translatorCover: 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?q=80&w=1500&auto=format&fit=crop',
-    translatorBio: 'مترجم متخصص في أدب العوالم الموازية والفنون القتالية، تعريب متقن لمصطلحات الطاقة والأثير.',
-    category: 'فنون قتالية وعوالم موازية',
-    section: 'trending',
-    rating: 4.86,
-    ratingCount: 2150,
-    views: '190K',
-    badge: 'فنون قتالية',
-    description: 'في عالم النجوم التسعة، يولد فتى بجسد فاقد لتدفق الطاقة، لكنه يعثر على خاتم سماوي يعيد كتابة قوانين الزراعة الروحية والسيادة المطلقة.',
-    coverGradient: 'from-violet-950 via-stone-900 to-rose-950',
-    accentColor: '#8b5cf6',
+    id: 'novel-iliad',
+    title: 'الإلياذة',
+    author: 'هوميروس',
+    authorBio: 'شاعر الإغريق الأكبر، منشئ الملاحم البطولية التي أرست قواعد الشعر الأوروبي القديم.',
+    category: 'ملحمة يونانية بطولية',
+    riwaqId: 'riwaq-al-malahim',
+    riwaqName: 'رواق الملاحم',
+    coverGradient: 'from-amber-950 via-stone-900 to-indigo-950',
+    coverImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB_eWH_vnKjkYnn6XabpS4W11Vahzp-NBfKHif24pATSicq5IuWuBouWSpSYIfVuKlktkscHojwVyWPpui1oH5R2rkaEhTjiylYVuEHFmDGGKDwAohOpzIzbqokdNcSTkE173lzKVwJoCrPCRmCTf16OChO13EyhGdY1wjgx7uos6zzpXxNxmGpcFTKTAnASnjMsoCFkkT_VxWzNlTkL_WJToJ8GwIoEjojPIVRL7Cx_4f6eLg22QsPLw',
+    accentColor: '#ffe088',
+    rating: 4.91,
+    ratingCount: 4200,
+    views: '290K',
+    badge: 'أسطورة طروادة',
+    section: 'riwaq-al-malahim',
+    description: 'غضب آخيل وحصار طروادة وصراع الأبطال والآلهة فوق سهول الأناضول؛ النشيد الخالد للبطولة والشرف والتراجيديا الإنسانية.',
     chapters: [
       {
         chapterIndex: 1,
-        title: 'الفصل الأول: صدى الخاتم السماوي في الوادي المقفر',
-        content: `كَانَ اللَّيْلُ يَبْسُطُ رِدَاءَهُ الأَسْوَدَ المُرَصَّعَ بِالنُّجُومِ فَوْقَ قِمَمِ جِبَالِ الأَثِيرِ الشَّاهِقَةِ.
-وَقَفَ يُوسُف يَتَأَمَّلُ نَبَضَاتِ النُّورِ المُنْبَعِثَةِ مِنْ يَدِهِ بَعْدَ سَنَوَاتٍ مِنَ الإِخْفَاقِ وَاليَأْسِ.
-
-— هَذِهِ المَرَّةَ، لَنْ يَكُونَ مَصِيرِي بِيَدِ غَيْرِي!
-قَالَهَا بِعَزْمٍ رَاسِخٍ، حِينَ انْفَجَرَتْ طَاقَةُ النُّجُومِ التِّسْعَةِ فِي عُرُوقِهِ كَنَهْرٍ مِنَ الضِّيَاءِ.`,
-      },
-    ],
+        title: 'النشيد الأول: غضب آخيل بن بيليوس',
+        content: `أَنْشِدِي يَا رَبَّةَ الشِّعْرِ غَضَبَ آخِيلَ بْنِ بِيليُوسَ،
+ذَاكَ الغَضَبَ المَشْؤُومَ الَّذِي جَلَبَ عَلَى الآخِيِّينَ وَيْلَاتٍ لَا تُحْصَى،
+وَأَهْبَطَ إِلَى مَمْلَكَةِ هَادِيسَ نُفُوسًا كَثِيرَةً مِنْ أَبْطَالٍ بَوَاسِلَ،
+وَجَعَلَ أَجْسَادَهُمْ غَنِيمَةً لِلْكِلَابِ وَجَوَارِحِ الطَّيْرِ، حَتَّى تَمَّتْ مَشِيئَةُ زِيُوسَ العَظِيمِ!`
+      }
+    ]
   },
   {
-    id: 'novel-damascus-secrets',
-    title: 'أسرار قصر الوردة الدمشقية',
-    author: 'نور الهدى الشامي',
-    authorAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=300&auto=format&fit=crop',
-    authorCover: 'https://images.unsplash.com/photo-1519791883288-dc8bd696e667?q=80&w=1500&auto=format&fit=crop',
-    authorBio: 'روائية سورية متخصصة في أدب الغموض والرواية التاريخية، تجمع بين الرومانسية الكلاسيكية والتشويق.',
-    translator: 'الأصل العربي',
-    category: 'غموض وتاريخ أدبي',
-    section: 'featured',
-    rating: 4.95,
-    ratingCount: 1780,
-    views: '145K',
-    badge: 'غموض وتاريخ',
-    description: 'بين أزقة دمشق القديمة وقصورها العريقة في مطلع القرن العشرين، تكشف مذكرات مخفية أسرار مؤامرة دولية وكنزاً فكرياً مفقوداً.',
-    coverGradient: 'from-amber-950 via-stone-900 to-emerald-950',
-    accentColor: '#10b981',
+    id: 'novel-shahnameh',
+    title: 'الشاهنامة',
+    author: 'أبو القاسم الفردوسي',
+    authorBio: 'حكيم طوس وشاعر الفرس الأكبر الذي نظم مأثرة الملوك على مدى ثلاثين عاماً.',
+    category: 'ملحمة الملوك والأبطال',
+    riwaqId: 'riwaq-al-malahim',
+    riwaqName: 'رواق الملاحم',
+    coverGradient: 'from-amber-950 via-stone-900 to-indigo-950',
+    coverImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAMcfQadJaQZBmK4_QLfMcHGTkIjH0eDnJZ4NhrJ5T44Ihr4Hetsgqyw9uU7SmGWwbV9hFdGzGKUmjIkel4RhGQu8-t4TSi_BYFClqNEuvpXhlsOfrunWEabsTy1aqozBcMF-D_RpreNJn28IGheRLN-XwsanBWuJlKtG9Ddk9v-wdWQFnH6q4ZH86rZYzRsWu7RGqKzbLljbCwD9m50kpHVvhlRoXEtVyFzgZpyvG2ajxIRncqQaCvDA',
+    accentColor: '#e9c349',
+    rating: 4.89,
+    ratingCount: 3100,
+    views: '210K',
+    badge: 'ديوان الشرق',
+    section: 'riwaq-al-malahim',
+    description: 'أساطير رستم وسهراب، ملوك العدل والجور، وصراع النور والظلمة في ملحمة شرقية باذخة البنيان والبيان.',
     chapters: [
       {
         chapterIndex: 1,
-        title: 'الفصل الأول: المفتاح النحاسي في باحة الياسمين',
-        content: `كَانَ عَبَقُ اليَاسَمِينِ يَمْلَأُ أَرْجَاءَ البَاحَةِ الدِّمَشْقِيَّةِ العَتِيقَةِ مَعَ سُكُونِ المَسَاءِ.
-فَتَحَتْ مَرْيَم الصُّنْدُوقَ الخَشَبِيَّ المُطَعَّمَ بِالصَّدَفِ، فَوَجَدَتْ فِيهِ رِسَالَةً مُغْلَقَةً بِالشَّمْعِ الأَحْمَرِ.
-
-«إِلَى مَنْ يَصِلُهُ هَذَا الكِتَابُ: مَا دَفَنَّاهُ هُنَا لَيْسَ ذَهَبًا، بَلْ حَقِيقَةٌ كَادَتْ أَنْ تُحْرِقَ بِلَادَ الشَّامِ».`,
-      },
-    ],
+        title: 'الباب الأول: مطلع القصيد ونشأة الملك كيومرث',
+        content: `بِاسْمِ إِلَهِ الرُّوحِ وَالعَقْلِ، الَّذِي لَا يَسْتَطِيعُ الفِكْرُ أَنْ يَسْمُوَ فَوْقَهُ،
+رَبِّ الاسْمِ وَالمَكَانِ، وَوَاهِبِ الرِّزْقِ وَالأَمَانِ.
+تَقُولُ الرِّوَايَةُ إِنَّ كَيُومَرْثَ كَانَ أَوَّلَ مَلِكٍ جَلَسَ عَلَى عَرْشِ الجِبَالِ،
+فَأَلِفَتْهُ الوُحُوشُ وَأَطَاعَتْهُ الطُّيُورُ لِعَدْلِهِ وَصَفَاءِ سَرِيرَتِهِ.`
+      }
+    ]
   },
+
+  // 3. رواق الحكمة
+  {
+    id: 'novel-descartes-meditations',
+    title: 'تأملات ديكارت',
+    author: 'رينيه ديكارت',
+    authorBio: 'فيلسوف ورياضي فرنسي، أب الفلسفة الحديثة وصاحب مبدأ الكوجيتو الفلسفي الشهير.',
+    category: 'فلسفة أولى ونظرية المعرفة',
+    riwaqId: 'riwaq-al-hikma',
+    riwaqName: 'رواق الحكمة',
+    coverGradient: 'from-stone-900 via-stone-800 to-black',
+    coverImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBlObAY1V0YiRJzi3hEpKouXv7LTGIVkWNmk5s6p68odrgmlGgbxvkELywFI2o2CstqmnYYtrz8xirRoit3YDJ5sNqht5Z26ni0P6_n59Mxr6CUtIxD7vhUdPpOvyo_1HJFZXURHb7ZbED86WD8bqFCfjkmQF90wStHv90oNgleQcF-5TjznXsx0u3hFRY37ntd7WWf7uNPb0gzem45dCzY8zcL7Aiso33xJuQGxeuXAIQoLjHkcBVJ1g',
+    accentColor: '#e5e1e4',
+    rating: 4.96,
+    ratingCount: 3800,
+    views: '260K',
+    badge: 'نور العقل',
+    section: 'riwaq-al-hikma',
+    description: 'تأملات في الفلسفة الأولى تفكك قيود الشك المنهجي وتؤسس لليقين العقلي؛ رحلة فكرية خالصة في تجرد تام عن زيف الحواس.',
+    chapters: [
+      {
+        chapterIndex: 1,
+        title: 'التأمل الأول: في الأشياء التي يمكن أن توضع موضع الشك',
+        content: `لَقَدْ لَاحَظْتُ مُنْذُ سِنِينَ كَمْ كَانَ فِي صِبَايَ مِنْ آرَاءٍ بَاطِلَةٍ اعْتَبَرْتُهَا حَقَائِقَ ثَابِتَةً،
+وَكَمْ هِيَ هَشَّةٌ تِلْكَ المَبَانِي الَّتِي أَقَمْتُهَا فَوْقَ تِلْكَ الأُسُسِ المَشْكُوكِ فِيهَا.
+لِذَلِكَ رَأَيْتُ أَنَّهُ لَا بُدَّ لِي مَرَّةً فِي حَيَاتِي مِنْ هَدْمِ كُلِّ شَيْءٍ تَمَامًا، وَالبَدْءِ مِنْ جَدِيدٍ مِنْ أُسُسٍ بَدِيهِيَّةٍ لَا يَتَطَرَّقُ إِلَيْهَا الشَّكُّ.
+
+سَأَفْتَرِضُ إِذَنْ أَنَّ كُلَّ مَا تُخْبِرُنِي بِهِ حَوَاسِّي قَدْ يَكُونُ خُدْعَةً،
+حَتَّى أَصِلَ إِلَى صَخْرَةِ الحَقِيقَةِ الَّتِي لَا تَتَزَعْزَعُ: «أَنَا أُفَكِّرُ، إِذَنْ أَنَا مَوْجُودٌ».`
+      }
+    ]
+  },
+  {
+    id: 'novel-republic',
+    title: 'الجمهورية',
+    author: 'أفلاطون',
+    authorBio: 'فيلسوف أثينا الكلاسيكي، مؤسس الأكاديمية وصاحب المحاورات الفلسفية الخالدة.',
+    category: 'فلسفة سياسية وأخلاقية',
+    riwaqId: 'riwaq-al-hikma',
+    riwaqName: 'رواق الحكمة',
+    coverGradient: 'from-stone-900 via-stone-800 to-black',
+    coverImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDlLmkgGjhWO5idqyTixzxUnWi0G5jOIryeYp0ShtqVRmnHfH0UcvCarS2j5V9XVEQa5C546m3-iBBEkh0crrCrMOpOHuJ6e68pqegLgpoj8aiCcVVoq0JxNzzydWaC7YZMyMFeLmgrqPi2NLnfSnXYvnjSADjPBG4QXOE_sf94qPQzu3h_u5bKbwePfNUWzQ5EeqZzcIyTcBU37BI82bJf0wBKBBt3O3FwsO0r2qQDKcfJgJWb63Sfew',
+    accentColor: '#e5e1e4',
+    rating: 4.94,
+    ratingCount: 5100,
+    views: '380K',
+    badge: 'أسطورة الكهف',
+    section: 'riwaq-al-hikma',
+    description: 'محاورة سقراط حول ماهية العدالة وبناء المدينة الفاضلة، متضمنة تمثيل الكهف الشهير الذي يشرح تدرج الوعي الإنساني من ظلال الوهم إلى شمس الحقيقة.',
+    chapters: [
+      {
+        chapterIndex: 1,
+        title: 'الكتاب السابع: مثل الكهف ومراتب المعرفة',
+        content: `تَخَيَّلْ يَا غْلَاوْكُون بَشَرًا يَعِيشُونَ فِي كَهْفٍ تَحْتَ الأَرْضِ،
+مُقَيَّدِينَ مُنْذُ طُفُولَتِهِمْ بِسَلَاسِلَ تَمْنَعُهُمْ مِنَ الِالْتِفَاتِ،
+وَلَا يَرَوْنَ أَمَامَهُمْ إِلَّا جِدَارَ الكَهْفِ الصَّلْدَ،
+وَخَلْفَهُمْ نَارٌ تُضِيءُ، يَمُرُّ أَمَامَهَا أَشْخَاصٌ يَحْمِلُونَ تَمَاثِيلَ، فَتَسْقُطُ ظِلَالُهَا عَلَى الجِدَارِ.
+
+إِنَّ هَؤُلَاءِ المَسَاكِينَ لَا يَعْرِفُونَ مِنَ العَالَمِ إِلَّا تِلْكَ الظِّلَالَ، وَيَحْسَبُونَهَا هِيَ الحَقِيقَةَ المُطْلَقَةَ!
+فَكَيْفَ إِذَا تَحَرَّرَ أَحَدُهُمْ وَصَعِدَ إِلَى النُّورِ وَعَايَنَ الشَّمْسَ بِعَيْنَيْهِ؟`
+      }
+    ]
+  },
+  {
+    id: 'novel-tahafut',
+    title: 'تهافت التهافت',
+    author: 'ابن رشد الأندلسي',
+    authorBio: 'فيلسوف قرطبة الأكبر وقاضي قضاتها، الشارح الأكبر لأرسطو ورائد التنوير العقلي الأندلسي.',
+    category: 'فلسفة برهانية إسلامية',
+    riwaqId: 'riwaq-al-hikma',
+    riwaqName: 'رواق الحكمة',
+    coverGradient: 'from-stone-900 via-stone-800 to-black',
+    coverImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDAcE3jnOgqe_x8_a7ydOtHUxSCAcHW44Qt1D5bpKXnLlZniq_tITZZ_Um1myeyd5ARCP_3YRz1iF9ob_GzkUqaySLvszXMgmTdIxUEA-oKtXVWrkaHnXCgGE0nRkpKtl1723zCz5Ks577S0Ou_GWB-YfKyM8aHEO1YTPJgRiMK3LnhjZu1t2NNX8aPrkEa2QKuYj9z10lDoZBvnx9xx3TT-5vAbaq1ePL52DvtQYIZTuFlowWWcy6S1A',
+    accentColor: '#e5e1e4',
+    rating: 4.87,
+    ratingCount: 2200,
+    views: '160K',
+    badge: 'برهان الأندلس',
+    section: 'riwaq-al-hikma',
+    description: 'رد ابن رشد الفلسفي الرصين على الغزالي دفاعاً عن السببية وحرية النظر البرهاني وانسجام الحكمة مع الشريعة.',
+    chapters: [
+      {
+        chapterIndex: 1,
+        title: 'المسألة الأولى: في قدم العالم والعلية',
+        content: `قَالَ أَبُو الوَلِيدِ مُحَمَّدُ بْنُ رُشْدٍ:
+إِنَّ القَوْلَ بِإِبْطَالِ السَّبَبِيَّةِ هُوَ إِبْطَالٌ لِلْعَقْلِ نَفْسِهِ،
+إِذْ لَا مَعْنَى لِلْمَعْرِفَةِ إِلَّا مَعْرِفَةُ الأَشْيَاءِ بِأَسْبَابِهَا وَعِلَلِهَا الفَاعِلَةِ.
+وَالحِكْمَةُ هِيَ صَاحِبَةُ الشَّرِيعَةِ وَالأُخْتُ الرَّضِيعَةُ لَهَا، فَلَا يُمْكِنُ لِلْحَقِّ أَنْ يُضَادَّ الحَقَّ، بَلْ يُوَافِقُهُ وَيَشْهَدُ لَهُ.`
+      }
+    ]
+  },
+
+  // 4. رواق التراث
+  {
+    id: 'novel-kalila',
+    title: 'كليلة ودمنة',
+    author: 'عبد الله بن المقفع',
+    authorBio: 'كاتب ومترجم عباسي فذ، صاغ أبلغ نصوص النثر العربي ورمزية الحكمة السياسية والأخلاقية.',
+    category: 'أدب الحكمة والرمز التراثي',
+    riwaqId: 'riwaq-al-turath',
+    riwaqName: 'رواق التراث',
+    coverGradient: 'from-emerald-950 via-stone-900 to-black',
+    coverImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAqyh1dOPajX2YdU5w4Z7hiXckD2Fra20bSJe96dWVIspi0x76GplpKB730UrEU4yF1gI3IQ2B5-HAiVBBoCn_2m0b5d5JpSBIUbUVBhnMCcQ7R5COuA-GMTaoicjT1-BttPaMbi2DzlMpAEoaAHl2wvx7QwRAbyXtbDa1Snp_iF9n8HAc0fSKldrHXdykVDdPfOTzRIlXtJMjHNT80RoR7Mr2ZQ9M2q5cqUApmgNGhyj4W6AtOHeIomQ',
+    accentColor: '#7bd8b1',
+    rating: 4.97,
+    ratingCount: 8400,
+    views: '540K',
+    badge: 'خزانة الأدب',
+    section: 'riwaq-al-turath',
+    description: 'تحفة ابن المقفع النثرية التي صاغ فيها أبلغ حكايات الحيوان الرمزية ليقدم دستوراً سياسياً وأخلاقياً يجمع بين المتعة وعمق الحكمة الإنسانية.',
+    chapters: [
+      {
+        chapterIndex: 1,
+        title: 'باب الأسد والثور: منبع الفتنة ووسواس دمنة',
+        content: `قَالَ دَبْشَلِيمُ المَلِكُ لِبَيْدَبَا الفَيْلَسُوفِ:
+«اضْرِبْ لِي مَثَلَ المُتَحَابَّيْنِ يَقْطَعُ بَيْنَهُمَا الكَذُوبُ المُحْتَالُ حَتَّى يُحَوِّلَ صَفْوَهُمَا إِلَى عَدَاوَةٍ».
+
+قَالَ الفَيْلَسُوفُ:
+إِذَا ابْتُلِيَ المَلِكُ بِجَلِيسِ سُوءٍ كَانَ كَالسَّفِينَةِ فِي لُجَّةِ البَحْرِ، لَا تَنْجُو إِلَّا بِيَقَظَةِ رُبَّانِهَا.
+وَكَانَ بِأَرْضِ دَسْتَاوَنْدَ تَاجِرٌ ذُو مَالٍ جَمٍّ، لَهُ ثَوْرٌ اسْمُهُ شَتْرَبَةُ، تَرَكَهُ فِي مَرْعًى خَصِيبٍ فَاسْتَوْحَشَ حَتَّى صَارَ قَرِيبًا مِنْ عَرِينِ الأَسَدِ، وَكَانَ لِلأَسَدِ جَلِيسَانِ مِنَ ابْنِ آوَى: كَلِيلَةُ وَدِمْنَةُ، وَكَانَ دِمْنَةُ شَدِيدَ الحِرْصِ طَامِحًا لِلرِّفْعَةِ بِالحِيلَةِ وَالدَّهَاءِ...`
+      }
+    ]
+  },
+  {
+    id: 'novel-maqamat',
+    title: 'المقامات',
+    author: 'أبو محمد القاسم الحريري',
+    authorBio: 'إمام الأدب واللغة في القرن الخامس الهجري، صاحب المقامات الخمسين الأشهر في ديوان الفصاحة العربية.',
+    category: 'نثر فني وبلاغة أدبية رفيعة',
+    riwaqId: 'riwaq-al-turath',
+    riwaqName: 'رواق التراث',
+    coverGradient: 'from-emerald-950 via-stone-900 to-black',
+    coverImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDca81_eT3CHu1VAvYjtwzdfmLJUnI4goojyyKzeTkTKZWKbwuT_knymHeEkn1UtuGpxCf7Reji21jpX3XY6CgwrIHb35_BsZLLmqdp2-iEQM9AC5-IwFGwLWxTBxF7_goVRwycp7ef1OgXlZ6_5iyS1VtFJOHd9lUpc5yWmdWWy7yBQXR5SGYgRAJVziWTUlVqzc2O8nfU91IoogKevPYPBcf1onpPCjBl3dHG53PhQav0BFcTVmlxQQ',
+    accentColor: '#7bd8b1',
+    rating: 4.93,
+    ratingCount: 3900,
+    views: '240K',
+    badge: 'درر البلاغة',
+    section: 'riwaq-al-turath',
+    description: 'مغامرات أبي زيد السروجي ورواية الحارث بن همام؛ قمة الفصاحة العربية والمسجع البديع الذي يحفظ ذخائر المفردات وأسرار النحو والبيان.',
+    chapters: [
+      {
+        chapterIndex: 1,
+        title: 'المقامة الصنعانية: حلية الأدب وفصاحة السروجي',
+        content: `رَوَى الحَارِثُ بْنُ هَمَّامٍ قَالَ:
+طَرَّحَتْنِي نَوَى الاغْتِرَابِ، إِلَى صَنْعَاءَ اليَمَنِ، فَدَخَلْتُهَا خَاوِيَ الوِفَاضِ، بَادِيَ الِانْفِضَاضِ،
+لَا أَمْلِكُ سِوَى شُعَاعِ الأَمَلِ وَبُلْغَةِ الأَجَلِ.
+
+فَبَيْنَمَا أَنَا فِي سَاحَةِ جَامِعِهَا الكَبِيرِ، إِذْ رَأَيْتُ شَيْخًا ذَا طِمْرَيْنِ رَثَّيْنِ، يَقِفُ بَيْنَ الجُمُوعِ كَالخَطِيبِ المِصْقَعِ،
+يَنْثُرُ الدُّرَّ مِنْ فَمِهِ، وَيَسْحَرُ الأَلْبَابَ بِبَيَانِهِ، فَيَقُولُ:
+«يَا قَوْمِ، إِنَّ الدُّنْيَا غَدَّارَةٌ خَتَّارَةٌ، تُعْطِي بِيَدٍ وَتَسْلِبُ بِأُخْرَى، فَلَا يَغُرَّنَّكُمُ السَّرَابُ عَنِ الشَّرَابِ!»`
+      }
+    ]
+  },
+  {
+    id: 'novel-muqaddimah',
+    title: 'المقدمة',
+    author: 'عبد الرحمن بن خلدون',
+    authorBio: 'مؤسس علم الاجتماع وفلسفة التاريخ، الوزير والقاضي والمؤرخ التونسي الأندلسي العبقري.',
+    category: 'علم العمران البشري والتاريخ',
+    riwaqId: 'riwaq-al-turath',
+    riwaqName: 'رواق التراث',
+    coverGradient: 'from-emerald-950 via-stone-900 to-black',
+    coverImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD7mc_dt-XBW63CnuhHSQeHqmBFk3HFzLhWVq-tDgfEdc3TzilNmAnExo0y-SMN-A3fYlBOyTO2bVsZX88JMK1Gu0xG7YWWyzCf2-p1pJ4GMgAdJiUiVLyIKLotoXwxwsNiDHIqmCAq1abRU0gBAXTGTTU8ULcKsESrYILzUR2wv2rHPjSy7L8fE1Bbt04Eq5ZcMZkzluR6CYofwIcDQOEQ5105K-IvWLkdHt4iHrmTivWII2kvQi0MxA',
+    accentColor: '#7bd8b1',
+    rating: 4.99,
+    ratingCount: 9600,
+    views: '710K',
+    badge: 'سفر العمران',
+    section: 'riwaq-al-turath',
+    description: 'كتاب العبر وديوان المبتدأ والخبر؛ العمل العبقري الذي صاغ لأول مرة في تاريخ الفكر الإنساني قوانين قيام الدول وسقوطها وأثر العصبية والعمران.',
+    chapters: [
+      {
+        chapterIndex: 1,
+        title: 'الفصل الأول: في طبيعة العمران البشري ووجوب الاجتماع',
+        content: `اعْلَمْ أَنَّ الاجْتِمَاعَ الإِنْسَانِيَّ ضَرُورِيٌّ، وَيُعَبِّرُ الحُكَمَاءُ عَنْ هَذَا بِقَوْلِهِمْ: «الإِنْسَانُ مَدَنِيٌّ بِالطَّبْعِ».
+ذَلِكَ أَنَّ القُدْرَةَ الوَاحِدَةَ مِنَ البَشَرِ قَاصِرَةٌ عَنْ تَحْصِيلِ حَاجَتِهَا مِنَ الغِذَاءِ وَالدِّفَاعِ دُونَ مُعَاوَنَةِ أَبْنَاءِ جِنْسِهَا.
+
+وَإِذَا حَصَلَ هَذَا الِاجْتِمَاعُ لِلْبَشَرِ، كَانَ لَا بُدَّ لَهُمْ مِنْ وَازِعٍ يَدْفَعُ بَعْضَهُمْ عَنْ بَعْضٍ لِمَا فِي الطِّبَاعِ الحَيَوَانِيَّةِ مِنَ العُدْوَانِ،
+وَذَلِكَ الوَازِعُ هُوَ المَلِكُ وَالسُّلْطَانُ، وَأَسَاسُهُ العَصَبِيَّةُ الَّتِي بِهَا تَكُونُ الحِمَايَةُ وَالمُدَافَعَةُ وَالمُطَالَبَةُ بِكُلِّ حَقٍّ.`
+      }
+    ]
+  }
 ];

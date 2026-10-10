@@ -1,442 +1,410 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { MatIconModule } from '@angular/material/icon';
 import { NovelStore } from '../core/novel-store';
 import { AuthStore } from '../core/auth-store';
+import { FormsModule } from '@angular/forms';
+import { SANCTUARIES_DATA } from '../core/sample-novels';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-header',
-  imports: [RouterLink, MatIconModule],
+  imports: [RouterLink, FormsModule],
+  host: {
+    '(window:scroll)': 'onWindowScroll()',
+  },
   template: `
-    <header class="sticky top-0 z-50 liquid-glass-header text-stone-100 transition-all duration-300">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between h-20">
+    <header
+      class="fixed top-0 inset-x-0 z-50 transition-all duration-300 ease-in-out"
+      [class.-translate-y-full]="isHeaderHidden() && !isMobileMenuOpen()"
+      [class.opacity-0]="isHeaderHidden() && !isMobileMenuOpen()"
+      [class.pointer-events-none]="isHeaderHidden() && !isMobileMenuOpen()"
+      [class.translate-y-0]="!isHeaderHidden() || isMobileMenuOpen()"
+      [class.opacity-100]="!isHeaderHidden() || isMobileMenuOpen()"
+      [class.pointer-events-auto]="!isHeaderHidden() || isMobileMenuOpen()"
+    >
+      <!-- Ultra-high Glassmorphism Container with Deep Blur -->
+      <div class="relative w-full bg-[#0a0a0c]/40 backdrop-blur-3xl border-b border-white/[0.08] shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] transition-all duration-300">
+        <!-- Top Crystal Specular Glass Rim -->
+        <div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none"></div>
+
+        <div class="h-20 w-full px-4 sm:px-6 md:px-12 flex items-center justify-between gap-4">
           
-          <!-- RIGHT: Website Logo & Name (شعار الموقع واسم مقاتل الروايات) -->
-          <div class="flex items-center gap-3">
-            <a routerLink="/" (click)="closeMenu()" class="flex items-center gap-3 group cursor-pointer focus-visible:outline-none">
-              
-              <!-- Site Logo with multi-format fallback (PNG, SVG, ICO) -->
-              <div class="relative w-11 h-11 rounded-2xl overflow-hidden liquid-glass flex items-center justify-center border border-rose-500/25 group-hover:border-rose-500/60 transition-all shadow-md p-1">
-                <picture class="w-full h-full flex items-center justify-center">
-                  <source srcset="assist/img/logo.png" type="image/png">
-                  <source srcset="assist/img/logo.svg" type="image/svg+xml">
-                  <img
-                    src="assist/img/logo.ico"
-                    alt="شعار مقاتل الروايات"
-                    class="w-full h-full object-contain group-hover:scale-105 transition-transform"
-                    (error)="onLogoError()"
-                  />
-                </picture>
-
-                @if (logoFailed()) {
-                  <!-- Elegant Arabic Emblem Fallback -->
-                  <div class="absolute inset-0 bg-gradient-to-br from-rose-600 via-rose-800 to-stone-950 flex items-center justify-center font-amiri font-bold text-2xl text-white shadow-inner">
-                    م
-                  </div>
-                }
-              </div>
-
-              <!-- Brand Name Typography -->
-              <div class="flex flex-col">
-                <span class="text-2xl sm:text-3xl font-extrabold font-amiri text-white tracking-wide group-hover:text-rose-400 transition-colors">
-                  مقاتل الروايات
-                </span>
-                <span class="text-[10px] text-rose-400/90 font-sans tracking-widest font-bold uppercase -mt-1">
-                  عالم الروايات العربية والمترجمة
-                </span>
-              </div>
+          <!-- RIGHT: Website Identity & Brand -->
+          <div class="flex items-center gap-6 shrink-0">
+            <a routerLink="/" class="flex items-baseline gap-2.5 group cursor-pointer select-none">
+              <span class="font-noto-serif text-2xl font-bold text-[#e5e1e4] tracking-wide group-hover:text-[#ffb2bd] transition-colors">
+                أروقة الخلود
+              </span>
+              <span class="hidden sm:inline-block text-[11px] font-medium text-[#e9c349] tracking-widest opacity-80 select-none">
+                الصرح السردي
+              </span>
             </a>
           </div>
 
-          <!-- MIDDLE: Desktop Website Navigation Links (شريط تنقل موقع الويب لسطح المكتب) -->
-          <nav aria-label="التنقل الرئيسي للموقع" class="hidden lg:flex items-center gap-1 xl:gap-2 mx-4">
-            <a
-              routerLink="/"
-              class="px-3 py-2 rounded-xl text-xs xl:text-sm font-semibold text-stone-300 hover:text-white hover:bg-white/5 transition-all flex items-center gap-1.5 cursor-pointer"
-            >
-              <mat-icon class="text-base text-rose-400">home</mat-icon>
-              <span>الرئيسية</span>
-            </a>
-
-            <a
-              routerLink="/library"
-              class="px-3 py-2 rounded-xl text-xs xl:text-sm font-semibold text-stone-300 hover:text-white hover:bg-white/5 transition-all flex items-center gap-1.5 cursor-pointer"
-            >
-              <mat-icon class="text-base text-rose-400">auto_stories</mat-icon>
-              <span>المكتبة الشاملة</span>
-            </a>
-
+          <!-- CENTER: Sanctuaries Navigation (Desktop Glass Bar) -->
+          <nav class="hidden xl:flex items-center gap-1.5 py-1 px-2.5 bg-[#0e0e10]/60 border border-white/[0.07] rounded-full shadow-[0_2px_12px_rgba(0,0,0,0.3)] backdrop-blur-md">
             <button
               type="button"
-              (click)="scrollToSection('leaderboard')"
-              class="px-3 py-2 rounded-xl text-xs xl:text-sm font-semibold text-stone-300 hover:text-white hover:bg-white/5 transition-all flex items-center gap-1.5 cursor-pointer"
+              (click)="navigateToRiwaq('riwaq-al-riwayat')"
+              class="px-4 py-1.5 rounded-full text-[13px] font-medium transition-all cursor-pointer flex items-center gap-1.5"
+              [class]="activeRiwaq() === 'riwaq-al-riwayat' ? 'text-[#ffb2bd] font-semibold bg-[#2a2a2c] shadow-sm' : 'text-[#debfc2]/80 hover:text-[#e5e1e4] hover:bg-[#201f22]'"
             >
-              <mat-icon class="text-base text-amber-400">trending_up</mat-icon>
-              <span>الأكثر قراءة</span>
+              <span class="w-1.5 h-1.5 rounded-full bg-[#ffb2bd]"></span>
+              <span>رواق الروايات</span>
             </button>
-
+            <span class="w-px h-3 bg-white/10"></span>
             <button
               type="button"
-              (click)="scrollToSection('latest-additions')"
-              class="px-3 py-2 rounded-xl text-xs xl:text-sm font-semibold text-stone-300 hover:text-white hover:bg-white/5 transition-all flex items-center gap-1.5 cursor-pointer"
+              (click)="navigateToRiwaq('riwaq-al-malahim')"
+              class="px-4 py-1.5 rounded-full text-[13px] font-medium transition-all cursor-pointer flex items-center gap-1.5"
+              [class]="activeRiwaq() === 'riwaq-al-malahim' ? 'text-[#e9c349] font-semibold bg-[#2a2a2c] shadow-sm' : 'text-[#debfc2]/80 hover:text-[#e5e1e4] hover:bg-[#201f22]'"
             >
-              <mat-icon class="text-base text-rose-400">auto_awesome</mat-icon>
-              <span>آخر الإضافات</span>
+              <span class="w-1.5 h-1.5 rounded-full bg-[#e9c349]"></span>
+              <span>رواق الملاحم</span>
             </button>
-
+            <span class="w-px h-3 bg-white/10"></span>
             <button
               type="button"
-              (click)="scrollToSection('latest-chapters')"
-              class="px-3 py-2 rounded-xl text-xs xl:text-sm font-semibold text-stone-300 hover:text-white hover:bg-white/5 transition-all flex items-center gap-1.5 cursor-pointer"
+              (click)="navigateToRiwaq('riwaq-al-hikma')"
+              class="px-4 py-1.5 rounded-full text-[13px] font-medium transition-all cursor-pointer flex items-center gap-1.5"
+              [class]="activeRiwaq() === 'riwaq-al-hikma' ? 'text-white font-semibold bg-[#2a2a2c] shadow-sm' : 'text-[#debfc2]/80 hover:text-[#e5e1e4] hover:bg-[#201f22]'"
             >
-              <mat-icon class="text-base text-emerald-400">menu_book</mat-icon>
-              <span>أحدث الفصول</span>
+              <span class="w-1.5 h-1.5 rounded-full bg-white"></span>
+              <span>رواق الحكمة</span>
             </button>
-
-            <a
-              routerLink="/editor"
-              class="px-3 py-2 rounded-xl text-xs xl:text-sm font-semibold text-rose-300 hover:text-white hover:bg-rose-950/40 border border-rose-500/20 hover:border-rose-500/40 transition-all flex items-center gap-1.5 cursor-pointer"
+            <span class="w-px h-3 bg-white/10"></span>
+            <button
+              type="button"
+              (click)="navigateToRiwaq('riwaq-al-turath')"
+              class="px-4 py-1.5 rounded-full text-[13px] font-medium transition-all cursor-pointer flex items-center gap-1.5"
+              [class]="activeRiwaq() === 'riwaq-al-turath' ? 'text-[#7bd8b1] font-semibold bg-[#2a2a2c] shadow-sm' : 'text-[#debfc2]/80 hover:text-[#e5e1e4] hover:bg-[#201f22]'"
             >
-              <mat-icon class="text-base text-rose-400">edit_note</mat-icon>
-              <span>لوحة النشر</span>
-            </a>
+              <span class="w-1.5 h-1.5 rounded-full bg-[#7bd8b1]"></span>
+              <span>رواق التراث</span>
+            </button>
           </nav>
 
-          <!-- FAR LEFT: Search + User Account + Mobile Hamburger -->
-          <div class="flex items-center gap-2 sm:gap-3">
+          <!-- LEFT: Search, Bookmarks & Profile Actions -->
+          <div class="flex items-center gap-3 shrink-0">
             
-            <!-- Quick Desktop Search Input -->
-            <div class="relative hidden xl:block w-52">
+            <!-- Search Input (Desktop) -->
+            <div class="relative hidden md:flex items-center">
+              <span class="material-symbols-outlined absolute right-3 text-[#debfc2]/60 text-[19px] pointer-events-none">
+                search
+              </span>
               <input
                 type="text"
-                placeholder="ابحث في الموقع..."
-                [value]="navSearchQuery()"
-                (input)="onNavSearchInput($event)"
-                (keydown.enter)="onNavSearchSubmit()"
-                class="w-full bg-stone-900/90 border border-white/10 focus:border-rose-500 rounded-xl pr-9 pl-3 py-1.5 text-xs text-white placeholder-stone-500 focus:outline-none transition-all shadow-inner"
+                [(ngModel)]="searchQuery"
+                (input)="onSearchInput()"
+                (focus)="isSearchOpen.set(true)"
+                class="w-48 lg:w-64 pl-3 pr-9 py-1.5 bg-[#1c1b1d]/80 text-[#e5e1e4] placeholder-[#debfc2]/50 text-xs rounded-full border border-white/[0.08] focus:outline-none focus:w-72 focus:bg-[#201f22] focus:border-[#e9c349]/40 transition-all duration-300 shadow-inner backdrop-blur-sm"
+                placeholder="ابحث في الأسفار والمخطوطات..."
               />
-              <button
-                type="button"
-                (click)="onNavSearchSubmit()"
-                class="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-rose-400 cursor-pointer"
-                aria-label="بحث في الروايات"
-              >
-                <mat-icon class="text-base">search</mat-icon>
-              </button>
-            </div>
-
-            <!-- Quick Auth Status Button in Desktop Navbar -->
-            @if (authStore.isAuthenticated()) {
-              <a
-                routerLink="/profile"
-                (click)="closeMenu()"
-                class="hidden sm:flex items-center gap-2 py-1.5 px-3 rounded-2xl liquid-glass border border-rose-500/30 hover:border-rose-500/60 transition-all text-xs cursor-pointer group"
-                title="الملف الشخصي وإعدادات الحساب"
-              >
-                @if (authStore.photoURL()) {
-                  <img
-                    [src]="authStore.photoURL()"
-                    alt="صورة القارئ"
-                    referrerpolicy="no-referrer"
-                    class="w-7 h-7 rounded-full object-cover border border-rose-400"
-                  />
-                } @else {
-                  <div class="w-7 h-7 rounded-full bg-rose-600 text-white font-bold flex items-center justify-center text-xs">
-                    {{ authStore.displayName().charAt(0) || 'ق' }}
-                  </div>
-                }
-                <span class="font-bold text-white group-hover:text-rose-400 transition-colors max-w-[100px] truncate">
-                  {{ authStore.displayName() }}
-                </span>
-              </a>
-            } @else {
-              <a
-                routerLink="/login"
-                (click)="closeMenu()"
-                class="hidden sm:flex items-center gap-1.5 py-2 px-3.5 rounded-2xl bg-gradient-to-l from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-bold text-xs shadow-md transition-all cursor-pointer"
-                title="تسجيل الدخول أو إنشاء حساب"
-              >
-                <mat-icon class="text-base">login</mat-icon>
-                <span>دخول / تسجيل</span>
-              </a>
-            }
-
-            <!-- Mobile Drawer Button (شاشات الهاتف والأجهزة اللوحية) -->
-            <button
-              (click)="toggleMenu()"
-              aria-label="قائمة مقاتل الروايات"
-              class="lg:hidden w-11 h-11 rounded-2xl liquid-glass flex items-center justify-center text-rose-200 hover:text-white hover:bg-rose-950/40 border border-white/10 hover:border-rose-500/40 shadow-sm transition-all cursor-pointer"
-            >
-              <mat-icon class="text-2xl transition-transform duration-300" [class.rotate-90]="isMenuOpen()">
-                {{ isMenuOpen() ? 'close' : 'menu' }}
-              </mat-icon>
-            </button>
-          </div>
-
-        </div>
-      </div>
-    </header>
-
-    <!-- Liquid Glass Slide-over Drawer / Menu with Smooth Fluid Animations -->
-    <!-- Smooth Frosted Backdrop with Gentle Fade -->
-    <div
-      class="fixed inset-0 z-40 bg-black/80 backdrop-blur-md transition-opacity duration-300 ease-out"
-      [class.opacity-100]="isMenuOpen()"
-      [class.pointer-events-auto]="isMenuOpen()"
-      [class.opacity-0]="!isMenuOpen()"
-      [class.pointer-events-none]="!isMenuOpen()"
-    >
-      <button
-        type="button"
-        (click)="closeMenu()"
-        aria-label="إغلاق القائمة"
-        class="w-full h-full border-none cursor-default bg-transparent"
-      ></button>
-    </div>
-
-    <!-- Fluid Slide-over Drawer with Luxurious Modern Layout -->
-    <aside
-      class="fixed top-0 left-0 bottom-0 z-50 w-full max-w-sm liquid-glass bg-stone-950/95 border-r border-rose-500/20 shadow-2xl flex flex-col justify-between p-5 sm:p-6 overflow-y-auto transform transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
-      [class.translate-x-0]="isMenuOpen()"
-      [class.-translate-x-full]="!isMenuOpen()"
-    >
-        
-        <!-- Drawer Content Upper -->
-        <div class="space-y-6">
-          
-          <!-- Drawer Header -->
-          <div class="flex items-center justify-between border-b border-rose-500/15 pb-4">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 rounded-2xl liquid-glass border border-rose-500/30 flex items-center justify-center p-1 shadow-sm">
-                <img
-                  src="assist/img/logo.png"
-                  alt="مقاتل الروايات"
-                  class="w-full h-full object-contain"
-                />
-              </div>
-              <div>
-                <h3 class="text-lg font-bold font-amiri text-white">مقاتل الروايات</h3>
-                <span class="text-[10px] text-rose-400">القائمة والتصفح الذكي</span>
-              </div>
-            </div>
-
-            <button
-              (click)="closeMenu()"
-              aria-label="إغلاق القائمة"
-              class="w-9 h-9 rounded-xl liquid-glass flex items-center justify-center text-stone-400 hover:text-white cursor-pointer transition-colors"
-            >
-              <mat-icon class="text-xl">close</mat-icon>
-            </button>
-          </div>
-
-          <!-- 1. USER PROFILE SECTION (أنظف وأجمل بدون أي ذكر تقني) -->
-          <div class="p-4 rounded-2xl liquid-glass border border-rose-500/20 space-y-3">
-            @if (authStore.isAuthenticated()) {
-              <div class="flex items-center gap-3">
-                @if (authStore.photoURL()) {
-                  <img
-                    [src]="authStore.photoURL()"
-                    alt="صورة القارئ"
-                    referrerpolicy="no-referrer"
-                    class="w-11 h-11 rounded-full object-cover border-2 border-rose-500 shrink-0 shadow-sm"
-                  />
-                } @else {
-                  <div class="w-11 h-11 rounded-full bg-gradient-to-br from-rose-600 to-rose-900 border border-rose-400 text-white font-bold flex items-center justify-center text-lg shrink-0 shadow-sm">
-                    {{ authStore.displayName().charAt(0) || 'ق' }}
-                  </div>
-                }
-                <div class="min-w-0 flex-1">
-                  <span class="text-sm font-bold text-white font-amiri block truncate">
-                    {{ authStore.displayName() }}
-                  </span>
-                  <span class="text-[11px] text-stone-400 font-mono block truncate">
-                    {{ authStore.userEmail() }}
-                  </span>
-                </div>
-              </div>
-
-              <div class="grid grid-cols-2 gap-2 pt-2 border-t border-white/10">
-                <a
-                  routerLink="/profile"
-                  (click)="closeMenu()"
-                  class="py-2 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-center text-xs text-stone-200 font-medium transition-colors cursor-pointer flex items-center justify-center gap-1"
-                >
-                  <mat-icon class="text-sm text-rose-400">account_circle</mat-icon>
-                  <span>حسابي</span>
-                </a>
+              @if (searchQuery().trim()) {
                 <button
                   type="button"
-                  (click)="authStore.logout(); closeMenu()"
-                  class="py-2 px-3 rounded-xl bg-rose-950/60 hover:bg-rose-900 border border-rose-500/30 text-rose-300 text-xs transition-colors cursor-pointer flex items-center justify-center gap-1"
+                  (click)="searchQuery.set(''); isSearchOpen.set(false)"
+                  class="absolute left-2.5 text-[#debfc2]/50 hover:text-white"
                 >
-                  <mat-icon class="text-sm">logout</mat-icon>
-                  <span>تسجيل خروج</span>
+                  <span class="material-symbols-outlined text-[16px]">close</span>
                 </button>
-              </div>
-            } @else {
-              <div class="space-y-2">
-                <div class="flex items-center gap-2 text-xs font-bold text-stone-200">
-                  <mat-icon class="text-rose-400 text-base">person</mat-icon>
-                  <span>حساب القارئ</span>
-                </div>
-                <p class="text-[11px] text-stone-400 leading-relaxed font-sans">
-                  سجّل دخولك لحفظ تقدم القراءة، مزامنة فصولك، وتقييم رواياتك المفضلة.
-                </p>
-                <a
-                  routerLink="/login"
-                  (click)="closeMenu()"
-                  class="w-full py-2.5 px-3.5 rounded-xl bg-gradient-to-l from-rose-600 to-rose-700 hover:from-rose-500 hover:to-rose-600 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer mt-1"
-                >
-                  <mat-icon class="text-base">login</mat-icon>
-                  <span>تسجيل الدخول / إنشاء حساب</span>
-                </a>
-              </div>
+              }
+            </div>
+
+            <!-- Mobile Search Toggle Button -->
+            <button
+              type="button"
+              (click)="isMobileSearchOpen.set(!isMobileSearchOpen())"
+              class="md:hidden p-2 text-[#debfc2] hover:text-[#e9c349] transition-colors rounded-full hover:bg-white/5 cursor-pointer"
+              aria-label="البحث"
+            >
+              <span class="material-symbols-outlined text-[20px]">search</span>
+            </button>
+
+            <!-- Bookmarks Button (خزانة المحفوظات) -->
+            <a
+              routerLink="/profile"
+              class="relative p-2 text-[#debfc2] hover:text-[#ffb2bd] transition-colors rounded-full hover:bg-white/5 cursor-pointer"
+              aria-label="المحفوظات الشخصية"
+              title="خزانة المحفوظات والمخطوطات"
+            >
+              <span class="material-symbols-outlined text-[22px]">bookmark</span>
+              @if (novelStore.bookmarkedNovelIds().length > 0) {
+                <span class="absolute top-1 right-1 w-4 h-4 rounded-full bg-[#881337] text-[#ffb2bd] text-[9px] font-bold flex items-center justify-center border border-[#ffb2bd]/30">
+                  {{ novelStore.bookmarkedNovelIds().length }}
+                </span>
+              }
+            </a>
+
+            <!-- Profile / Sign In Button -->
+            <a
+              [routerLink]="authStore.isAuthenticated() ? '/profile' : '/login'"
+              class="w-9 h-9 rounded-full bg-gradient-to-br from-[#881337] to-[#201f22] border border-[#ffb2bd]/30 flex items-center justify-center shrink-0 text-[#ffb2bd] hover:border-[#ffb2bd] transition-all shadow-md overflow-hidden cursor-pointer"
+              [title]="authStore.isAuthenticated() ? authStore.displayName() : 'تسجيل الدخول'"
+            >
+              @if (authStore.photoURL()) {
+                <img [src]="authStore.photoURL()" alt="avatar" class="w-full h-full object-cover" />
+              } @else {
+                <span class="material-symbols-outlined text-[19px]">person</span>
+              }
+            </a>
+
+            <!-- Mobile Hamburger Toggle -->
+            <button
+              type="button"
+              (click)="isMobileMenuOpen.set(!isMobileMenuOpen())"
+              class="xl:hidden p-2 text-[#debfc2] hover:text-white rounded-lg hover:bg-white/5 cursor-pointer"
+              aria-label="القائمة"
+            >
+              <span class="material-symbols-outlined text-[24px]">
+                {{ isMobileMenuOpen() ? 'close' : 'menu' }}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Mobile Search Row -->
+        @if (isMobileSearchOpen()) {
+          <div class="md:hidden px-4 py-2.5 bg-[#131315]/95 backdrop-blur-2xl border-t border-white/[0.06] flex items-center gap-2">
+            <span class="material-symbols-outlined text-[#debfc2]/60 text-[20px]">search</span>
+            <input
+              type="text"
+              [(ngModel)]="searchQuery"
+              (input)="onSearchInput()"
+              (focus)="isSearchOpen.set(true)"
+              class="flex-1 bg-transparent text-sm text-[#e5e1e4] placeholder-[#debfc2]/50 focus:outline-none"
+              placeholder="ابحث في الأسفار والمخطوطات..."
+            />
+            @if (searchQuery().trim()) {
+              <button type="button" (click)="searchQuery.set(''); isSearchOpen.set(false)" class="text-[#debfc2]">
+                <span class="material-symbols-outlined text-[18px]">close</span>
+              </button>
             }
           </div>
+        }
 
-          <!-- 2. MAIN NAVIGATION SECTIONS -->
-          <div class="space-y-1">
-            <span class="text-[10px] font-bold text-stone-400 uppercase tracking-wider block px-2 mb-1.5">
-              تصفح الأقسام والروايات
-            </span>
-
-            <a
-              routerLink="/"
-              (click)="closeMenu()"
-              class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-stone-200 hover:text-white hover:bg-rose-950/40 hover:border hover:border-rose-500/20 transition-all cursor-pointer"
-            >
-              <mat-icon class="text-rose-400 text-lg">auto_stories</mat-icon>
-              <span>الرئيسية (استكشاف الروايات)</span>
-            </a>
-
-            <a
-              routerLink="/reader"
-              (click)="closeMenu()"
-              class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-stone-200 hover:text-white hover:bg-rose-950/40 hover:border hover:border-rose-500/20 transition-all cursor-pointer"
-            >
-              <mat-icon class="text-rose-400 text-lg">menu_book</mat-icon>
-              <span>متابعة القراءة</span>
-            </a>
-
-            <a
-              routerLink="/login"
-              (click)="closeMenu()"
-              class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-stone-200 hover:text-white hover:bg-rose-950/40 hover:border hover:border-rose-500/20 transition-all cursor-pointer"
-            >
-              <mat-icon class="text-rose-400 text-lg">manage_accounts</mat-icon>
-              <span>إدارة الحساب والمزامنة</span>
-            </a>
-          </div>
-
-          <!-- 3. READER UTILITIES (فتح ملف رواية محلي) -->
-          <div class="space-y-1.5 pt-3 border-t border-rose-500/15">
-            <span class="text-[10px] font-bold text-stone-400 uppercase tracking-wider block px-2 mb-1.5">
-              أدوات القارئ
-            </span>
-
-            <label class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-stone-200 hover:text-white hover:bg-rose-950/40 hover:border hover:border-rose-500/20 transition-all cursor-pointer">
-              <mat-icon class="text-rose-400 text-lg">file_upload</mat-icon>
-              <span>فتح ملف رواية محفوظ محلياً (.mtx)</span>
-              <input
-                type="file"
-                accept=".mtx"
-                class="hidden"
-                (change)="onFileSelected($event)"
-              />
-            </label>
-          </div>
-
-          <!-- 4. LITERARY AMBIENCE BADGE -->
-          <div class="p-3.5 rounded-2xl liquid-glass border border-rose-500/15 space-y-1">
-            <div class="flex items-center gap-1.5 text-xs font-bold text-rose-300">
-              <mat-icon class="text-sm text-rose-400">verified</mat-icon>
-              <span>منصة عربية رائدة</span>
+        <!-- Search Live Results Dropdown -->
+        @if (isSearchOpen() && searchResults().length > 0) {
+          <div class="absolute top-full inset-x-0 md:inset-x-auto md:left-12 md:w-96 bg-[#1c1b1d]/95 backdrop-blur-3xl border border-white/10 rounded-b-2xl shadow-2xl p-3 max-h-96 overflow-y-auto z-50">
+            <div class="text-[11px] font-semibold text-[#e9c349] mb-2 px-2 flex items-center justify-between">
+              <span>نتائج البحث ({{ searchResults().length }} سفر)</span>
+              <button type="button" (click)="isSearchOpen.set(false)" class="text-[#debfc2]/60 hover:text-white text-xs">
+                إغلاق
+              </button>
             </div>
-            <p class="text-[11px] text-stone-400 leading-relaxed font-sans">
-              قراءة فورية عالية الدقة بدون إعلانات مزعجة، مع حفظ تقدمك ومفضلتك تلقائياً.
-            </p>
+            <div class="flex flex-col gap-1.5">
+              @for (novel of searchResults(); track novel.id) {
+                <a
+                  [routerLink]="['/novel', novel.id]"
+                  (click)="isSearchOpen.set(false); isMobileSearchOpen.set(false)"
+                  class="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors cursor-pointer group"
+                >
+                  <img
+                    [src]="novel.coverImage || 'assist/img/logo.png'"
+                    [alt]="novel.title"
+                    class="w-10 h-14 rounded object-cover shadow-sm shrink-0"
+                  />
+                  <div class="flex flex-col min-w-0">
+                    <span class="text-sm font-semibold text-[#e5e1e4] group-hover:text-[#ffb2bd] truncate">
+                      {{ novel.title }}
+                    </span>
+                    <span class="text-xs text-[#debfc2]/70 truncate">{{ novel.author }}</span>
+                    <span class="text-[10px] text-[#e9c349] mt-0.5">{{ novel.riwaqName }}</span>
+                  </div>
+                </a>
+              }
+            </div>
           </div>
+        }
 
-        </div>
+        <!-- Mobile Navigation Drawer -->
+        @if (isMobileMenuOpen()) {
+          <div class="xl:hidden bg-[#0a0a0c]/95 backdrop-blur-3xl border-t border-white/[0.08] px-5 py-6 flex flex-col gap-5 animate-in fade-in duration-200">
+            
+            <!-- Sanctuaries Header -->
+            <div class="flex items-center justify-between">
+              <div class="text-xs font-semibold text-[#e9c349] tracking-wider flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-[16px]">account_balance</span>
+                <span>الأروقة السردية الكبرى</span>
+              </div>
+              <span class="text-[10px] text-[#debfc2]/60">اختر الرواق للدخول المباشر</span>
+            </div>
 
-        <!-- Drawer Footer -->
-        <div class="pt-4 border-t border-rose-500/15 text-center text-[11px] text-stone-500">
-          <span>مقاتل الروايات © 2026 · منصة القراءة العربية</span>
-        </div>
+            <!-- Sanctuary Custom Image Buttons (بتضليل واندماج مرتب) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              @for (sanctuary of sanctuaries; track sanctuary.id) {
+                <button
+                  type="button"
+                  (click)="navigateToRiwaq(sanctuary.id)"
+                  class="relative h-18 rounded-xl overflow-hidden border border-white/10 hover:border-white/30 text-right p-3.5 flex items-center justify-between group cursor-pointer transition-all duration-300 shadow-md"
+                >
+                  <!-- Background Sanctuary Image -->
+                  <div
+                    class="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105 filter brightness-[0.6]"
+                    [style.backgroundImage]="'url(' + sanctuary.btnBgImage + ')'"
+                  ></div>
 
-      </aside>
+                  <!-- Dark Shading & Atmospheric Tint for Crisp Contrast -->
+                  <div class="absolute inset-0 bg-gradient-to-r from-[#0a0a0c]/90 via-[#0a0a0c]/70 to-[#0a0a0c]/85"></div>
+
+                  <!-- Right Accent Glow Stripe -->
+                  <div
+                    class="absolute inset-y-0 right-0 w-1"
+                    [style.backgroundColor]="sanctuary.accent"
+                  ></div>
+
+                  <!-- Text Details -->
+                  <div class="relative z-10 flex items-center gap-2.5 pr-1">
+                    <div
+                      class="w-8 h-8 rounded-lg bg-black/50 border border-white/15 flex items-center justify-center shrink-0 shadow-inner"
+                      [style.color]="sanctuary.accent"
+                    >
+                      <span class="material-symbols-outlined text-[18px]">
+                        @switch (sanctuary.id) {
+                          @case ('riwaq-al-riwayat') { auto_stories }
+                          @case ('riwaq-al-malahim') { swords }
+                          @case ('riwaq-al-hikma') { psychology }
+                          @default { history_edu }
+                        }
+                      </span>
+                    </div>
+                    <div class="flex flex-col">
+                      <span class="text-xs font-bold text-white group-hover:text-[#ffd9dd] transition-colors">
+                        {{ sanctuary.name }}
+                      </span>
+                      <span class="text-[10px] text-[#debfc2]/70 font-medium">
+                        {{ sanctuary.subtitle }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Directional Indicator Icon -->
+                  <span
+                    class="relative z-10 material-symbols-outlined text-[18px] transition-transform duration-300 group-hover:-translate-x-1"
+                    [style.color]="sanctuary.accent"
+                  >
+                    west
+                  </span>
+                </button>
+              }
+            </div>
+
+            <!-- Website Navigation Links -->
+            <div class="pt-3 border-t border-white/10 flex flex-col gap-2">
+              <span class="text-[11px] font-semibold text-[#e9c349] tracking-wider">
+                روابط الموقع الأساسية
+              </span>
+              <div class="grid grid-cols-2 gap-2 text-xs">
+                <a
+                  routerLink="/"
+                  (click)="isMobileMenuOpen.set(false)"
+                  class="p-2.5 rounded-lg bg-[#1c1b1d]/80 hover:bg-white/5 border border-white/5 text-[#debfc2] hover:text-white flex items-center gap-2 transition-colors"
+                >
+                  <span class="material-symbols-outlined text-[16px] text-[#e9c349]">home</span>
+                  <span>الرئيسية والصرح</span>
+                </a>
+                <a
+                  routerLink="/profile"
+                  (click)="isMobileMenuOpen.set(false)"
+                  class="p-2.5 rounded-lg bg-[#1c1b1d]/80 hover:bg-white/5 border border-white/5 text-[#debfc2] hover:text-white flex items-center gap-2 transition-colors"
+                >
+                  <span class="material-symbols-outlined text-[16px] text-[#ffb2bd]">bookmark</span>
+                  <span>المحفوظات ({{ novelStore.bookmarkedNovelIds().length }})</span>
+                </a>
+                <a
+                  [routerLink]="authStore.isAuthenticated() ? '/profile' : '/login'"
+                  (click)="isMobileMenuOpen.set(false)"
+                  class="col-span-2 p-2.5 rounded-lg bg-[#1c1b1d]/80 hover:bg-white/5 border border-white/5 text-[#debfc2] hover:text-white flex items-center justify-between transition-colors"
+                >
+                  <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[16px] text-[#7bd8b1]">account_circle</span>
+                    <span>{{ authStore.isAuthenticated() ? 'الملف الشخصي (' + authStore.displayName() + ')' : 'تسجيل الدخول للقارئ' }}</span>
+                  </div>
+                  <span class="material-symbols-outlined text-[14px]">arrow_back</span>
+                </a>
+              </div>
+            </div>
+
+          </div>
+        }
+      </div>
+    </header>
   `,
 })
 export class Header {
-  readonly store = inject(NovelStore);
+  readonly novelStore = inject(NovelStore);
   readonly authStore = inject(AuthStore);
   private readonly router = inject(Router);
 
-  readonly isMenuOpen = signal<boolean>(false);
-  readonly logoFailed = signal<boolean>(false);
-  readonly navSearchQuery = signal<string>('');
+  readonly sanctuaries = SANCTUARIES_DATA;
+  readonly isMobileMenuOpen = signal<boolean>(false);
+  readonly isMobileSearchOpen = signal<boolean>(false);
+  readonly isSearchOpen = signal<boolean>(false);
+  readonly searchQuery = signal<string>('');
+  readonly activeRiwaq = signal<string>('all');
 
-  onNavSearchInput(e: Event): void {
-    const val = (e.target as HTMLInputElement).value;
-    this.navSearchQuery.set(val);
-  }
+  private lastScrollY = 0;
+  readonly isHeaderHidden = signal<boolean>(false);
 
-  onNavSearchSubmit(): void {
-    const q = this.navSearchQuery().trim();
-    if (q) {
-      this.router.navigate(['/library'], { queryParams: { q } });
-    }
-  }
+  readonly searchResults = computed(() => {
+    const q = this.searchQuery().trim().toLowerCase();
+    if (!q) return [];
+    return this.novelStore.novels().filter(n =>
+      n.title.toLowerCase().includes(q) ||
+      n.author.toLowerCase().includes(q) ||
+      n.category.toLowerCase().includes(q) ||
+      (n.riwaqName && n.riwaqName.toLowerCase().includes(q))
+    );
+  });
 
-  scrollToSection(sectionId: string): void {
-    this.closeMenu();
-    const currentUrl = this.router.url;
-    if (currentUrl === '/' || currentUrl.startsWith('/#')) {
-      const el = document.getElementById(sectionId);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        return;
+  onWindowScroll(): void {
+    if (typeof window === 'undefined') return;
+    const currentY = window.scrollY || window.pageYOffset || 0;
+    
+    // Within the top 30px, the header is always revealed
+    if (currentY <= 30) {
+      this.isHeaderHidden.set(false);
+    } else {
+      // Past 30px:
+      // When scrolling down past 30px, header disappears
+      // When scrolling up, it smoothly reappears
+      const diff = currentY - this.lastScrollY;
+      if (diff > 5) {
+        this.isHeaderHidden.set(true);
+      } else if (diff < -15) {
+        this.isHeaderHidden.set(false);
       }
     }
-    this.router.navigate(['/'], { fragment: sectionId }).then(() => {
-      setTimeout(() => {
-        const el = document.getElementById(sectionId);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      }, 150);
-    });
+    this.lastScrollY = currentY;
   }
 
-  toggleMenu(): void {
-    this.isMenuOpen.update(v => !v);
+  onSearchInput(): void {
+    if (this.searchQuery().trim()) {
+      this.isSearchOpen.set(true);
+    }
   }
 
-  closeMenu(): void {
-    this.isMenuOpen.set(false);
-  }
-
-  onLogoError(): void {
-    this.logoFailed.set(true);
-  }
-
-  async onFileSelected(e: Event): Promise<void> {
-    const input = e.target as HTMLInputElement;
-    if (!input.files || input.files.length === 0) return;
-
-    const file = input.files[0];
-    try {
-      const buffer = await file.arrayBuffer();
-      const bytes = new Uint8Array(buffer);
-      await this.store.importMtxFile(bytes, file.name);
-      this.closeMenu();
-      this.router.navigate(['/reader']);
-    } catch (err) {
-      console.error('Error importing novel file:', err);
-    } finally {
-      input.value = '';
+  navigateToRiwaq(riwaqId: string): void {
+    this.activeRiwaq.set(riwaqId);
+    this.isMobileMenuOpen.set(false);
+    this.novelStore.selectedCategoryFilter.set(riwaqId);
+    
+    // Smooth scroll to the target sanctuary anchor if on home, or navigate home first
+    if (this.router.url === '/' || this.router.url.startsWith('/#')) {
+      const el = document.getElementById(riwaqId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    } else {
+      this.router.navigate(['/']).then(() => {
+        setTimeout(() => {
+          const el = document.getElementById(riwaqId);
+          if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }, 150);
+      });
     }
   }
 }
+
