@@ -2,6 +2,8 @@ import { Routes } from '@angular/router';
 import { NovelLibrary } from './components/novel-library';
 import { RiwaqNovels } from './components/riwaq-novels';
 import { RiwaqEpics } from './components/riwaq-epics';
+import { RiwaqWisdom } from './components/riwaq-wisdom';
+import { RiwaqHeritage } from './components/riwaq-heritage';
 import { NovelReader } from './components/novel-reader';
 import { NovelEditor } from './components/novel-editor';
 import { NovelDetails } from './components/novel-details';
@@ -19,6 +21,17 @@ export const routes: Routes = [
   { path: 'riwaq/malahim', component: RiwaqEpics },
   { path: 'epics', component: RiwaqEpics },
   { path: 'corridor-epics', component: RiwaqEpics },
+  { path: 'riwaq-al-hikma', component: RiwaqWisdom },
+  { path: 'riwaq/hikma', component: RiwaqWisdom },
+  { path: 'wisdom', component: RiwaqWisdom },
+  { path: 'corridor-wisdom', component: RiwaqWisdom },
+  { path: 'sanctuary-wisdom', component: RiwaqWisdom },
+  { path: 'riwaq-al-turath', component: RiwaqHeritage },
+  { path: 'riwaq/turath', component: RiwaqHeritage },
+  { path: 'turath', component: RiwaqHeritage },
+  { path: 'heritage', component: RiwaqHeritage },
+  { path: 'corridor-heritage', component: RiwaqHeritage },
+  { path: 'sanctuary-heritage', component: RiwaqHeritage },
   { path: 'novel/:id', component: NovelDetails },
   { path: 'details/:id', component: NovelDetails },
   { path: 'details', component: NovelDetails },

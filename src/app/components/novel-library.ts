@@ -553,6 +553,16 @@ export class NovelLibrary {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
+    if (sanctuaryId === 'riwaq-al-hikma') {
+      this.router.navigate(['/riwaq-al-hikma']);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    if (sanctuaryId === 'riwaq-al-turath') {
+      this.router.navigate(['/riwaq-al-turath']);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     const el = document.getElementById(sanctuaryId);
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });

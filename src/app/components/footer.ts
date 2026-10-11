@@ -35,22 +35,19 @@ import { RouterLink } from '@angular/router';
                 رواق الروايات (Crimson Noir)
               </a>
               <a
-                routerLink="/"
-                fragment="riwaq-al-malahim"
+                routerLink="/riwaq-al-malahim"
                 class="text-[#debfc2]/80 hover:text-[#e9c349] transition-colors cursor-pointer"
               >
                 رواق الملاحم (Mythic Bronze)
               </a>
               <a
-                routerLink="/"
-                fragment="riwaq-al-hikma"
-                class="text-[#debfc2]/80 hover:text-white transition-colors cursor-pointer"
+                routerLink="/riwaq-al-hikma"
+                class="text-[#debfc2]/80 hover:text-[#ffe088] transition-colors cursor-pointer"
               >
                 رواق الحكمة (Ivory Sanctuary)
               </a>
               <a
-                routerLink="/"
-                fragment="riwaq-al-turath"
+                routerLink="/riwaq-al-turath"
                 class="text-[#debfc2]/80 hover:text-[#7bd8b1] transition-colors cursor-pointer"
               >
                 رواق التراث (Manuscript Emerald)

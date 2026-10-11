@@ -44,6 +44,14 @@ import { SANCTUARIES_DATA } from '../core/sample-novels';
               <span class="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full bg-[#af8d11]/80 text-[#e9c349] text-[11px] font-semibold tracking-wider border border-[#e9c349]/30 shadow-sm animate-in fade-in">
                 رواق الملاحم
               </span>
+            } @else if (activeRiwaq() === 'riwaq-al-hikma') {
+              <span class="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full bg-[#2a2a2c] text-[#ffe088] text-[11px] font-semibold tracking-wider border border-[#e9c349]/40 shadow-[0_0_12px_rgba(233,195,73,0.2)] animate-in fade-in">
+                رواق الحكمة
+              </span>
+            } @else if (activeRiwaq() === 'riwaq-al-turath') {
+              <span class="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full bg-[#005039]/80 text-[#97f5cc] text-[11px] font-semibold tracking-wider border border-[#7bd8b1]/30 shadow-[0_0_12px_rgba(0,80,57,0.3)] animate-in fade-in">
+                رواق التراث
+              </span>
             } @else {
               <span class="hidden sm:inline-block text-[11px] font-medium text-[#e9c349] tracking-widest opacity-80 select-none">
                 الصرح السردي
@@ -77,9 +85,9 @@ import { SANCTUARIES_DATA } from '../core/sample-novels';
               type="button"
               (click)="navigateToRiwaq('riwaq-al-hikma')"
               class="px-4 py-1.5 rounded-full text-[13px] font-medium transition-all cursor-pointer flex items-center gap-1.5"
-              [class]="activeRiwaq() === 'riwaq-al-hikma' ? 'text-white font-semibold bg-[#2a2a2c] shadow-sm' : 'text-[#debfc2]/80 hover:text-[#e5e1e4] hover:bg-[#201f22]'"
+              [class]="activeRiwaq() === 'riwaq-al-hikma' ? 'text-[#ffe088] font-bold bg-[#2a2a2c] shadow-[0_0_12px_rgba(233,195,73,0.25)] border border-[#e9c349]/30' : 'text-[#debfc2]/80 hover:text-[#e5e1e4] hover:bg-[#201f22]'"
             >
-              <span class="w-1.5 h-1.5 rounded-full bg-white"></span>
+              <span class="w-1.5 h-1.5 rounded-full bg-[#e9c349]"></span>
               <span>رواق الحكمة</span>
             </button>
             <span class="w-px h-3 bg-white/10"></span>
@@ -87,7 +95,7 @@ import { SANCTUARIES_DATA } from '../core/sample-novels';
               type="button"
               (click)="navigateToRiwaq('riwaq-al-turath')"
               class="px-4 py-1.5 rounded-full text-[13px] font-medium transition-all cursor-pointer flex items-center gap-1.5"
-              [class]="activeRiwaq() === 'riwaq-al-turath' ? 'text-[#7bd8b1] font-semibold bg-[#2a2a2c] shadow-sm' : 'text-[#debfc2]/80 hover:text-[#e5e1e4] hover:bg-[#201f22]'"
+              [class]="activeRiwaq() === 'riwaq-al-turath' ? 'text-[#97f5cc] font-bold bg-[#2a2a2c] shadow-[0_0_12px_rgba(0,80,57,0.3)] border border-[#7bd8b1]/30' : 'text-[#debfc2]/80 hover:text-[#e5e1e4] hover:bg-[#201f22]'"
             >
               <span class="w-1.5 h-1.5 rounded-full bg-[#7bd8b1]"></span>
               <span>رواق التراث</span>
@@ -368,6 +376,10 @@ export class Header {
       this.activeRiwaq.set('riwaq-al-riwayat');
     } else if (url.includes('riwaq-al-malahim') || url.includes('epics') || url.includes('corridor-epics')) {
       this.activeRiwaq.set('riwaq-al-malahim');
+    } else if (url.includes('riwaq-al-hikma') || url.includes('wisdom') || url.includes('corridor-wisdom') || url.includes('sanctuary-wisdom')) {
+      this.activeRiwaq.set('riwaq-al-hikma');
+    } else if (url.includes('riwaq-al-turath') || url.includes('turath') || url.includes('heritage') || url.includes('corridor-heritage') || url.includes('sanctuary-heritage')) {
+      this.activeRiwaq.set('riwaq-al-turath');
     } else {
       this.activeRiwaq.set('all');
     }
@@ -429,6 +441,16 @@ export class Header {
     }
     if (riwaqId === 'riwaq-al-malahim') {
       this.router.navigate(['/riwaq-al-malahim']);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    if (riwaqId === 'riwaq-al-hikma') {
+      this.router.navigate(['/riwaq-al-hikma']);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    if (riwaqId === 'riwaq-al-turath') {
+      this.router.navigate(['/riwaq-al-turath']);
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
