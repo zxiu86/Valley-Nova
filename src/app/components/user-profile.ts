@@ -14,13 +14,6 @@ import { RoleBadge } from './role-badge';
 
 type ProfileTab = 'bookmarks' | 'history' | 'settings' | 'requests';
 
-const PRESET_AVATARS = [
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=300&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=300&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1517841905240-472988babdf9?q=80&w=300&auto=format&fit=crop',
-  'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?q=80&w=300&auto=format&fit=crop',
-];
-
 const PRESET_COVERS = [
   'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=1500&auto=format&fit=crop',
   'https://images.unsplash.com/photo-1461360370896-922624d12aa1?q=80&w=1500&auto=format&fit=crop',
@@ -47,12 +40,21 @@ const PRESET_COVERS = [
         
         <div class="absolute bottom-6 inset-x-4 sm:inset-x-12 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
           <div class="flex items-center gap-4">
-            <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-[#1c1b1d] border-2 border-[#e9c349]/50 overflow-hidden shadow-2xl flex items-center justify-center shrink-0">
+            <div
+              (click)="currentTab.set('settings')"
+              role="button"
+              tabindex="0"
+              class="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-[#1c1b1d] border-2 border-[#e9c349]/50 overflow-hidden shadow-2xl flex items-center justify-center shrink-0 cursor-pointer group"
+              title="تعديل الأيقونة الشخصية في الإعدادات"
+            >
               @if (authStore.photoURL()) {
-                <img [src]="authStore.photoURL()" alt="avatar" class="w-full h-full object-cover" referrerpolicy="no-referrer" />
+                <img [src]="authStore.photoURL()" alt="avatar" class="w-full h-full object-cover group-hover:scale-105 transition-transform" referrerpolicy="no-referrer" />
               } @else {
                 <span class="material-symbols-outlined text-[32px] text-[#e9c349]">person</span>
               }
+              <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                <span class="material-symbols-outlined text-lg text-[#e9c349]">photo_camera</span>
+              </div>
             </div>
             
             <div class="flex flex-col">
@@ -306,45 +308,138 @@ const PRESET_COVERS = [
                 <span class="text-[11px] text-[#debfc2]/50 block">الحد الأقصى 60 حرفاً. يظهر في التعليقات وسجل القراءة.</span>
               </div>
 
-              <!-- 2. Profile Icon / Avatar -->
-              <div class="space-y-2">
-                <label for="profile-photo-url" class="text-xs font-semibold text-[#debfc2] flex items-center gap-1.5">
-                  <span class="material-symbols-outlined text-[16px] text-[#ffb2bd]">account_circle</span>
-                  <span>أيقونة الحساب / الصورة الرمزية (Profile Icon)</span>
-                </label>
-                <div class="flex items-center gap-3">
-                  <div class="w-12 h-12 rounded-xl bg-[#0e0e10] border border-white/15 overflow-hidden shrink-0 flex items-center justify-center">
+              <!-- 2. Profile Icon / Avatar (اختيار محلي من الهاتف بدون اقتراح أيقونات) -->
+              <div class="space-y-3 p-4 sm:p-5 rounded-2xl bg-[#0e0e10]/80 border border-white/10 shadow-inner">
+                <div class="flex items-center justify-between">
+                  <label for="avatar-file-input" class="text-xs font-semibold text-[#debfc2] flex items-center gap-1.5 cursor-pointer">
+                    <span class="material-symbols-outlined text-[18px] text-[#e9c349]">account_circle</span>
+                    <span>الأيقونة الشخصية (الصورة الرمزية)</span>
+                  </label>
+                  @if (profileForm.get('photoURL')?.value) {
+                    <span class="text-[11px] text-[#7bd8b1] flex items-center gap-1 bg-[#005039]/30 px-2 py-0.5 rounded-full border border-[#7bd8b1]/30">
+                      <span class="material-symbols-outlined text-[13px]">check_circle</span>
+                      <span>صورة مخصصة</span>
+                    </span>
+                  }
+                </div>
+
+                <!-- Hidden file input for native phone camera/gallery or local files -->
+                <input
+                  #avatarFileInput
+                  id="avatar-file-input"
+                  type="file"
+                  accept="image/*"
+                  (change)="onAvatarFileSelected($event)"
+                  class="hidden"
+                />
+
+                <div class="flex flex-col sm:flex-row items-center sm:items-start gap-4 pt-1">
+                  <!-- Avatar Preview Frame with interactive click/tap to pick from phone -->
+                  <div
+                    role="button"
+                    tabindex="0"
+                    (click)="avatarFileInput.click()"
+                    (keydown.enter)="avatarFileInput.click()"
+                    class="relative w-24 h-24 rounded-2xl bg-[#1c1b1d] border-2 border-dashed border-white/20 overflow-hidden shrink-0 group cursor-pointer shadow-xl hover:border-[#e9c349] transition-all flex items-center justify-center"
+                    title="اضغط لاختيار صورة من هاتفك"
+                  >
                     @if (profileForm.get('photoURL')?.value) {
-                      <img [src]="profileForm.get('photoURL')?.value" alt="preview" class="w-full h-full object-cover" referrerpolicy="no-referrer" />
+                      <img
+                        [src]="profileForm.get('photoURL')?.value"
+                        alt="معاينة الصورة"
+                        class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        referrerpolicy="no-referrer"
+                      />
                     } @else {
-                      <span class="material-symbols-outlined text-2xl text-[#debfc2]/40">person</span>
+                      <div class="w-full h-full flex flex-col items-center justify-center text-[#debfc2]/40 group-hover:text-[#e9c349] p-2 text-center">
+                        <span class="material-symbols-outlined text-3xl">add_a_photo</span>
+                        <span class="text-[10px] mt-1 text-[#debfc2]/60">اختر صورة</span>
+                      </div>
+                    }
+
+                    <!-- Hover/Active overlay for quick photo pick -->
+                    <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] gap-0.5 pointer-events-none">
+                      <span class="material-symbols-outlined text-[20px] text-[#e9c349]">smartphone</span>
+                      <span class="font-bold">تغيير الصورة</span>
+                    </div>
+
+                    @if (isProcessingAvatar()) {
+                      <div class="absolute inset-0 bg-black/80 flex flex-col items-center justify-center gap-1">
+                        <span class="material-symbols-outlined animate-spin text-[#e9c349] text-2xl">progress_activity</span>
+                        <span class="text-[10px] text-[#debfc2]">جاري المعالجة...</span>
+                      </div>
                     }
                   </div>
-                  <input
-                    id="profile-photo-url"
-                    type="url"
-                    formControlName="photoURL"
-                    class="flex-1 px-4 py-2.5 rounded-xl bg-[#0e0e10] border border-white/10 text-xs text-white focus:outline-none focus:border-[#e9c349]/50 transition-colors"
-                    placeholder="رابط الصورة الرمزية المباشر (https://...)"
-                  />
-                </div>
-                
-                <!-- Quick Avatar Presets -->
-                <div class="pt-1">
-                  <span class="text-[11px] text-[#debfc2]/60 block mb-1.5">أو اختر من الرموز الأدبية المقترحة:</span>
-                  <div class="flex items-center gap-2">
-                    @for (av of presetAvatars; track av) {
+
+                  <!-- Actions & Explanations -->
+                  <div class="flex-1 space-y-2.5 w-full text-right">
+                    <div class="flex items-center gap-2 flex-wrap">
                       <button
                         type="button"
-                        (click)="selectPresetAvatar(av)"
-                        class="w-9 h-9 rounded-lg overflow-hidden border-2 transition-all cursor-pointer hover:scale-105"
-                        [class.border-[#e9c349]]="profileForm.get('photoURL')?.value === av"
-                        [class.border-white/15]="profileForm.get('photoURL')?.value !== av"
+                        (click)="avatarFileInput.click()"
+                        [disabled]="isProcessingAvatar()"
+                        class="px-4 py-2.5 rounded-xl bg-[#e9c349] hover:bg-[#ffe088] text-[#241a00] text-xs font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer disabled:opacity-50"
                       >
-                        <img [src]="av" alt="preset" class="w-full h-full object-cover" referrerpolicy="no-referrer" />
+                        <span class="material-symbols-outlined text-[18px]">smartphone</span>
+                        <span>اختيار صورة من هاتفك</span>
                       </button>
+
+                      @if (profileForm.get('photoURL')?.value) {
+                        <button
+                          type="button"
+                          (click)="removeAvatar()"
+                          class="px-3 py-2.5 rounded-xl bg-[#2a2a2c] hover:bg-[#881337]/40 text-xs text-[#debfc2] hover:text-[#ffb2bd] transition-all border border-white/10 hover:border-[#ffb2bd]/40 flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <span class="material-symbols-outlined text-[16px]">delete</span>
+                          <span>حذف الصورة</span>
+                        </button>
+                      }
+                    </div>
+
+                    <p class="text-[11px] text-[#debfc2]/70 leading-relaxed">
+                      اختر صورتك المفضلة محلياً مباشرة من هاتفك (الاستوديو، مكتبة الصور، أو الكاميرا). يتم تحسين أبعاد الصورة وحفظها فورياً في ملفك الشخصي.
+                    </p>
+
+                    @if (avatarFileName()) {
+                      <div class="p-2 rounded-lg bg-[#005039]/20 border border-[#7bd8b1]/30 text-[11px] text-[#7bd8b1] flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-[15px]">check</span>
+                        <span>تم تجهيز الصورة من هاتفك: <strong>{{ avatarFileName() }}</strong></span>
+                      </div>
+                    }
+
+                    @if (avatarUploadError()) {
+                      <div class="p-2 rounded-lg bg-[#881337]/20 border border-[#ffb2bd]/30 text-[11px] text-[#ffb2bd] flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-[15px]">error</span>
+                        <span>{{ avatarUploadError() }}</span>
+                      </div>
                     }
                   </div>
+                </div>
+
+                <!-- Optional direct manual URL (no preset avatars) -->
+                <div class="pt-2 border-t border-white/5">
+                  <button
+                    type="button"
+                    (click)="showManualUrlInput.set(!showManualUrlInput())"
+                    class="text-[11px] text-[#debfc2]/60 hover:text-[#e9c349] transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    <span class="material-symbols-outlined text-[14px]">
+                      {{ showManualUrlInput() ? 'expand_less' : 'expand_more' }}
+                    </span>
+                    <span>أو إدخال رابط خارجي مباشر (اختياري)</span>
+                  </button>
+
+                  @if (showManualUrlInput()) {
+                    <div class="mt-2">
+                      <input
+                        id="profile-photo-url"
+                        type="url"
+                        formControlName="photoURL"
+                        class="w-full px-3.5 py-2 rounded-xl bg-[#0e0e10] border border-white/10 text-xs text-white focus:outline-none focus:border-[#e9c349]/50 transition-colors"
+                        placeholder="رابط مباشر للصورة (https://...)"
+                      />
+                    </div>
+                  }
                 </div>
               </div>
 
@@ -730,8 +825,12 @@ export class UserProfile {
   readonly currentTab = signal<ProfileTab>('bookmarks');
   readonly selectedRequestRole = signal<'auditor' | 'author' | 'translate'>('auditor');
 
-  readonly presetAvatars = PRESET_AVATARS;
   readonly presetCovers = PRESET_COVERS;
+
+  readonly avatarFileName = signal<string>('');
+  readonly isProcessingAvatar = signal<boolean>(false);
+  readonly avatarUploadError = signal<string>('');
+  readonly showManualUrlInput = signal<boolean>(false);
 
   readonly profileForm = new FormGroup({
     displayName: new FormControl(this.authStore.displayName(), [Validators.maxLength(60)]),
@@ -742,8 +841,101 @@ export class UserProfile {
   readonly statementControl = new FormControl('', [Validators.required, Validators.minLength(10)]);
   readonly pledgeControl = new FormControl(false, [Validators.requiredTrue]);
 
-  selectPresetAvatar(url: string): void {
-    this.profileForm.patchValue({ photoURL: url });
+  /**
+   * اختيار صورة الأيقونة الشخصية محلياً من هاتف المستخدم أو جهازه
+   * مع ضغط وضبط الأبعاد لتناسب العرض فائق الجودة والسرعة
+   */
+  onAvatarFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+
+    const file = input.files[0];
+    if (!file.type.startsWith('image/')) {
+      this.avatarUploadError.set('يرجى اختيار ملف صورة صالح (JPG, PNG, WebP).');
+      return;
+    }
+
+    if (file.size > 15 * 1024 * 1024) {
+      this.avatarUploadError.set('حجم الصورة كبير جداً، يرجى اختيار صورة أقل من 15 ميغابايت.');
+      return;
+    }
+
+    this.isProcessingAvatar.set(true);
+    this.avatarUploadError.set('');
+
+    const reader = new FileReader();
+    reader.onload = (loadEvent) => {
+      const dataUrl = loadEvent.target?.result as string;
+      if (!dataUrl) {
+        this.isProcessingAvatar.set(false);
+        this.avatarUploadError.set('تعذر قراءة الصورة من هاتفك.');
+        return;
+      }
+
+      const img = new Image();
+      img.onload = () => {
+        try {
+          // تقليص أبعاد الصورة إلى أبعاد مناسبة للأيقونة مع الحفاظ على التناسب
+          const maxDim = 320;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > maxDim) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            }
+          } else {
+            if (height > maxDim) {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            const optimized = canvas.toDataURL('image/jpeg', 0.88);
+            this.profileForm.patchValue({ photoURL: optimized });
+            this.avatarFileName.set(file.name);
+          } else {
+            this.profileForm.patchValue({ photoURL: dataUrl });
+            this.avatarFileName.set(file.name);
+          }
+        } catch {
+          this.profileForm.patchValue({ photoURL: dataUrl });
+          this.avatarFileName.set(file.name);
+        } finally {
+          this.isProcessingAvatar.set(false);
+          input.value = '';
+        }
+      };
+
+      img.onerror = () => {
+        this.isProcessingAvatar.set(false);
+        this.avatarUploadError.set('تعذر فك ترميز ملف الصورة.');
+        input.value = '';
+      };
+
+      img.src = dataUrl;
+    };
+
+    reader.onerror = () => {
+      this.isProcessingAvatar.set(false);
+      this.avatarUploadError.set('حدث خطأ أثناء قراءة الملف من هاتفك.');
+      input.value = '';
+    };
+
+    reader.readAsDataURL(file);
+  }
+
+  removeAvatar(): void {
+    this.profileForm.patchValue({ photoURL: '' });
+    this.avatarFileName.set('');
+    this.avatarUploadError.set('');
   }
 
   selectPresetCover(url: string): void {
