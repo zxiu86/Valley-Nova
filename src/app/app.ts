@@ -4,6 +4,8 @@ import { Header } from './components/header';
 import { Footer } from './components/footer';
 import { filter } from 'rxjs';
 
+import { ContentProtectionService } from './core/content-protection';
+
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-root',
@@ -13,9 +15,11 @@ import { filter } from 'rxjs';
 })
 export class App {
   private readonly router = inject(Router);
+  private readonly contentProtection = inject(ContentProtectionService);
   readonly isReaderRoute = signal<boolean>(false);
 
   constructor() {
+    this.contentProtection.init();
     this.updateRoute(this.router.url);
     this.router.events
       .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))

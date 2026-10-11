@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { NovelStore } from '../core/novel-store';
+import { ContentProtectionService } from '../core/content-protection';
 import { Novel } from '../core/novel-models';
 import { SANCTUARIES_DATA } from '../core/sample-novels';
 
@@ -529,10 +530,15 @@ import { SANCTUARIES_DATA } from '../core/sample-novels';
 })
 export class NovelLibrary {
   readonly novelStore = inject(NovelStore);
+  private readonly contentProtection = inject(ContentProtectionService);
   private readonly router = inject(Router);
 
   readonly sanctuaries = SANCTUARIES_DATA;
   readonly showCharterDetails = signal<boolean>(false);
+
+  constructor() {
+    this.contentProtection.init();
+  }
 
   getSanctuaryBooks(sanctuaryId: string): Novel[] {
     return this.novelStore.getNovelsByRiwaq(sanctuaryId);

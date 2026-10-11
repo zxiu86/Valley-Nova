@@ -8,6 +8,7 @@ import {
 } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { NovelStore } from '../core/novel-store';
+import { ContentProtectionService } from '../core/content-protection';
 import { ReaderTheme, ReaderFont } from '../core/novel-models';
 
 @Component({
@@ -290,6 +291,7 @@ import { ReaderTheme, ReaderFont } from '../core/novel-models';
 })
 export class NovelReader implements OnInit {
   readonly novelStore = inject(NovelStore);
+  private readonly contentProtection = inject(ContentProtectionService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
@@ -307,6 +309,7 @@ export class NovelReader implements OnInit {
   });
 
   ngOnInit(): void {
+    this.contentProtection.init();
     this.route.paramMap.subscribe(params => {
       const novelId = params.get('novelId');
       const chapterId = params.get('chapterId');
