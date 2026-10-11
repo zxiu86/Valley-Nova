@@ -28,17 +28,87 @@ service cloud.firestore {
       return resource.data;
     }
 
-    // User profile: owner can write, any user can get (for commenter avatars/covers)
+    // Cryptographically verified founder via Firebase Auth token and database record
+    function isDesignatedFounder() {
+      return isSignedIn() &&
+        request.auth.token.email_verified == true &&
+        request.auth.token.email == 'alsaid66900@gmail.com';
+    }
+
+    function isFounder() {
+      return isSignedIn() && (
+        isDesignatedFounder() ||
+        exists(/databases/$(database)/documents/founders/$(request.auth.uid)) ||
+        (exists(/databases/$(database)/documents/user_roles/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/user_roles/$(request.auth.uid)).data.role == 'founder')
+      );
+    }
+
+    function hasRole(roleName) {
+      return isSignedIn() && (
+        isFounder() ||
+        (exists(/databases/$(database)/documents/user_roles/$(request.auth.uid)) &&
+         (get(/databases/$(database)/documents/user_roles/$(request.auth.uid)).data.role == roleName ||
+          (get(/databases/$(database)/documents/user_roles/$(request.auth.uid)).data.roles is list &&
+           roleName in get(/databases/$(database)/documents/user_roles/$(request.auth.uid)).data.roles)))
+      );
+    }
+
+    function isAuditor() {
+      return hasRole('auditor');
+    }
+
+    function isAuthor() {
+      return hasRole('author');
+    }
+
+    function isTranslator() {
+      return hasRole('translate');
+    }
+
+    // Designated Founders Collection
+    match /founders/{founderId} {
+      allow read: if isSignedIn();
+      allow create, update: if isValidId(founderId) && isDesignatedFounder() && founderId == request.auth.uid;
+      allow delete: if false;
+    }
+
+    // Trusted User Roles Collection
+    match /user_roles/{userId} {
+      allow read: if true;
+      allow write: if isValidId(userId) && isFounder();
+    }
+
+    // Role Join Requests Collection
+    match /role_requests/{requestId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isFounder());
+      allow create: if isSignedIn() && isValidId(requestId) &&
+        incoming().userId == request.auth.uid &&
+        incoming().status == 'pending' &&
+        incoming().role in ['auditor', 'author', 'translate'] &&
+        incoming().userEmail is string && incoming().userEmail.size() <= 200;
+      allow update: if isFounder();
+      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isFounder());
+    }
+
+    // User profile: owner can write permitted fields only, non-privileged
     match /users/{userId} {
       allow get: if isValidId(userId);
       allow list: if false;
       allow create: if isValidId(userId) && isOwner(userId) &&
         incoming().id == userId &&
         incoming().email is string &&
-        incoming().email.size() <= 200;
+        incoming().email.size() <= 200 &&
+        !('role' in incoming()) &&
+        !('roles' in incoming()) &&
+        !('isFounder' in incoming());
       allow update: if isValidId(userId) && isOwner(userId) &&
         incoming().id == existing().id &&
-        incoming().email == existing().email;
+        incoming().email == existing().email &&
+        !('role' in incoming() && incoming().role != existing().role) &&
+        !('roles' in incoming() && incoming().roles != existing().roles) &&
+        !('isFounder' in incoming() && incoming().isFounder != existing().isFounder) &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'coverURL', 'updatedAt']);
       allow delete: if false;
 
       // User bookmarks subcollection
@@ -86,14 +156,68 @@ service cloud.firestore {
       }
     }
 
-    // Public chapter comments
+    // Public chapter comments and atomic reactions
     match /comments/{commentId} {
       allow read: if true;
       allow create: if isSignedIn() && isValidId(commentId) &&
         incoming().userId == request.auth.uid &&
-        incoming().text is string && incoming().text.size() <= 1500;
-      allow update, delete: if isSignedIn() && isValidId(commentId) &&
-        existing().userId == request.auth.uid;
+        incoming().text is string && incoming().text.size() <= 1500 &&
+        incoming().likes == 0;
+      
+      allow update: if isSignedIn() && isValidId(commentId) && (
+        // Case 1: Author editing comment text
+        (existing().userId == request.auth.uid &&
+         incoming().userId == existing().userId &&
+         incoming().likes == existing().likes &&
+         incoming().text is string && incoming().text.size() <= 1500)
+        ||
+        // Case 2: Atomic reaction increment or decrement (+1 or -1)
+        (incoming().userId == existing().userId &&
+         incoming().text == existing().text &&
+         (incoming().likes == existing().likes + 1 ||
+          (incoming().likes == existing().likes - 1 && incoming().likes >= 0)))
+      );
+
+      allow delete: if isSignedIn() && isValidId(commentId) &&
+        (existing().userId == request.auth.uid || isFounder());
+
+      // Individual user reaction record
+      match /reactions/{reactionUserId} {
+        allow read: if true;
+        allow create: if isSignedIn() &&
+          isValidId(reactionUserId) &&
+          reactionUserId == request.auth.uid &&
+          incoming().userId == request.auth.uid &&
+          incoming().commentId == commentId &&
+          incoming().type is string && incoming().type.size() <= 20;
+        allow delete: if isSignedIn() &&
+          isValidId(reactionUserId) &&
+          (reactionUserId == request.auth.uid || isFounder());
+      }
+    }
+
+    // Auditor reviews collection
+    match /audit_reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isAuditor() && isValidId(reviewId) &&
+        incoming().reviewerId == request.auth.uid &&
+        incoming().decision in ['approved', 'issues_found'] &&
+        incoming().novelId is string && incoming().novelId.size() <= 128;
+      allow update: if isFounder();
+      allow delete: if isFounder();
+    }
+
+    // Work moderation and audit progress tracking
+    match /work_moderation/{novelId} {
+      allow read: if true;
+      allow write: if isFounder() || isAuditor();
+    }
+
+    // Administrative moderation logs
+    match /moderation_logs/{logId} {
+      allow read: if isSignedIn() && (isFounder() || isAuditor());
+      allow create: if isFounder() && isValidId(logId) && incoming().decidedBy == request.auth.uid;
+      allow update, delete: if false;
     }
   }
 }

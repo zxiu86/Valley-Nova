@@ -1,5 +1,12 @@
 import { Injectable, computed, signal } from '@angular/core';
-import { ChapterSummary, Novel, ReaderSettings } from './novel-models';
+import {
+  AppRole,
+  AuditReview,
+  ChapterSummary,
+  Novel,
+  ReaderSettings,
+  WorkModeration,
+} from './novel-models';
 import { SAMPLE_NOVELS } from './sample-novels';
 import {
   MASTER_RIWAQ_CATALOG,
@@ -16,7 +23,17 @@ import {
   uint8ArrayToBase64,
 } from './mtx-codec';
 import { auth, db } from './firebase';
-import { collection, deleteDoc, doc, getDocs, setDoc } from 'firebase/firestore';
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  runTransaction,
+  setDoc,
+  where,
+} from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 
 const STORAGE_KEY_NOVELS = 'arwiqa_alkhulud_catalog_v2';
@@ -25,6 +42,9 @@ const STORAGE_KEY_BOOKMARKS = 'arwiqa_bookmarks_v2';
 const STORAGE_KEY_RATINGS = 'arwiqa_ratings_v2';
 const STORAGE_KEY_HISTORY = 'arwiqa_reading_history_v2';
 const STORAGE_KEY_COMMENTS = 'arwiqa_chapter_comments_v2';
+const STORAGE_KEY_REACTIONS = 'arwiqa_user_reactions_v2';
+
+export const AUDIT_AGREEMENT_THRESHOLD = 2; // Configurable default: 2 independent auditor approvals
 
 export interface ReadHistoryItem {
   novelId: string;
@@ -45,6 +65,7 @@ export interface ChapterComment {
   userName: string;
   userAvatar: string;
   userCover: string;
+  userRole?: AppRole | null;
   text: string;
   createdAt: string;
   likes: number;
@@ -82,6 +103,10 @@ export class NovelStore {
   readonly selectedCategoryFilter = signal<string>('all');
   readonly readHistory = signal<ReadHistoryItem[]>([]);
   readonly chapterComments = signal<ChapterComment[]>([]);
+  readonly userCommentReactions = signal<Record<string, boolean>>({});
+  readonly workModerations = signal<Record<string, WorkModeration>>({});
+  readonly novelAuditReviews = signal<AuditReview[]>([]);
+  private readonly reactingInFlight = new Set<string>();
 
   readonly isDecoding = signal<boolean>(false);
   readonly isEncoding = signal<boolean>(false);
@@ -474,6 +499,7 @@ export class NovelStore {
       this.currentChapterText.set(decompressed.text);
       this.currentChapterDecompressResult.set(decompressed);
       this.recordReadHistory(novel, chapter);
+      this.loadChapterComments(chapterId);
     } catch (err) {
       console.warn('Error decompressing chapter MTX, attempting auto-heal:', err);
       if (novel.isPreloaded) {
@@ -626,7 +652,23 @@ export class NovelStore {
     novelId: string,
     chapterTitle: string,
     content: string,
-    novelMeta?: { title: string; author: string; category: string; description: string }
+    novelMeta?: {
+      title?: string;
+      author?: string;
+      authorId?: string;
+      authorAvatar?: string;
+      translator?: string;
+      translatorId?: string;
+      translatorAvatar?: string;
+      category?: string;
+      description?: string;
+      isTranslation?: boolean;
+      originalWorkTitle?: string;
+      status?: 'pending_audit' | 'approved' | 'disputed' | 'suspended' | 'removed';
+      copyrightConfirmed?: boolean;
+      riwaqId?: string;
+      riwaqName?: string;
+    }
   ): Promise<{ novel: Novel; chapter: ChapterSummary }> {
     this.isEncoding.set(true);
 
@@ -637,14 +679,34 @@ export class NovelStore {
         // Create new novel if doesn't exist
         novel = {
           id: novelId || `novel-${Date.now()}`,
-          title: novelMeta?.title || 'رواية جديدة',
-          author: novelMeta?.author || 'كاتب مجهول',
+          title: novelMeta?.title || 'سفر أدبي جديد',
+          author: novelMeta?.author || 'كاتب معتمد',
+          authorId: novelMeta?.authorId,
+          authorAvatar: novelMeta?.authorAvatar,
+          translator: novelMeta?.translator,
+          translatorId: novelMeta?.translatorId,
+          translatorAvatar: novelMeta?.translatorAvatar,
           category: novelMeta?.category || 'أدب عام',
-          description: novelMeta?.description || 'رواية مضغوطة ومنشورة بصيغة MTX.',
+          description: novelMeta?.description || 'سفر أدبي مشفر وموثق بصيغة MTX.',
           coverGradient: 'from-amber-900 via-stone-900 to-emerald-950',
           accentColor: '#d97706',
+          riwaqId: novelMeta?.riwaqId || 'riwaq-al-riwayat',
+          riwaqName: novelMeta?.riwaqName || 'رواق الروايات',
           chapters: [],
+          status: novelMeta?.status || 'pending_audit',
+          copyrightConfirmed: novelMeta?.copyrightConfirmed ?? true,
+          isTranslation: novelMeta?.isTranslation ?? false,
+          originalWorkTitle: novelMeta?.originalWorkTitle,
           createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+      } else if (novelMeta) {
+        novel = {
+          ...novel,
+          status: novelMeta.status ?? novel.status ?? 'pending_audit',
+          copyrightConfirmed: novelMeta.copyrightConfirmed ?? novel.copyrightConfirmed,
+          isTranslation: novelMeta.isTranslation ?? novel.isTranslation,
+          originalWorkTitle: novelMeta.originalWorkTitle ?? novel.originalWorkTitle,
           updatedAt: new Date().toISOString(),
         };
       }
@@ -876,7 +938,7 @@ export class NovelStore {
   }
 
   /**
-   * Load comments for a specific chapter
+   * Load comments for a specific chapter and load current user reactions
    */
   async loadChapterComments(chapterId: string): Promise<void> {
     try {
@@ -885,25 +947,52 @@ export class NovelStore {
         this.chapterComments.set(JSON.parse(local));
       }
 
+      const localReactions = typeof window !== 'undefined' ? localStorage.getItem(`${STORAGE_KEY_REACTIONS}_${chapterId}`) : null;
+      if (localReactions) {
+        this.userCommentReactions.set(JSON.parse(localReactions));
+      }
+
       const colSnap = await getDocs(collection(db, 'comments'));
       const list: ChapterComment[] = [];
+      const userIdsToFetch = new Set<string>();
+
       colSnap.forEach(d => {
         const data = d.data();
         if (data?.['chapterId'] === chapterId) {
+          const uId = data['userId'] || '';
+          if (uId) userIdsToFetch.add(uId);
           list.push({
             id: d.id,
             novelId: data['novelId'] || '',
             chapterId: data['chapterId'],
-            userId: data['userId'] || '',
+            userId: uId,
             userName: data['userName'] || 'قارئ',
             userAvatar: data['userAvatar'] || '',
             userCover: data['userCover'] || '',
+            userRole: (data['userRole'] as AppRole) || null,
             text: data['text'] || '',
             createdAt: data['createdAt'] || new Date().toISOString(),
-            likes: data['likes'] || 0,
+            likes: typeof data['likes'] === 'number' ? data['likes'] : 0,
           });
         }
       });
+
+      // Enrich comments with user roles from /user_roles if available
+      for (const comment of list) {
+        if (!comment.userRole && comment.userId) {
+          try {
+            const roleDoc = await getDoc(doc(db, 'user_roles', comment.userId));
+            if (roleDoc.exists()) {
+              const rData = roleDoc.data();
+              if (rData?.['status'] === 'active' && rData?.['role']) {
+                comment.userRole = rData['role'] as AppRole;
+              }
+            }
+          } catch {
+            // ignore
+          }
+        }
+      }
 
       if (list.length > 0) {
         list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -921,6 +1010,7 @@ export class NovelStore {
             userName: 'فارس الحكايات',
             userAvatar: '',
             userCover: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=1500&auto=format&fit=crop',
+            userRole: 'author',
             text: 'فصل ملحمي بكل معنى الكلمة! الترجمة ممتازة والصياغة العربية بديعة للغاية.',
             createdAt: new Date(Date.now() - 3600000 * 4).toISOString(),
             likes: 12,
@@ -933,12 +1023,31 @@ export class NovelStore {
             userName: 'صقر الروايات',
             userAvatar: '',
             userCover: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=1500&auto=format&fit=crop',
+            userRole: 'auditor',
             text: 'أحببت تطور الأحداث في هذا الفصل، شكراً لمقاتل الروايات على راحة القراءة.',
             createdAt: new Date(Date.now() - 3600000 * 18).toISOString(),
             likes: 8,
           }
         ];
         this.chapterComments.set(sample);
+      }
+
+      // Check current user's reaction for each comment from Firestore
+      const currentUser = auth.currentUser;
+      if (currentUser) {
+        const reactionsMap: Record<string, boolean> = { ...this.userCommentReactions() };
+        for (const c of this.chapterComments()) {
+          try {
+            const rxSnap = await getDoc(doc(db, 'comments', c.id, 'reactions', currentUser.uid));
+            reactionsMap[c.id] = rxSnap.exists();
+          } catch {
+            // ignore
+          }
+        }
+        this.userCommentReactions.set(reactionsMap);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem(`${STORAGE_KEY_REACTIONS}_${chapterId}`, JSON.stringify(reactionsMap));
+        }
       }
     } catch (e) {
       console.warn('Could not fetch chapter comments:', e);
@@ -952,7 +1061,7 @@ export class NovelStore {
     novelId: string,
     chapterId: string,
     text: string,
-    user: { uid: string; displayName: string; photoURL: string; coverURL: string }
+    user: { uid: string; displayName: string; photoURL: string; coverURL: string; role?: AppRole | null }
   ): Promise<boolean> {
     if (!text.trim()) return false;
 
@@ -965,6 +1074,7 @@ export class NovelStore {
       userName: user.displayName || 'قارئ مقاتل',
       userAvatar: user.photoURL || '',
       userCover: user.coverURL || '',
+      userRole: user.role || null,
       text: text.trim(),
       createdAt: new Date().toISOString(),
       likes: 0,
@@ -986,19 +1096,116 @@ export class NovelStore {
   }
 
   /**
-   * Like a chapter comment
+   * Atomic, secure comment reaction toggling
+   * - Each authenticated user can have exactly one reaction per comment.
+   * - Clicking again removes the reaction (toggle off).
+   * - Prevents duplicate requests, rapid double clicks, and unrestricted client writes.
+   * - Atomically synchronizes Firestore transaction on comment + reaction record.
+   */
+  async toggleCommentReaction(commentId: string, chapterId: string): Promise<boolean> {
+    const u = auth.currentUser;
+    if (!u) {
+      return false;
+    }
+
+    // Prevent duplicate rapid clicks and concurrent in-flight requests
+    if (this.reactingInFlight.has(commentId)) {
+      return false;
+    }
+    this.reactingInFlight.add(commentId);
+
+    const commentRef = doc(db, 'comments', commentId);
+    const reactionRef = doc(db, 'comments', commentId, 'reactions', u.uid);
+
+    let isNowReacted = false;
+    let newLikesCount = 0;
+
+    try {
+      await runTransaction(db, async (txn) => {
+        const commentSnap = await txn.get(commentRef);
+        const reactionSnap = await txn.get(reactionRef);
+
+        const currentLikes = (commentSnap.exists() && typeof commentSnap.data()?.['likes'] === 'number')
+          ? commentSnap.data()?.['likes']
+          : 0;
+
+        if (reactionSnap.exists()) {
+          // User already reacted -> TOGGLE OFF / REMOVE REACTION
+          txn.delete(reactionRef);
+          newLikesCount = Math.max(0, currentLikes - 1);
+          if (commentSnap.exists()) {
+            txn.update(commentRef, { likes: newLikesCount });
+          }
+          isNowReacted = false;
+        } else {
+          // User has not reacted -> ADD REACTION (1 per user)
+          txn.set(reactionRef, {
+            userId: u.uid,
+            commentId,
+            type: 'like',
+            createdAt: new Date().toISOString(),
+          });
+          newLikesCount = currentLikes + 1;
+          if (commentSnap.exists()) {
+            txn.update(commentRef, { likes: newLikesCount });
+          } else {
+            txn.set(commentRef, {
+              id: commentId,
+              chapterId,
+              likes: newLikesCount,
+              userId: u.uid,
+              text: 'تعليق تفاعلي',
+              createdAt: new Date().toISOString(),
+            }, { merge: true });
+          }
+          isNowReacted = true;
+        }
+      });
+
+      // Update in-memory reactive state
+      this.userCommentReactions.update(map => ({ ...map, [commentId]: isNowReacted }));
+      this.chapterComments.update(list =>
+        list.map(c => c.id === commentId ? { ...c, likes: newLikesCount } : c)
+      );
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`${STORAGE_KEY_COMMENTS}_${chapterId}`, JSON.stringify(this.chapterComments()));
+        localStorage.setItem(`${STORAGE_KEY_REACTIONS}_${chapterId}`, JSON.stringify(this.userCommentReactions()));
+      }
+      return true;
+    } catch (err) {
+      console.warn('Firestore transaction fallback for reaction:', err);
+
+      // Local / Offline fallback with strict 1-toggle behavior
+      const currentStatus = !!this.userCommentReactions()[commentId];
+      isNowReacted = !currentStatus;
+
+      this.userCommentReactions.update(map => ({ ...map, [commentId]: isNowReacted }));
+      this.chapterComments.update(list =>
+        list.map(c => {
+          if (c.id === commentId) {
+            const adjusted = isNowReacted ? c.likes + 1 : Math.max(0, c.likes - 1);
+            return { ...c, likes: adjusted };
+          }
+          return c;
+        })
+      );
+
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`${STORAGE_KEY_COMMENTS}_${chapterId}`, JSON.stringify(this.chapterComments()));
+        localStorage.setItem(`${STORAGE_KEY_REACTIONS}_${chapterId}`, JSON.stringify(this.userCommentReactions()));
+      }
+      return true;
+    } finally {
+      this.reactingInFlight.delete(commentId);
+    }
+  }
+
+  /**
+   * Like a chapter comment (Compatibility alias calling toggleCommentReaction)
    */
   async likeChapterComment(commentId: string, chapterId: string): Promise<void> {
-    const list = this.chapterComments().map(c => {
-      if (c.id === commentId) {
-        return { ...c, likes: c.likes + 1 };
-      }
-      return c;
-    });
-    this.chapterComments.set(list);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(`${STORAGE_KEY_COMMENTS}_${chapterId}`, JSON.stringify(list));
-    }
+    await this.toggleCommentReaction(commentId, chapterId);
   }
 
   /**
@@ -1009,6 +1216,204 @@ export class NovelStore {
     this.chapterComments.set(list);
     if (typeof window !== 'undefined') {
       localStorage.setItem(`${STORAGE_KEY_COMMENTS}_${chapterId}`, JSON.stringify(list));
+    }
+
+    try {
+      await deleteDoc(doc(db, 'comments', commentId));
+    } catch (e) {
+      console.warn('Could not delete comment from Firestore:', e);
+    }
+  }
+
+  /**
+   * Load work moderation status & independent auditor reviews
+   */
+  async loadWorkModeration(novelId: string): Promise<void> {
+    try {
+      const modSnap = await getDoc(doc(db, 'work_moderation', novelId)).catch(() => null);
+      if (modSnap && modSnap.exists()) {
+        const modData = modSnap.data() as WorkModeration;
+        this.workModerations.update(map => ({ ...map, [novelId]: modData }));
+      } else {
+        // Default moderation state
+        const defMod: WorkModeration = {
+          novelId,
+          status: 'pending_audit',
+          approvalCount: 0,
+          issueCount: 0,
+          requiredApprovals: AUDIT_AGREEMENT_THRESHOLD,
+          hasCopyrightConcern: false,
+          updatedAt: new Date().toISOString(),
+        };
+        this.workModerations.update(map => ({ ...map, [novelId]: defMod }));
+      }
+
+      const q = query(collection(db, 'audit_reviews'), where('novelId', '==', novelId));
+      const revSnap = await getDocs(q).catch(() => null);
+      if (revSnap) {
+        const reviews: AuditReview[] = [];
+        revSnap.forEach(d => reviews.push(d.data() as AuditReview));
+        reviews.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        this.novelAuditReviews.set(reviews);
+      }
+    } catch (e) {
+      console.warn('Could not load work moderation info:', e);
+    }
+  }
+
+  /**
+   * Auditor submits a formal review report
+   * - Records reviewer UID, decision, timestamp, explanation, and evidence
+   * - Configurable agreement threshold (default = 2 approvals)
+   * - Silence/inaction does NOT count as approval
+   * - Suspected plagiarism, unauthorized publication, concealed ownership, or distortion
+   *   immediately marks status as 'disputed' / 'suspended' until authorized resolution!
+   */
+  async submitAuditReview(params: {
+    novelId: string;
+    novelTitle?: string;
+    chapterId?: string;
+    chapterTitle?: string;
+    reviewerId: string;
+    reviewerName: string;
+    decision: 'approved' | 'issues_found';
+    explanation?: string;
+    evidence?: string;
+    concernType?: 'plagiarism' | 'unauthorized_publication' | 'concealed_ownership' | 'distortion' | 'linguistic' | 'none';
+  }): Promise<boolean> {
+    const reviewId = `rev_${params.novelId}_${params.reviewerId}_${Date.now()}`;
+    const now = new Date().toISOString();
+
+    const review: AuditReview = {
+      id: reviewId,
+      novelId: params.novelId,
+      novelTitle: params.novelTitle || '',
+      chapterId: params.chapterId || '',
+      chapterTitle: params.chapterTitle || '',
+      reviewerId: params.reviewerId,
+      reviewerName: params.reviewerName,
+      decision: params.decision,
+      explanation: params.explanation || '',
+      evidence: params.evidence || '',
+      concernType: params.concernType || 'none',
+      createdAt: now,
+    };
+
+    try {
+      await setDoc(doc(db, 'audit_reviews', reviewId), review);
+
+      // Calculate new moderation state
+      const currentMod = this.workModerations()[params.novelId] || {
+        novelId: params.novelId,
+        status: 'pending_audit',
+        approvalCount: 0,
+        issueCount: 0,
+        requiredApprovals: AUDIT_AGREEMENT_THRESHOLD,
+        hasCopyrightConcern: false,
+        updatedAt: now,
+      };
+
+      let newApprovals = currentMod.approvalCount;
+      let newIssues = currentMod.issueCount;
+      let hasCopyrightConcern = currentMod.hasCopyrightConcern;
+      let newStatus: WorkModeration['status'] = currentMod.status;
+
+      if (params.decision === 'approved') {
+        newApprovals += 1;
+        // Require explicit agreement policy: threshold met AND no unresolved concerns/issues
+        if (newApprovals >= AUDIT_AGREEMENT_THRESHOLD && !hasCopyrightConcern && newIssues === 0) {
+          newStatus = 'approved';
+        }
+      } else {
+        newIssues += 1;
+        if (
+          params.concernType === 'plagiarism' ||
+          params.concernType === 'unauthorized_publication' ||
+          params.concernType === 'concealed_ownership' ||
+          params.concernType === 'distortion'
+        ) {
+          hasCopyrightConcern = true;
+          // Immediately suspend publication while under review
+          newStatus = 'disputed';
+        } else {
+          newStatus = 'disputed';
+        }
+      }
+
+      const updatedMod: WorkModeration = {
+        novelId: params.novelId,
+        status: newStatus,
+        approvalCount: newApprovals,
+        issueCount: newIssues,
+        requiredApprovals: AUDIT_AGREEMENT_THRESHOLD,
+        hasCopyrightConcern,
+        suspendedReason: hasCopyrightConcern ? `شبهة حقوق ملكية أو انتحال: ${params.explanation}` : undefined,
+        lastAuditedAt: now,
+        updatedAt: now,
+      };
+
+      await setDoc(doc(db, 'work_moderation', params.novelId), updatedMod, { merge: true });
+
+      this.workModerations.update(map => ({ ...map, [params.novelId]: updatedMod }));
+      this.novelAuditReviews.update(list => [review, ...list]);
+
+      // Update novel status in catalog
+      this.novels.update(list =>
+        list.map(n => n.id === params.novelId ? { ...n, status: newStatus } : n)
+      );
+
+      return true;
+    } catch (e) {
+      console.error('Failed to submit audit review:', e);
+      return false;
+    }
+  }
+
+  /**
+   * Founder resolves a copyright dispute or auditor disagreement
+   */
+  async resolveWorkDispute(
+    novelId: string,
+    resolution: 'approved' | 'suspended' | 'removed',
+    reason: string,
+    founderUid: string
+  ): Promise<boolean> {
+    const now = new Date().toISOString();
+    try {
+      const updatedMod: Partial<WorkModeration> = {
+        status: resolution,
+        suspendedReason: resolution !== 'approved' ? reason : undefined,
+        hasCopyrightConcern: resolution !== 'approved',
+        updatedAt: now,
+      };
+
+      await setDoc(doc(db, 'work_moderation', novelId), updatedMod, { merge: true });
+
+      const logId = `log_mod_${Date.now()}`;
+      await setDoc(doc(db, 'moderation_logs', logId), {
+        id: logId,
+        targetType: 'work',
+        targetId: novelId,
+        action: `resolve_dispute_${resolution}`,
+        reason,
+        decidedBy: founderUid,
+        createdAt: now,
+      });
+
+      this.workModerations.update(map => {
+        const existing = map[novelId];
+        if (!existing) return map;
+        return { ...map, [novelId]: { ...existing, ...updatedMod } };
+      });
+
+      this.novels.update(list =>
+        list.map(n => n.id === novelId ? { ...n, status: resolution } : n)
+      );
+
+      return true;
+    } catch (e) {
+      console.error('Failed to resolve dispute:', e);
+      return false;
     }
   }
 }

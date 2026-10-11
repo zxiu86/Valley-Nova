@@ -1,9 +1,12 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { SlicePipe } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NovelStore } from '../core/novel-store';
 import { AuthStore } from '../core/auth-store';
 import { ContentProtectionService } from '../core/content-protection';
 import { ChapterSummary, Novel } from '../core/novel-models';
+import { RoleBadge } from './role-badge';
 import {
   ALL_SERENDIPITY_POOL,
   FANTASY_BOOKS,
@@ -56,7 +59,7 @@ export interface RelatedSanctuaryBook {
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-novel-details',
-  imports: [RouterLink],
+  imports: [RouterLink, ReactiveFormsModule, RoleBadge, SlicePipe],
   template: `
     <div class="w-full min-h-screen bg-[#131315] text-[#e5e1e4] font-sans antialiased selection:bg-[#881337] selection:text-[#ffd9dd] relative overflow-hidden pb-20">
       
@@ -180,6 +183,42 @@ export interface RelatedSanctuaryBook {
                   <p class="font-noto-serif text-lg sm:text-xl text-[#debfc2]/70 font-normal tracking-wide">
                     {{ latinSubtitle() }}
                   </p>
+                </div>
+
+                <!-- Verified Author, Translator & Auditor Status Ribbon -->
+                <div class="flex items-center gap-3 flex-wrap text-xs text-[#debfc2]">
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-white/60">بقلم:</span>
+                    <span class="font-bold text-white">{{ novel.author }}</span>
+                    <app-role-badge [role]="'author'" />
+                  </div>
+                  @if (novel.isTranslation || novel.translator) {
+                    <span class="text-white/20">•</span>
+                    <div class="flex items-center gap-1.5">
+                      <span class="text-white/60">ترجمة:</span>
+                      <span class="font-bold text-white">{{ novel.translator || 'مترجم معتمد' }}</span>
+                      <app-role-badge [role]="'translate'" />
+                    </div>
+                  }
+                  <span class="text-white/20">•</span>
+                  @if (workModeration(); as mod) {
+                    @if (mod.status === 'approved') {
+                      <span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#005039] text-[#7bd8b1] border border-[#7bd8b1]/30 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[14px]">verified</span>
+                        <span>مجاز تحريرياً ({{ mod.approvalCount }}/{{ mod.requiredApprovals }} تدقيق)</span>
+                      </span>
+                    } @else if (mod.status === 'disputed' || mod.status === 'suspended') {
+                      <span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#881337] text-[#ffb2bd] border border-[#ffb2bd]/40 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[14px]">warning</span>
+                        <span>معلق احترازياً: شبهة تدقيق / حقوق</span>
+                      </span>
+                    } @else {
+                      <span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#af8d11]/30 text-[#e9c349] border border-[#e9c349]/30 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[14px]">pending_actions</span>
+                        <span>قيد التدقيق التحريري ({{ mod.approvalCount }}/{{ mod.requiredApprovals }})</span>
+                      </span>
+                    }
+                  }
                 </div>
 
                 <!-- Editorial Gold Pull-Quote (Manuscript Excerpt) -->
@@ -448,7 +487,325 @@ export interface RelatedSanctuaryBook {
           </div>
         </section>
 
-        <!-- ==================== 6. Related Sanctuary Works (Cover + Title Strict Rule) ==================== -->
+        <!-- ==================== 5.5 Auditor & Editorial Review Board (ديوان التدقيق والمراجعة التحريرية) ==================== -->
+        <section class="w-full px-4 sm:px-6 md:px-12 py-10 bg-[#161619]/90 border-t border-white/[0.08] relative z-10">
+          <div class="max-w-7xl mx-auto flex flex-col gap-8">
+            
+            <!-- Section Header & Threshold Policy -->
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/[0.08] pb-6">
+              <div>
+                <div class="flex items-center gap-2 text-xs text-[#7bd8b1] font-semibold mb-1">
+                  <span class="material-symbols-outlined text-[18px]">verified_user</span>
+                  <span>هيئة التدقيق والمراجعة التحريرية المستقلة</span>
+                  <span>•</span>
+                  <span>سياسة التوافق الصريح (نصاب: 2 مدققين)</span>
+                </div>
+                <h2 class="font-noto-serif text-xl sm:text-2xl font-bold text-white">
+                  سجل التوثيق، الإجازة وفحص حقوق الملكية
+                </h2>
+                <p class="text-xs text-[#debfc2]/70 mt-1 max-w-2xl leading-relaxed">
+                  تخضع كافة الأسفار لسياسة تدقيق صارمة؛ الصمت أو عدم المراجعة لا يُعد إجازة. يتطلب اعتماد العمل اتفاق مدققين مستقلين اثنين على الأقل، وعند ورود أي شبهة انتحال أو تعدٍّ على حقوق الملكية الفكرية، يُعلَّق النشر احترازياً حتى صدور قرار إداري بات.
+                </p>
+              </div>
+
+              <!-- Current Moderation Status Card -->
+              @if (workModeration(); as mod) {
+                <div class="p-4 rounded-xl bg-[#0e0e10] border border-white/10 flex items-center gap-4 shrink-0">
+                  <div class="flex flex-col gap-1 text-right">
+                    <span class="text-[10px] text-[#debfc2]/60">حالة المصنف التحريرية</span>
+                    <span class="text-xs font-bold text-white">
+                      @switch (mod.status) {
+                        @case ('approved') { مجاز وموثق رسمياً ✓ }
+                        @case ('disputed') { معلق احترازياً (قيد التحقيق) }
+                        @case ('suspended') { موقوف النشر بقرار إداري }
+                        @case ('removed') { مشطوب لمخالفة الحقوق }
+                        @default { قيد التدقيق التحريري }
+                      }
+                    </span>
+                    <span class="text-[11px] text-[#e9c349]">
+                      نسبة الاتفاق: {{ mod.approvalCount }} من أصل {{ mod.requiredApprovals }} إجازات
+                    </span>
+                  </div>
+
+                  <div
+                    class="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg border"
+                    [class.bg-[#005039]/40]="mod.status === 'approved'"
+                    [class.border-[#7bd8b1]]="mod.status === 'approved'"
+                    [class.text-[#7bd8b1]]="mod.status === 'approved'"
+                    [class.bg-[#881337]/40]="mod.status === 'disputed' || mod.status === 'suspended'"
+                    [class.border-[#ffb2bd]]="mod.status === 'disputed' || mod.status === 'suspended'"
+                    [class.text-[#ffb2bd]]="mod.status === 'disputed' || mod.status === 'suspended'"
+                    [class.bg-[#af8d11]/30]="mod.status === 'pending_audit'"
+                    [class.border-[#e9c349]]="mod.status === 'pending_audit'"
+                    [class.text-[#e9c349]]="mod.status === 'pending_audit'"
+                  >
+                    <span class="material-symbols-outlined">
+                      @switch (mod.status) {
+                        @case ('approved') { check_circle }
+                        @case ('disputed') { warning }
+                        @case ('suspended') { block }
+                        @case ('removed') { delete_forever }
+                        @default { hourglass_top }
+                      }
+                    </span>
+                  </div>
+                </div>
+              }
+            </div>
+
+            <!-- Suspended Warning Alert -->
+            @if (workModeration(); as mod) {
+              @if (mod.status === 'disputed' || mod.status === 'suspended') {
+                <div class="p-4 rounded-xl bg-[#881337]/30 border border-[#ffb2bd]/50 flex items-start gap-3">
+                  <span class="material-symbols-outlined text-[#ffb2bd] text-2xl shrink-0 mt-0.5">report_problem</span>
+                  <div class="space-y-1 text-xs">
+                    <strong class="text-white block font-bold">تنبيه تعليق النشر الاحترازي:</strong>
+                    <p class="text-[#debfc2] leading-relaxed">
+                      {{ mod.suspendedReason || 'ورد بلاغ مدعوم بشبهة سرقة أدبية، أو تحريف جوهري، أو نزاع على ملكية السفر. تم تعليق النشر مؤقتاً لحماية حقوق النشر لحين فصل الإدارة دون الإضرار المسبق بأي طرف.' }}
+                    </p>
+                  </div>
+                </div>
+              }
+            }
+
+            <!-- Notification Messages -->
+            @if (auditNotice()) {
+              <div class="p-3.5 rounded-xl bg-[#005039]/40 border border-[#7bd8b1]/40 text-xs text-[#7bd8b1] flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px]">check_circle</span>
+                <span>{{ auditNotice() }}</span>
+              </div>
+            }
+            @if (auditError()) {
+              <div class="p-3.5 rounded-xl bg-[#881337]/40 border border-[#ffb2bd]/40 text-xs text-[#ffb2bd] flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px]">error</span>
+                <span>{{ auditError() }}</span>
+              </div>
+            }
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              
+              <!-- Left: List of Independent Auditor Decisions & Reports (Cols 1-7 on LG) -->
+              <div class="lg:col-span-7 flex flex-col gap-4">
+                <div class="flex items-center justify-between">
+                  <h3 class="font-noto-serif text-base font-bold text-white flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[#e9c349]">history_edu</span>
+                    <span>سجل قرارات المدققين المستقلين ({{ auditReviews().length }})</span>
+                  </h3>
+                  <span class="text-[11px] text-[#debfc2]/50">تسجيل شفاف للـ UID والوقت والأدلة</span>
+                </div>
+
+                @if (auditReviews().length === 0) {
+                  <div class="p-8 rounded-2xl bg-[#0e0e10]/80 border border-white/5 text-center text-xs text-[#debfc2]/60">
+                    لم تُسجل مراجعات رسمية بعد لهذا المصنف. بانتظار استكمال مراجعات المدققين المعتمدين.
+                  </div>
+                } @else {
+                  <div class="space-y-3">
+                    @for (rev of auditReviews(); track rev.id) {
+                      <div class="p-4 rounded-xl bg-[#0e0e10] border border-white/10 space-y-2">
+                        <div class="flex items-center justify-between flex-wrap gap-2">
+                          <div class="flex items-center gap-2">
+                            <span class="font-bold text-xs text-white">{{ rev.reviewerName }}</span>
+                            <span
+                              class="px-2 py-0.5 rounded text-[10px] font-semibold"
+                              [class.bg-[#005039]/50]="rev.decision === 'approved'"
+                              [class.text-[#7bd8b1]]="rev.decision === 'approved'"
+                              [class.bg-[#881337]/50]="rev.decision === 'issues_found'"
+                              [class.text-[#ffb2bd]]="rev.decision === 'issues_found'"
+                            >
+                              {{ rev.decision === 'approved' ? 'إجازة واعتماد ✓' : 'تسجيل إشكالات وشبهة ⚠' }}
+                            </span>
+                          </div>
+                          <span class="text-[10px] text-[#debfc2]/50 font-mono">{{ rev.createdAt | slice:0:16 }}</span>
+                        </div>
+
+                        @if (rev.explanation) {
+                          <p class="text-xs text-[#debfc2] leading-relaxed bg-[#1c1b1d]/60 p-2.5 rounded-lg">
+                            {{ rev.explanation }}
+                          </p>
+                        }
+
+                        @if (rev.evidence) {
+                          <div class="text-[11px] text-[#e9c349] flex items-center gap-1.5 pt-1">
+                            <span class="material-symbols-outlined text-[14px]">link</span>
+                            <span><strong>المراجع والأدلة الموثقة:</strong> {{ rev.evidence }}</span>
+                          </div>
+                        }
+
+                        <div class="text-[10px] text-[#debfc2]/40 font-mono pt-1">
+                          معرّف المدقق (UID): {{ rev.reviewerId | slice:0:12 }}...
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+
+              <!-- Right: Auditor Actions & Founder Resolution (Cols 8-12 on LG) -->
+              <div class="lg:col-span-5 flex flex-col gap-6">
+                
+                <!-- Auditor Action Box (For authorized auditors or founders) -->
+                @if (authStore.isAuditor() || authStore.isFounder()) {
+                  <div class="p-5 rounded-2xl bg-[#0e0e10] border-2 border-[#7bd8b1]/30 shadow-xl space-y-4">
+                    <div class="flex items-center justify-between border-b border-white/10 pb-3">
+                      <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[#7bd8b1]">rule</span>
+                        <h4 class="font-noto-serif text-sm font-bold text-white">
+                          لوحة تدوين قرار التدقيق التحريري
+                        </h4>
+                      </div>
+                      <span class="text-[10px] font-semibold text-[#7bd8b1] bg-[#005039]/50 px-2 py-0.5 rounded">
+                        صلاحية مدقق معتمد
+                      </span>
+                    </div>
+
+                    <!-- Decision Selector -->
+                    <div class="space-y-1.5">
+                      <span class="text-xs font-semibold text-[#debfc2] block">القرار التحريري:</span>
+                      <div class="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          (click)="auditDecisionControl.setValue('approved')"
+                          class="p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                          [class.bg-[#005039]]="auditDecisionControl.value === 'approved'"
+                          [class.border-[#7bd8b1]]="auditDecisionControl.value === 'approved'"
+                          [class.text-[#7bd8b1]]="auditDecisionControl.value === 'approved'"
+                          [class.bg-[#1c1b1d]]="auditDecisionControl.value !== 'approved'"
+                          [class.border-white/10]="auditDecisionControl.value !== 'approved'"
+                          [class.text-[#debfc2]]="auditDecisionControl.value !== 'approved'"
+                        >
+                          <span class="material-symbols-outlined text-[16px]">check_circle</span>
+                          <span>إجازة واعتماد المصنف</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          (click)="auditDecisionControl.setValue('issues_found')"
+                          class="p-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                          [class.bg-[#881337]]="auditDecisionControl.value === 'issues_found'"
+                          [class.border-[#ffb2bd]]="auditDecisionControl.value === 'issues_found'"
+                          [class.text-[#ffb2bd]]="auditDecisionControl.value === 'issues_found'"
+                          [class.bg-[#1c1b1d]]="auditDecisionControl.value !== 'issues_found'"
+                          [class.border-white/10]="auditDecisionControl.value !== 'issues_found'"
+                          [class.text-[#debfc2]]="auditDecisionControl.value !== 'issues_found'"
+                        >
+                          <span class="material-symbols-outlined text-[16px]">report</span>
+                          <span>تسجيل ملاحظات أو شبهة</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <!-- If Issues Found: Concern Type Selector -->
+                    @if (auditDecisionControl.value === 'issues_found') {
+                      <div class="space-y-1.5">
+                        <label for="concern-type-select" class="text-xs font-semibold text-[#debfc2]">نوع الشبهة أو الإشكال:</label>
+                        <select
+                          id="concern-type-select"
+                          [formControl]="concernTypeControl"
+                          class="w-full px-3 py-2 rounded-xl bg-[#1c1b1d] border border-white/10 text-xs text-white focus:outline-none focus:border-[#ffb2bd]"
+                        >
+                          <option value="plagiarism">شبهة سرقة أدبية أو انتحال (Plagiarism)</option>
+                          <option value="unauthorized_publication">نشر غير مصرح به أو انتهاك حقوق الملكية</option>
+                          <option value="concealed_ownership">ادعاء ملكية باطل أو إخفاء هوية الكاتب الأصلي</option>
+                          <option value="distortion">تشويه أو تحريف في الترجمة أو متن العمل</option>
+                          <option value="linguistic">ملاحظات لغوية، أسلوبية، أو سردية جوهرية</option>
+                        </select>
+                      </div>
+
+                      <div class="space-y-1.5">
+                        <label for="audit-explanation" class="text-xs font-semibold text-[#debfc2]">إيضاح الملاحظات والإشكال (مطلوب):</label>
+                        <textarea
+                          id="audit-explanation"
+                          [formControl]="explanationControl"
+                          rows="3"
+                          placeholder="اشرح بدقة مواضع الإشكال أو أوجه التشابه أو الانتحال المرصودة..."
+                          class="w-full px-3 py-2 rounded-xl bg-[#1c1b1d] border border-white/10 text-xs text-white focus:outline-none focus:border-[#ffb2bd]"
+                        ></textarea>
+                      </div>
+
+                      <div class="space-y-1.5">
+                        <label for="audit-evidence" class="text-xs font-semibold text-[#debfc2]">الأدلة والمراجع والمصادر المقارنة (مطلوب في قضايا الحقوق):</label>
+                        <input
+                          id="audit-evidence"
+                          type="text"
+                          [formControl]="evidenceControl"
+                          placeholder="روابط المصنف الأصلي أو أرقام الصفحات أو المراجع..."
+                          class="w-full px-3 py-2 rounded-xl bg-[#1c1b1d] border border-white/10 text-xs text-white focus:outline-none focus:border-[#ffb2bd]"
+                        />
+                      </div>
+                    }
+
+                    <button
+                      type="button"
+                      (click)="submitAuditReview()"
+                      [disabled]="isSubmittingAudit()"
+                      class="w-full py-2.5 rounded-xl bg-[#7bd8b1] hover:bg-[#97f5cc] text-[#003827] text-xs font-bold transition-all shadow-md cursor-pointer disabled:opacity-40 flex items-center justify-center gap-1.5"
+                    >
+                      <span class="material-symbols-outlined text-[16px]">save</span>
+                      <span>توثيق قرار التدقيق في السجل الرسمي</span>
+                    </button>
+                  </div>
+                }
+
+                <!-- Founder Dispute Resolution (Exclusively for Founder) -->
+                @if (authStore.isFounder()) {
+                  <div class="p-5 rounded-2xl bg-[#0e0e10] border-2 border-[#e9c349]/40 shadow-xl space-y-4">
+                    <div class="flex items-center justify-between border-b border-white/10 pb-3">
+                      <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[#e9c349]">gavel</span>
+                        <h4 class="font-noto-serif text-sm font-bold text-white">
+                          الفصل الإداري النهائي في النزاعات (المؤسس)
+                        </h4>
+                      </div>
+                    </div>
+
+                    <div class="space-y-1.5">
+                      <label for="founder-reason-input" class="text-xs font-semibold text-[#debfc2]">سبب القرار والمسوّغ الإداري:</label>
+                      <input
+                        id="founder-reason-input"
+                        type="text"
+                        [formControl]="founderReasonControl"
+                        placeholder="دوّن سبب القرار الإداري لحفظه في سجل المداولات..."
+                        class="w-full px-3 py-2 rounded-xl bg-[#1c1b1d] border border-white/10 text-xs text-white"
+                      />
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                      <button
+                        type="button"
+                        (click)="resolveDispute('approved')"
+                        class="w-full py-2 rounded-xl bg-[#005039] hover:bg-[#00694b] text-[#7bd8b1] text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        <span class="material-symbols-outlined text-[16px]">verified</span>
+                        <span>إجازة العمل واستئناف النشر (رد الدعوى)</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        (click)="resolveDispute('suspended')"
+                        class="w-full py-2 rounded-xl bg-[#af8d11]/40 hover:bg-[#af8d11]/60 text-[#e9c349] text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        <span class="material-symbols-outlined text-[16px]">pause_circle</span>
+                        <span>تأكيد تعليق النشر لحين اكتمال التحقيق</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        (click)="resolveDispute('removed')"
+                        class="w-full py-2 rounded-xl bg-[#881337] hover:bg-[#a31b44] text-[#ffb2bd] text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                      >
+                        <span class="material-symbols-outlined text-[16px]">delete_forever</span>
+                        <span>إزالة العمل المخالف وسحب امتياز النشر</span>
+                      </button>
+                    </div>
+                  </div>
+                }
+
+              </div>
+
+            </div>
+
+          </div>
+        </section>
         <section class="w-full px-4 sm:px-6 md:px-12 py-12 bg-[#0e0e10]/60 border-t border-white/[0.06] relative z-10">
           <div class="max-w-7xl mx-auto flex flex-col gap-6">
             
@@ -682,12 +1039,26 @@ export class NovelDetails {
   readonly showManuscriptModal = signal<boolean>(false);
   readonly showAuthPromptModal = signal<boolean>(false);
 
+  readonly workModeration = computed(() => this.novelStore.workModerations()[this.novelIdParam()]);
+  readonly auditReviews = computed(() => this.novelStore.novelAuditReviews());
+
+  readonly isSubmittingAudit = signal<boolean>(false);
+  readonly auditNotice = signal<string | null>(null);
+  readonly auditError = signal<string | null>(null);
+
+  readonly auditDecisionControl = new FormControl<'approved' | 'issues_found'>('approved');
+  readonly concernTypeControl = new FormControl<'plagiarism' | 'unauthorized_publication' | 'concealed_ownership' | 'distortion' | 'linguistic' | 'none'>('none');
+  readonly explanationControl = new FormControl('', [Validators.maxLength(1500)]);
+  readonly evidenceControl = new FormControl('', [Validators.maxLength(1500)]);
+  readonly founderReasonControl = new FormControl('', [Validators.maxLength(1000)]);
+
   constructor() {
     this.contentProtection.init();
     this.route.paramMap.subscribe(params => {
       const id = params.get('id');
       if (id) {
         this.novelIdParam.set(id);
+        this.novelStore.loadWorkModeration(id);
       }
     });
 
@@ -1221,6 +1592,73 @@ export class NovelDetails {
 
   openManuscriptModal(): void {
     this.showManuscriptModal.set(true);
+  }
+
+  async submitAuditReview(): Promise<void> {
+    const novel = this.currentNovel();
+    if (!novel) return;
+
+    const decision = this.auditDecisionControl.value || 'approved';
+    const concernType = this.concernTypeControl.value || 'none';
+    const explanation = this.explanationControl.value?.trim() || '';
+    const evidence = this.evidenceControl.value?.trim() || '';
+
+    if (decision === 'issues_found' && !explanation) {
+      this.auditError.set('يرجى كتابة توضيح مفصل للإشكال أو الملاحظات المرصودة.');
+      return;
+    }
+
+    if ((concernType === 'plagiarism' || concernType === 'unauthorized_publication' || concernType === 'concealed_ownership') && !evidence) {
+      this.auditError.set('عند التبليغ عن شبهة انتحال أو حقوق ملكية، يجب تسجيل الأدلة أو المراجع والمصادر المقارنة.');
+      return;
+    }
+
+    this.isSubmittingAudit.set(true);
+    this.auditNotice.set(null);
+    this.auditError.set(null);
+
+    try {
+      const u = this.authStore.user();
+      const success = await this.novelStore.submitAuditReview({
+        novelId: novel.id,
+        novelTitle: novel.title,
+        reviewerId: u?.uid || 'auditor',
+        reviewerName: this.authStore.displayName(),
+        decision,
+        concernType,
+        explanation,
+        evidence,
+      });
+
+      if (success) {
+        this.auditNotice.set(
+          decision === 'approved'
+            ? 'تم توثيق إجازة المصنف بنجاح واحتسابها ضمن نصاب الاتفاق التحريري.'
+            : 'تم تسجيل تقرير الملاحظات وشبهة الملكية، وعُلِّق نشر العمل احترازياً لحين الفصل الإداري.'
+        );
+        this.explanationControl.reset('');
+        this.evidenceControl.reset('');
+      } else {
+        this.auditError.set('تعذر تسجيل المراجعة في الوقت الحالي.');
+      }
+    } finally {
+      this.isSubmittingAudit.set(false);
+    }
+  }
+
+  async resolveDispute(resolution: 'approved' | 'suspended' | 'removed'): Promise<void> {
+    const novel = this.currentNovel();
+    const u = this.authStore.user();
+    if (!novel || !u || !this.authStore.isFounder()) return;
+
+    const reason = this.founderReasonControl.value?.trim() || 'قرار إداري موثق من المؤسس';
+    const success = await this.novelStore.resolveWorkDispute(novel.id, resolution, reason, u.uid);
+    if (success) {
+      this.auditNotice.set(
+        `تم تطبيق القرار الإداري: ${resolution === 'approved' ? 'إجازة العمل واستئناف النشر' : resolution === 'suspended' ? 'تثبيت التعليق' : 'شطب العمل المخالف وسحب امتياز النشر'}.`
+      );
+      this.founderReasonControl.reset('');
+    }
   }
 
   closeManuscriptModal(): void {

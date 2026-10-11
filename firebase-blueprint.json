@@ -9,6 +9,7 @@
         "email": { "type": "string", "description": "البريد الإلكتروني" },
         "displayName": { "type": "string", "description": "اسم العرض للقارئ" },
         "photoURL": { "type": "string", "description": "رابط الصورة الشخصية" },
+        "coverURL": { "type": "string", "description": "رابط خلفية الملف الشخصي" },
         "createdAt": { "type": "string", "description": "تاريخ إنشاء الحساب" },
         "updatedAt": { "type": "string", "description": "تاريخ آخر تحديث" }
       },
@@ -37,6 +38,121 @@
         "createdAt": { "type": "string", "description": "تاريخ التقييم" }
       },
       "required": ["userId", "novelId", "rating"]
+    },
+    "ChapterComment": {
+      "title": "ChapterComment",
+      "description": "تعليق القارئ على فصل محدد",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "معرف التعليق" },
+        "novelId": { "type": "string", "description": "معرف الرواية" },
+        "chapterId": { "type": "string", "description": "معرف الفصل" },
+        "userId": { "type": "string", "description": "معرف صاحب التعليق" },
+        "userName": { "type": "string", "description": "اسم صاحب التعليق" },
+        "userAvatar": { "type": "string", "description": "صورة صاحب التعليق" },
+        "userCover": { "type": "string", "description": "خلفية صاحب التعليق" },
+        "userRole": { "type": "string", "description": "رتبة المستخدم الموثقة" },
+        "text": { "type": "string", "description": "نص التعليق" },
+        "likes": { "type": "number", "description": "عدد التفاعلات الذرية المحسوبة" },
+        "createdAt": { "type": "string", "description": "تاريخ الإضافة" }
+      },
+      "required": ["id", "novelId", "chapterId", "userId", "text"]
+    },
+    "CommentReaction": {
+      "title": "CommentReaction",
+      "description": "سجل تفاعل المستخدم الفردي مع التعليق",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "معرف المستخدم المتفاعل" },
+        "commentId": { "type": "string", "description": "معرف التعليق المتفاعل معه" },
+        "type": { "type": "string", "description": "نوع التفاعل، مثل like" },
+        "createdAt": { "type": "string", "description": "تاريخ التفاعل" }
+      },
+      "required": ["userId", "commentId", "type"]
+    },
+    "UserRole": {
+      "title": "UserRole",
+      "description": "الرتبة المعتمدة للمستخدم الممنوحة من الإدارة",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "معرف المستخدم" },
+        "role": { "type": "string", "description": "الرتبة: auditor أو author أو translate أو founder" },
+        "roles": { "type": "string", "description": "قائمة الرتب المعتمدة" },
+        "status": { "type": "string", "description": "حالة الرتبة: active أو revoked" },
+        "assignedBy": { "type": "string", "description": "معرف المانح" },
+        "assignedAt": { "type": "string", "description": "تاريخ المنح" }
+      },
+      "required": ["userId", "role", "status"]
+    },
+    "RoleRequest": {
+      "title": "RoleRequest",
+      "description": "طلب انضمام لرتبة مدقق أو كاتب أو مترجم",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "معرف الطلب" },
+        "userId": { "type": "string", "description": "معرف صاحب الطلب" },
+        "userEmail": { "type": "string", "description": "بريد صاحب الطلب" },
+        "userName": { "type": "string", "description": "اسم صاحب الطلب" },
+        "role": { "type": "string", "description": "الرتبة المطلوبة: auditor أو author أو translate" },
+        "statement": { "type": "string", "description": "تعهد ومبررات الطلب" },
+        "status": { "type": "string", "description": "حالة الطلب: pending أو approved أو rejected" },
+        "createdAt": { "type": "string", "description": "تاريخ التقديم" },
+        "reviewedAt": { "type": "string", "description": "تاريخ المراجعة" },
+        "reviewedBy": { "type": "string", "description": "معرف المراجع" }
+      },
+      "required": ["id", "userId", "userEmail", "role", "status"]
+    },
+    "AuditReview": {
+      "title": "AuditReview",
+      "description": "مراجعة وتدقيق عمل أدبي أو فصل بواسطة مدقق معتمد",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "معرف تقرير التدقيق" },
+        "novelId": { "type": "string", "description": "معرف الرواية" },
+        "novelTitle": { "type": "string", "description": "عنوان الرواية" },
+        "chapterId": { "type": "string", "description": "معرف الفصل" },
+        "chapterTitle": { "type": "string", "description": "عنوان الفصل" },
+        "reviewerId": { "type": "string", "description": "معرف المدقق" },
+        "reviewerName": { "type": "string", "description": "اسم المدقق" },
+        "decision": { "type": "string", "description": "قرار التدقيق: approved أو issues_found" },
+        "explanation": { "type": "string", "description": "شرح القرار أو الملحوظات" },
+        "evidence": { "type": "string", "description": "الأدلة أو المراجع التوثيقية" },
+        "concernType": { "type": "string", "description": "نوع الشبهة: plagiarism أو unauthorized_publication أو concealed_ownership أو distortion أو other" },
+        "createdAt": { "type": "string", "description": "تاريخ التدقيق" }
+      },
+      "required": ["id", "novelId", "reviewerId", "decision"]
+    },
+    "WorkModeration": {
+      "title": "WorkModeration",
+      "description": "حالة رقابة ونشر العمل الأدبي ومحصلة قرارات التدقيق",
+      "type": "object",
+      "properties": {
+        "novelId": { "type": "string", "description": "معرف الرواية" },
+        "status": { "type": "string", "description": "حالة العمل: pending_audit أو approved أو disputed أو suspended أو removed" },
+        "approvalCount": { "type": "number", "description": "عدد الإجازات المعتمدة" },
+        "issueCount": { "type": "number", "description": "عدد الملحوظات المرصودة" },
+        "requiredApprovals": { "type": "number", "description": "عتبة التوافق المطلوبة" },
+        "hasCopyrightConcern": { "type": "boolean", "description": "هل توجد شبهة حقوق ملكية أو انتحال" },
+        "suspendedReason": { "type": "string", "description": "سبب التعليق" },
+        "lastAuditedAt": { "type": "string", "description": "تاريخ آخر تدقيق" },
+        "updatedAt": { "type": "string", "description": "تاريخ التحديث" }
+      },
+      "required": ["novelId", "status"]
+    },
+    "ModerationLog": {
+      "title": "ModerationLog",
+      "description": "سجل القرارات الإدارية والتحقيقية الصادرة عن الإدارة",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "معرف السجل" },
+        "targetType": { "type": "string", "description": "نوع الهدف: work أو user_role أو request" },
+        "targetId": { "type": "string", "description": "معرف الهدف" },
+        "action": { "type": "string", "description": "الإجراء المتخذ" },
+        "reason": { "type": "string", "description": "مبررات القرار" },
+        "decidedBy": { "type": "string", "description": "معرف متخذ القرار" },
+        "createdAt": { "type": "string", "description": "تاريخ القرار" }
+      },
+      "required": ["id", "targetType", "targetId", "action", "reason", "decidedBy"]
     }
   },
   "firestore": {
@@ -51,6 +167,34 @@
     "/users/{userId}/ratings/{ratingId}": {
       "schema": "UserRating",
       "description": "تقييمات المستخدم للروايات"
+    },
+    "/comments/{commentId}": {
+      "schema": "ChapterComment",
+      "description": "تعليقات الفصول العامة"
+    },
+    "/comments/{commentId}/reactions/{userId}": {
+      "schema": "CommentReaction",
+      "description": "تفاعلات المستخدمين مع التعليق"
+    },
+    "/user_roles/{userId}": {
+      "schema": "UserRole",
+      "description": "سجل الرتب المعتمدة"
+    },
+    "/role_requests/{requestId}": {
+      "schema": "RoleRequest",
+      "description": "طلبات الانضمام للرتب"
+    },
+    "/audit_reviews/{reviewId}": {
+      "schema": "AuditReview",
+      "description": "تقارير وقرارات التدقيق"
+    },
+    "/work_moderation/{novelId}": {
+      "schema": "WorkModeration",
+      "description": "حالات التدقيق وإجازة الأعمال"
+    },
+    "/moderation_logs/{logId}": {
+      "schema": "ModerationLog",
+      "description": "سجل القرارات الرقابية الإدارية"
     }
   }
 }

@@ -3,11 +3,12 @@ import { Router, RouterLink } from '@angular/router';
 import { NovelStore } from '../core/novel-store';
 import { AuthStore } from '../core/auth-store';
 import { SANCTUARIES_DATA } from '../core/sample-novels';
+import { RoleBadge } from './role-badge';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-header',
-  imports: [RouterLink],
+  imports: [RouterLink, RoleBadge],
   host: {
     '(window:scroll)': 'onWindowScroll()',
   },
@@ -154,18 +155,37 @@ import { SANCTUARIES_DATA } from '../core/sample-novels';
               }
             </a>
 
-            <!-- Profile / Sign In Button -->
-            <a
-              [routerLink]="authStore.isAuthenticated() ? '/profile' : '/login'"
-              class="w-9 h-9 rounded-full bg-gradient-to-br from-[#881337] to-[#201f22] border border-[#ffb2bd]/30 flex items-center justify-center shrink-0 text-[#ffb2bd] hover:border-[#ffb2bd] transition-all shadow-md overflow-hidden cursor-pointer"
-              [title]="authStore.isAuthenticated() ? authStore.displayName() : 'تسجيل الدخول'"
-            >
-              @if (authStore.photoURL()) {
-                <img [src]="authStore.photoURL()" alt="avatar" class="w-full h-full object-cover" />
-              } @else {
-                <span class="material-symbols-outlined text-[19px]">person</span>
+            <!-- Author / Translator Studio Quick Entry -->
+            @if (authStore.isAuthor() || authStore.isTranslator() || authStore.isFounder()) {
+              <a
+                routerLink="/editor"
+                class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#af8d11]/20 hover:bg-[#af8d11]/40 border border-[#e9c349]/30 text-xs font-bold text-[#e9c349] transition-all cursor-pointer shadow-xs"
+                title="ديوان التدوين والإنشاء"
+              >
+                <span class="material-symbols-outlined text-[16px]">edit_note</span>
+                <span>ديوان التدوين</span>
+              </a>
+            }
+
+            <!-- Profile / Sign In Button with Role Badge -->
+            <div class="flex items-center gap-1.5">
+              @if (authStore.activeBadge()) {
+                <span class="hidden md:inline-flex">
+                  <app-role-badge [role]="authStore.activeBadge()" />
+                </span>
               }
-            </a>
+              <a
+                [routerLink]="authStore.isAuthenticated() ? '/profile' : '/login'"
+                class="w-9 h-9 rounded-full bg-gradient-to-br from-[#881337] to-[#201f22] border border-[#ffb2bd]/30 flex items-center justify-center shrink-0 text-[#ffb2bd] hover:border-[#ffb2bd] transition-all shadow-md overflow-hidden cursor-pointer"
+                [title]="authStore.isAuthenticated() ? authStore.displayName() : 'تسجيل الدخول'"
+              >
+                @if (authStore.photoURL()) {
+                  <img [src]="authStore.photoURL()" alt="avatar" class="w-full h-full object-cover" referrerpolicy="no-referrer" />
+                } @else {
+                  <span class="material-symbols-outlined text-[19px]">person</span>
+                }
+              </a>
+            </div>
 
             <!-- Mobile Hamburger Toggle -->
             <button

@@ -7,14 +7,18 @@ import {
   signal,
 } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { SlicePipe } from '@angular/common';
+import { FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NovelStore } from '../core/novel-store';
+import { AuthStore } from '../core/auth-store';
 import { ContentProtectionService } from '../core/content-protection';
 import { ReaderTheme, ReaderFont } from '../core/novel-models';
+import { RoleBadge } from './role-badge';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-novel-reader',
-  imports: [RouterLink],
+  imports: [RouterLink, ReactiveFormsModule, RoleBadge, SlicePipe],
   template: `
     <div
       class="min-h-screen transition-colors duration-300 relative text-[#e5e1e4]"
@@ -30,7 +34,7 @@ import { ReaderTheme, ReaderFont } from '../core/novel-models';
               <button
                 type="button"
                 (click)="goBack()"
-                class="p-2 rounded-full hover:bg-white/5 text-[#debfc2] hover:text-[#e9c349] transition-colors shrink-0"
+                class="p-2 rounded-full hover:bg-white/5 text-[#debfc2] hover:text-[#e9c349] transition-colors shrink-0 cursor-pointer"
                 title="العودة لبيانات السفر"
               >
                 <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
@@ -114,7 +118,7 @@ import { ReaderTheme, ReaderFont } from '../core/novel-models';
                   <button
                     type="button"
                     (click)="setTheme('dark')"
-                    class="w-6 h-6 rounded-full bg-[#131315] border-2 transition-all"
+                    class="w-6 h-6 rounded-full bg-[#131315] border-2 transition-all cursor-pointer"
                     [class.border-[#e9c349]]="settings().theme === 'dark'"
                     [class.border-transparent]="settings().theme !== 'dark'"
                     title="الوضع الداكن"
@@ -122,7 +126,7 @@ import { ReaderTheme, ReaderFont } from '../core/novel-models';
                   <button
                     type="button"
                     (click)="setTheme('black')"
-                    class="w-6 h-6 rounded-full bg-black border-2 transition-all"
+                    class="w-6 h-6 rounded-full bg-black border-2 transition-all cursor-pointer"
                     [class.border-[#e9c349]]="settings().theme === 'black'"
                     [class.border-transparent]="settings().theme !== 'black'"
                     title="الوضع الأسود التام"
@@ -130,7 +134,7 @@ import { ReaderTheme, ReaderFont } from '../core/novel-models';
                   <button
                     type="button"
                     (click)="setTheme('sepia')"
-                    class="w-6 h-6 rounded-full bg-[#241e17] border-2 transition-all"
+                    class="w-6 h-6 rounded-full bg-[#241e17] border-2 transition-all cursor-pointer"
                     [class.border-[#e9c349]]="settings().theme === 'sepia'"
                     [class.border-transparent]="settings().theme !== 'sepia'"
                     title="المخطوطة القديمة"
@@ -145,7 +149,7 @@ import { ReaderTheme, ReaderFont } from '../core/novel-models';
                   <button
                     type="button"
                     (click)="setFont('amiri')"
-                    class="px-2.5 py-1 rounded-lg border font-amiri"
+                    class="px-2.5 py-1 rounded-lg border font-amiri cursor-pointer"
                     [class.bg-[#2a2a2c]]="settings().fontFamily === 'amiri'"
                     [class.border-[#e9c349]]="settings().fontFamily === 'amiri'"
                     [class.border-white/10]="settings().fontFamily !== 'amiri'"
@@ -155,7 +159,7 @@ import { ReaderTheme, ReaderFont } from '../core/novel-models';
                   <button
                     type="button"
                     (click)="setFont('naskh')"
-                    class="px-2.5 py-1 rounded-lg border font-naskh"
+                    class="px-2.5 py-1 rounded-lg border font-naskh cursor-pointer"
                     [class.bg-[#2a2a2c]]="settings().fontFamily === 'naskh'"
                     [class.border-[#e9c349]]="settings().fontFamily === 'naskh'"
                     [class.border-white/10]="settings().fontFamily !== 'naskh'"
@@ -165,28 +169,40 @@ import { ReaderTheme, ReaderFont } from '../core/novel-models';
                   <button
                     type="button"
                     (click)="setFont('cairo')"
-                    class="px-2.5 py-1 rounded-lg border font-cairo"
+                    class="px-2.5 py-1 rounded-lg border font-cairo cursor-pointer"
                     [class.bg-[#2a2a2c]]="settings().fontFamily === 'cairo'"
                     [class.border-[#e9c349]]="settings().fontFamily === 'cairo'"
                     [class.border-white/10]="settings().fontFamily !== 'cairo'"
                   >
-                    القاهرة
+                    كايرو
+                  </button>
+                  <button
+                    type="button"
+                    (click)="setFont('tajawal')"
+                    class="px-2.5 py-1 rounded-lg border font-tajawal cursor-pointer"
+                    [class.bg-[#2a2a2c]]="settings().fontFamily === 'tajawal'"
+                    [class.border-[#e9c349]]="settings().fontFamily === 'tajawal'"
+                    [class.border-white/10]="settings().fontFamily !== 'tajawal'"
+                  >
+                    تجوال
                   </button>
                 </div>
               </div>
 
-              <!-- Tashkeel toggle -->
+              <!-- Tashkeel Highlight -->
               <div class="flex items-center gap-2">
                 <button
                   type="button"
                   (click)="toggleTashkeel()"
-                  class="px-3 py-1 rounded-lg border text-xs font-medium transition-all"
-                  [class.bg-[#e9c349]/20]="settings().highlightTashkeel"
+                  class="px-3 py-1.5 rounded-lg border text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+                  [class.bg-[#af8d11]/20]="settings().highlightTashkeel"
+                  [class.border-[#e9c349]]="settings().highlightTashkeel"
                   [class.text-[#e9c349]]="settings().highlightTashkeel"
-                  [class.border-[#e9c349]/50]="settings().highlightTashkeel"
                   [class.border-white/10]="!settings().highlightTashkeel"
+                  [class.text-[#debfc2]]="!settings().highlightTashkeel"
                 >
-                  إبراز التشكيل
+                  <span class="material-symbols-outlined text-[16px]">format_color_text</span>
+                  <span>إبراز التشكيل الصرفي</span>
                 </button>
               </div>
 
@@ -195,12 +211,12 @@ import { ReaderTheme, ReaderFont } from '../core/novel-models';
         </header>
       }
 
-      <!-- Floating Exit Zen Button -->
+      <!-- Floating Exit Zen Mode Button -->
       @if (isZenMode()) {
         <button
           type="button"
           (click)="isZenMode.set(false)"
-          class="fixed top-4 left-4 z-50 p-2.5 rounded-full bg-[#1c1b1d]/80 border border-white/15 text-[#debfc2] hover:text-white backdrop-blur-md shadow-xl transition-all"
+          class="fixed top-4 left-4 z-50 p-2.5 rounded-full bg-[#1c1b1d]/80 border border-white/15 text-[#debfc2] hover:text-white backdrop-blur-md shadow-xl transition-all cursor-pointer"
           title="الخروج من وضع الخلوة"
         >
           <span class="material-symbols-outlined text-[20px]">fullscreen_exit</span>
@@ -285,18 +301,144 @@ import { ReaderTheme, ReaderFont } from '../core/novel-models';
           </button>
         </div>
 
+        <!-- ==================== Chapter Discussions & Verified Reactions ==================== -->
+        <section class="mt-16 pt-10 border-t border-white/[0.1] space-y-6">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <span class="material-symbols-outlined text-[#e9c349] text-2xl">forum</span>
+              <h2 class="font-noto-serif text-lg sm:text-xl font-bold text-white">
+                حاشية السفر ونقاشات القراء ({{ novelStore.chapterComments().length }})
+              </h2>
+            </div>
+            <span class="text-xs text-[#debfc2]/60 font-mono">تفاعل ذري موثق</span>
+          </div>
+
+          <!-- Add Comment Box -->
+          <div class="p-4 sm:p-5 rounded-2xl bg-[#1c1b1d] border border-white/[0.08] shadow-lg space-y-3">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-full bg-[#0e0e10] border border-white/10 overflow-hidden flex items-center justify-center shrink-0">
+                @if (authStore.photoURL()) {
+                  <img [src]="authStore.photoURL()" alt="avatar" class="w-full h-full object-cover" referrerpolicy="no-referrer" />
+                } @else {
+                  <span class="material-symbols-outlined text-sm text-[#e9c349]">person</span>
+                }
+              </div>
+              <span class="text-xs font-semibold text-white">
+                {{ authStore.displayName() }}
+              </span>
+              @if (authStore.activeBadge()) {
+                <app-role-badge [role]="authStore.activeBadge()" />
+              }
+            </div>
+
+            <textarea
+              [formControl]="commentControl"
+              rows="3"
+              placeholder="شارك انطباعك الأدبي أو تأملك حول هذا الفصل..."
+              class="w-full px-3.5 py-2.5 rounded-xl bg-[#0e0e10] border border-white/10 text-xs sm:text-sm text-white focus:outline-none focus:border-[#e9c349]/50 transition-colors leading-relaxed"
+            ></textarea>
+
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] text-[#debfc2]/50">
+                يحق لكل قارئ تفاعل واحد لكل تعليق (Toggle)، ويُحفظ فورياً في السجل الذري.
+              </span>
+              <button
+                type="button"
+                (click)="submitComment()"
+                [disabled]="commentControl.invalid || isPostingComment()"
+                class="px-5 py-2 rounded-xl bg-[#e9c349] hover:bg-[#ffe088] text-[#241a00] text-xs font-bold transition-all shadow-md cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+              >
+                <span class="material-symbols-outlined text-[16px]">send</span>
+                <span>تدوين التعليق</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Comments List -->
+          @if (novelStore.chapterComments().length === 0) {
+            <div class="py-10 text-center text-xs text-[#debfc2]/60 bg-[#1c1b1d]/40 rounded-2xl border border-white/5">
+              لا توجد تعليقات بعد في هذا الفصل. كن أول من يدوّن انطباعه الأدبي!
+            </div>
+          } @else {
+            <div class="space-y-3.5">
+              @for (comment of novelStore.chapterComments(); track comment.id) {
+                <div class="p-4 rounded-xl bg-[#1c1b1d] border border-white/[0.06] hover:border-white/10 transition-colors space-y-2.5">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2.5">
+                      <div class="w-7 h-7 rounded-full bg-[#0e0e10] border border-white/10 overflow-hidden flex items-center justify-center shrink-0">
+                        @if (comment.userAvatar) {
+                          <img [src]="comment.userAvatar" alt="avatar" class="w-full h-full object-cover" referrerpolicy="no-referrer" />
+                        } @else {
+                          <span class="material-symbols-outlined text-xs text-[#debfc2]/60">person</span>
+                        }
+                      </div>
+                      <span class="text-xs font-bold text-white">{{ comment.userName }}</span>
+                      @if (comment.userRole) {
+                        <app-role-badge [role]="comment.userRole" />
+                      }
+                      <span class="text-[10px] text-[#debfc2]/50 font-mono">{{ comment.createdAt | slice:0:10 }}</span>
+                    </div>
+
+                    @if (canDeleteComment(comment)) {
+                      <button
+                        type="button"
+                        (click)="deleteComment(comment.id)"
+                        class="text-xs text-[#ffb2bd]/60 hover:text-[#ffb2bd] p-1 cursor-pointer"
+                        title="حذف التعليق"
+                      >
+                        <span class="material-symbols-outlined text-[16px]">delete</span>
+                      </button>
+                    }
+                  </div>
+
+                  <p class="text-xs sm:text-sm text-[#debfc2] leading-relaxed pr-9 whitespace-pre-wrap">
+                    {{ comment.text }}
+                  </p>
+
+                  <!-- Interaction / Reaction Button -->
+                  <div class="flex items-center justify-end gap-3 pt-2 border-t border-white/5">
+                    <button
+                      type="button"
+                      (click)="toggleReaction(comment.id)"
+                      [disabled]="isReacting(comment.id)"
+                      class="px-3 py-1.5 rounded-lg border text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                      [class.bg-[#881337]/30]="isUserReacted(comment.id)"
+                      [class.border-[#ffb2bd]/50]="isUserReacted(comment.id)"
+                      [class.text-[#ffb2bd]]="isUserReacted(comment.id)"
+                      [class.bg-[#0e0e10]]="!isUserReacted(comment.id)"
+                      [class.border-white/10]="!isUserReacted(comment.id)"
+                      [class.text-[#debfc2]/70]="!isUserReacted(comment.id)"
+                      [title]="isUserReacted(comment.id) ? 'إلغاء الإعجاب' : 'إعجاب بالتعليق'"
+                    >
+                      <span class="material-symbols-outlined text-[16px]">
+                        {{ isUserReacted(comment.id) ? 'favorite' : 'favorite_border' }}
+                      </span>
+                      <span>{{ comment.likes }}</span>
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </section>
+
       </main>
     </div>
   `,
 })
 export class NovelReader implements OnInit {
   readonly novelStore = inject(NovelStore);
+  readonly authStore = inject(AuthStore);
   private readonly contentProtection = inject(ContentProtectionService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
   readonly isZenMode = signal<boolean>(false);
   readonly showSettings = signal<boolean>(false);
+  readonly isPostingComment = signal<boolean>(false);
+  readonly activeReactionCommentId = signal<string | null>(null);
+
+  readonly commentControl = new FormControl('', [Validators.required, Validators.minLength(2)]);
 
   readonly novel = computed(() => this.novelStore.selectedNovel());
   readonly chapter = computed(() => this.novelStore.selectedChapter());
@@ -327,6 +469,59 @@ export class NovelReader implements OnInit {
         }
       }
     });
+  }
+
+  isUserReacted(commentId: string): boolean {
+    return !!this.novelStore.userCommentReactions()[commentId];
+  }
+
+  isReacting(commentId: string): boolean {
+    return this.activeReactionCommentId() === commentId;
+  }
+
+  async toggleReaction(commentId: string): Promise<void> {
+    const ch = this.chapter();
+    if (!ch) return;
+
+    this.activeReactionCommentId.set(commentId);
+    try {
+      await this.novelStore.toggleCommentReaction(commentId, ch.id);
+    } finally {
+      this.activeReactionCommentId.set(null);
+    }
+  }
+
+  async submitComment(): Promise<void> {
+    const text = this.commentControl.value?.trim();
+    const nov = this.novel();
+    const ch = this.chapter();
+    if (!text || !nov || !ch) return;
+
+    this.isPostingComment.set(true);
+    try {
+      const u = this.authStore.user();
+      await this.novelStore.addChapterComment(nov.id, ch.id, text, {
+        uid: u?.uid || `guest_${Date.now()}`,
+        displayName: this.authStore.displayName(),
+        photoURL: this.authStore.photoURL(),
+        coverURL: this.authStore.coverURL(),
+        role: this.authStore.userRole(),
+      });
+      this.commentControl.reset('');
+    } finally {
+      this.isPostingComment.set(false);
+    }
+  }
+
+  canDeleteComment(comment: { userId: string }): boolean {
+    const currentUid = this.authStore.user()?.uid;
+    return (!!currentUid && currentUid === comment.userId) || this.authStore.isFounder();
+  }
+
+  async deleteComment(commentId: string): Promise<void> {
+    const ch = this.chapter();
+    if (!ch) return;
+    await this.novelStore.deleteChapterComment(commentId, ch.id);
   }
 
   getThemeContainerClass(): string {
