@@ -4,7 +4,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { SlicePipe } from '@angular/common';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthStore } from '../core/auth-store';
@@ -820,7 +820,6 @@ const PRESET_COVERS = [
 export class UserProfile {
   readonly authStore = inject(AuthStore);
   readonly novelStore = inject(NovelStore);
-  private readonly router = inject(Router);
 
   readonly currentTab = signal<ProfileTab>('bookmarks');
   readonly selectedRequestRole = signal<'auditor' | 'author' | 'translate'>('auditor');

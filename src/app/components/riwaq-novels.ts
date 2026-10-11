@@ -1,5 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { ChangeDetectionStrategy, Component, computed, signal } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import {
   ALL_SERENDIPITY_POOL,
   DRAMA_BOOKS,
@@ -1110,8 +1110,6 @@ import {
   `,
 })
 export class RiwaqNovels {
-  private readonly router = inject(Router);
-
   readonly spotlightBook = SPOTLIGHT_BOOK;
   readonly featuredBooks = FEATURED_SELECTION_BOOKS;
   readonly fantasyBooks = FANTASY_BOOKS;

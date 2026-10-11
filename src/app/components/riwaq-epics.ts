@@ -10,7 +10,6 @@ import {
   SPOTLIGHT_EPIC,
   TOP_RANKED_EPICS,
 } from '../core/riwaq-epics-data';
-import { NovelStore } from '../core/novel-store';
 
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -701,7 +700,6 @@ import { NovelStore } from '../core/novel-store';
 })
 export class RiwaqEpics {
   private readonly router = inject(Router);
-  private readonly novelStore = inject(NovelStore);
 
   readonly spotlight = SPOTLIGHT_EPIC;
   readonly grandEraEpics = GRAND_ERA_EPICS;

@@ -42,9 +42,11 @@ console.log('✓ Created dist/app/browser/.nojekyll');
 
 // 4. Also copy all browser files to root /docs folder for users who choose "Deploy from /docs folder"
 try {
-  if (!fs.existsSync(docsDir)) {
-    fs.mkdirSync(docsDir, { recursive: true });
+  if (fs.existsSync(docsDir)) {
+    // Clean stale artifacts and old hashed bundles from previous builds
+    fs.rmSync(docsDir, { recursive: true, force: true });
   }
+  fs.mkdirSync(docsDir, { recursive: true });
 
   function copyDirRecursive(src, dest) {
     if (!fs.existsSync(dest)) {
