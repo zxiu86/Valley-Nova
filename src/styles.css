@@ -34,16 +34,16 @@
   --color-inverse-surface: #e5e1e4;
   --color-inverse-on-surface: #313032;
 
-  --font-display-hero: "Noto Serif", "Amiri", serif;
-  --font-headline-lg: "Noto Serif", "Amiri", serif;
-  --font-headline-md: "Noto Serif", "Amiri", serif;
-  --font-headline-sm: "Noto Serif", "Amiri", serif;
-  --font-title-lg: "Noto Serif", "Amiri", serif;
-  --font-body-lg: "IBM Plex Sans", "Noto Kufi Arabic", sans-serif;
-  --font-body-md: "IBM Plex Sans", "Noto Kufi Arabic", sans-serif;
-  --font-body-sm: "IBM Plex Sans", "Noto Kufi Arabic", sans-serif;
-  --font-label-md: "IBM Plex Sans", "Noto Kufi Arabic", sans-serif;
-  --font-label-sm: "IBM Plex Sans", "Noto Kufi Arabic", sans-serif;
+  --font-display-hero: Arial, "Helvetica Neue", Helvetica, sans-serif;
+  --font-headline-lg: Arial, "Helvetica Neue", Helvetica, sans-serif;
+  --font-headline-md: Arial, "Helvetica Neue", Helvetica, sans-serif;
+  --font-headline-sm: Arial, "Helvetica Neue", Helvetica, sans-serif;
+  --font-title-lg: Arial, "Helvetica Neue", Helvetica, sans-serif;
+  --font-body-lg: Arial, "Helvetica Neue", Helvetica, sans-serif;
+  --font-body-md: Arial, "Helvetica Neue", Helvetica, sans-serif;
+  --font-body-sm: Arial, "Helvetica Neue", Helvetica, sans-serif;
+  --font-label-md: Arial, "Helvetica Neue", Helvetica, sans-serif;
+  --font-label-sm: Arial, "Helvetica Neue", Helvetica, sans-serif;
 
   --spacing-margin: 3rem;
   --spacing-margin-mobile: 1.25rem;
@@ -53,15 +53,20 @@
   --spacing-space-sm: 0.5rem;
   --spacing-space-md: 1rem;
   --spacing-space-lg: 1.5rem;
-  --spacing-space-xl: 2.5rem;
 }
 
 @layer utilities {
+  .font-alexandria {
+    font-family: 'Alexandria', sans-serif;
+  }
+  .font-almarai {
+    font-family: 'Almarai', sans-serif;
+  }
+  .font-aref {
+    font-family: 'Aref Ruqaa', serif;
+  }
   .font-amiri {
     font-family: 'Amiri', serif;
-  }
-  .font-noto-serif {
-    font-family: 'Noto Serif', 'Amiri', serif;
   }
   .font-cairo {
     font-family: 'Cairo', sans-serif;
@@ -180,7 +185,8 @@ html, body {
   max-width: 100vw;
   background-color: #0e0e11;
   color: #e5e1e4;
-  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+  letter-spacing: -0.01em;
 }
 
 /* Custom modern scrollbars */
@@ -198,3 +204,57 @@ html, body {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(233, 195, 73, 0.5);
 }
+
+/* ================= 6x6 Matrix Card Grid Specification (.parent & .div1 - .div6) ================= */
+.parent {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  grid-template-rows: repeat(6, 1fr);
+  grid-column-gap: 0px;
+  grid-row-gap: 0px;
+}
+
+.div1 { grid-area: 1 / 1 / 4 / 3; }
+.div2 { grid-area: 1 / 3 / 4 / 5; }
+.div3 { grid-area: 1 / 5 / 4 / 7; }
+.div4 { grid-area: 4 / 1 / 7 / 3; }
+.div5 { grid-area: 4 / 3 / 7 / 5; }
+.div6 { grid-area: 4 / 5 / 7 / 7; }
+
+/* Custom 5x5 Bento Matrix for Editorial Specs (Legacy compatibility) */
+.editorial-specs-parent {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: repeat(5, minmax(100px, 1fr));
+  grid-column-gap: 12px;
+  grid-row-gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .editorial-specs-parent {
+    grid-column-gap: 6px;
+    grid-row-gap: 6px;
+    grid-template-rows: repeat(5, minmax(85px, 1fr));
+  }
+}
+
+.editorial-specs-parent .div1 {
+  grid-area: 1 / 1 / 3 / 4;
+}
+
+.editorial-specs-parent .div2 {
+  grid-area: 3 / 1 / 6 / 3;
+}
+
+.editorial-specs-parent .div3 {
+  grid-area: 1 / 4 / 4 / 6;
+}
+
+.editorial-specs-parent .div4 {
+  grid-area: 4 / 3 / 6 / 6;
+}
+
+.editorial-specs-parent .specs-center {
+  grid-area: 3 / 3 / 4 / 4;
+}
+

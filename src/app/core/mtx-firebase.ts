@@ -1,9 +1,24 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth } from 'firebase/auth';
+import {
+  getAuth,
+  Auth,
+  User,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
+  signOut,
+  updateProfile,
+  onAuthStateChanged,
+  Unsubscribe,
+} from 'firebase/auth';
 import {
   getFirestore,
   Firestore,
   doc,
+  getDoc,
+  setDoc,
+  deleteDoc,
   getDocFromServer,
   collection,
   getDocs,
@@ -102,6 +117,137 @@ export async function verifyFirestoreConnection(): Promise<boolean> {
   }
 }
 
+// ================= AUTHENTICATION SERVICES ================= //
+
+export async function loginWithEmail(email: string, pass: string): Promise<User> {
+  const auth = getFirebaseAuth();
+  const credential = await signInWithEmailAndPassword(auth, email, pass);
+  return credential.user;
+}
+
+export async function registerWithEmail(email: string, pass: string, displayName?: string): Promise<User> {
+  const auth = getFirebaseAuth();
+  const credential = await createUserWithEmailAndPassword(auth, email, pass);
+  if (displayName && credential.user) {
+    await updateProfile(credential.user, { displayName });
+  }
+  // Initialize user profile in Firestore
+  if (credential.user) {
+    await saveUserProfileToFirestore(credential.user.uid, {
+      id: credential.user.uid,
+      email: credential.user.email || email,
+      displayName: displayName || credential.user.displayName || 'سادن الكلمات الخالدة',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+  }
+  return credential.user;
+}
+
+export async function loginWithGoogle(): Promise<User> {
+  const auth = getFirebaseAuth();
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+  const credential = await signInWithPopup(auth, provider);
+  if (credential.user) {
+    await saveUserProfileToFirestore(credential.user.uid, {
+      id: credential.user.uid,
+      email: credential.user.email || '',
+      displayName: credential.user.displayName || 'سادن الكلمات الخالدة',
+      photoURL: credential.user.photoURL || '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+  }
+  return credential.user;
+}
+
+export async function logoutFirebaseUser(): Promise<void> {
+  const auth = getFirebaseAuth();
+  await signOut(auth);
+}
+
+export function subscribeToAuthState(callback: (user: User | null) => void): Unsubscribe {
+  const auth = getFirebaseAuth();
+  return onAuthStateChanged(auth, callback);
+}
+
+// ================= USER PROFILE & BOOKMARK FIRESTORE SERVICES ================= //
+
+export interface StoredUserProfile {
+  id: string;
+  email: string;
+  displayName?: string;
+  photoURL?: string;
+  coverURL?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export async function saveUserProfileToFirestore(userId: string, data: Partial<StoredUserProfile>): Promise<void> {
+  try {
+    const db = getDb();
+    const userRef = doc(db, 'users', userId);
+    await setDoc(userRef, { ...data, id: userId, updatedAt: new Date().toISOString() }, { merge: true });
+  } catch (error) {
+    console.warn('Could not save user profile to Firestore (using local storage fallback):', error);
+  }
+}
+
+export async function getUserProfileFromFirestore(userId: string): Promise<StoredUserProfile | null> {
+  try {
+    const db = getDb();
+    const userRef = doc(db, 'users', userId);
+    const snap = await getDoc(userRef);
+    if (snap.exists()) {
+      return snap.data() as StoredUserProfile;
+    }
+    return null;
+  } catch (error) {
+    console.warn('Could not get user profile from Firestore:', error);
+    return null;
+  }
+}
+
+export async function saveBookmarkToFirestore(userId: string, novelId: string, novelTitle: string): Promise<void> {
+  try {
+    const db = getDb();
+    const bookmarkRef = doc(db, 'users', userId, 'bookmarks', novelId);
+    await setDoc(bookmarkRef, {
+      userId,
+      novelId,
+      novelTitle,
+      createdAt: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.warn('Could not save bookmark to Firestore (using local storage):', error);
+  }
+}
+
+export async function removeBookmarkFromFirestore(userId: string, novelId: string): Promise<void> {
+  try {
+    const db = getDb();
+    const bookmarkRef = doc(db, 'users', userId, 'bookmarks', novelId);
+    await deleteDoc(bookmarkRef);
+  } catch (error) {
+    console.warn('Could not remove bookmark from Firestore (using local storage):', error);
+  }
+}
+
+export async function getUserBookmarksFromFirestore(userId: string): Promise<string[]> {
+  try {
+    const db = getDb();
+    const q = query(collection(db, 'users', userId, 'bookmarks'), limit(100));
+    const snap = await getDocs(q);
+    return snap.docs.map((d) => d.id);
+  } catch (error) {
+    console.warn('Could not fetch bookmarks from Firestore:', error);
+    return [];
+  }
+}
+
+// ================= CLOUD VAULT (COMPATIBILITY) ================= //
+
 export interface CloudMtxBook {
   id: string;
   title: string;
@@ -129,13 +275,12 @@ export async function fetchCloudVaultBooks(): Promise<CloudMtxBook[]> {
     }
   })();
 
-  const path = 'comments'; // public readable collection in rules
+  const path = 'comments';
   try {
     const db = getDb();
     const q = query(collection(db, path), limit(10));
     await getDocs(q);
   } catch (err: unknown) {
-    // Graceful error logging according to skill
     console.info('Firestore public fetch note (using local cache):', err);
   }
 
