@@ -30,21 +30,17 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: 'npm'
 
-      - name: Cache npm dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json', '**/package.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
+      - name: Upgrade npm to latest stable
+        run: npm install -g npm@latest
 
       - name: Install dependencies
         run: |
           if [ -f package-lock.json ]; then
-            npm ci || npm install --no-audit --no-fund
+            npm ci --legacy-peer-deps || npm ci || npm install --legacy-peer-deps --no-audit --no-fund
           else
-            npm install --no-audit --no-fund
+            npm install --legacy-peer-deps --no-audit --no-fund
           fi
 
       - name: Build for GitHub Pages
