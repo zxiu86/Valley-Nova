@@ -72,6 +72,14 @@ export interface ChapterItem {
   isLast?: boolean;
 }
 
+export interface LiterarySalon {
+  id: string;
+  title: string;
+  description: string;
+  membersCount: number;
+  isActive: boolean;
+}
+
 @Component({
   changeDetection: ChangeDetectionStrategy.OnPush,
   selector: 'app-root',
@@ -188,6 +196,24 @@ export class App implements OnInit, OnDestroy {
     { title: 'نال وسام «سادن الاعتكاف القرائي» (٣٤ يوماً متواصلاً)', time: 'منذ ٥ أيام', book: 'صرح أروقة الخلود', duration: 'إنجاز تحريري' },
     { title: 'أتم مراجعة مسودة «أطياف النحاس» واعتماد ميثاق النقاء', time: 'منذ أسبوع', book: 'رواق التراث', duration: 'توثيق رسمي' },
   ];
+
+  // Literary Discussion Salons (حلقات النقاش التحريري النشطة)
+  readonly literarySalons = signal<LiterarySalon[]>([
+    {
+      id: 's1',
+      title: 'صالون الفلك والبارود السمرقندي',
+      description: 'نقاش حول شفرة النجوم ومذنب زرافشان — ١٤ مشاركاً نشطاً.',
+      membersCount: 14,
+      isActive: true,
+    },
+    {
+      id: 's2',
+      title: 'مجلس السرد الأندلسي التليد',
+      description: 'تحقيق مخطوطة الزهراء المفقودة — ٩ باحثين.',
+      membersCount: 9,
+      isActive: true,
+    },
+  ]);
 
   // Active Corridor Signal
   readonly activeCorridor = signal<'novels' | 'epics' | 'wisdom' | 'heritage'>('novels');
@@ -1019,9 +1045,25 @@ export class App implements OnInit, OnDestroy {
 
   async ngOnInit(): Promise<void> {
     try {
+      const localBm = localStorage.getItem('mtx_local_bookmarks');
+      if (localBm) {
+        const parsed = JSON.parse(localBm);
+        if (Array.isArray(parsed)) {
+          const nextSet = new Set(this.bookmarkedIds());
+          parsed.forEach((id: string) => nextSet.add(id));
+          this.bookmarkedIds.set(nextSet);
+        }
+      }
+    } catch {
+      // Quiet local storage restore
+    }
+
+    try {
       const cached = await fetchCloudVaultBooks();
       if (cached && cached.length > 0) {
-        this.bookmarkedIds.set(new Set(cached.map((b) => b.id)));
+        const nextSet = new Set(this.bookmarkedIds());
+        cached.forEach((b) => nextSet.add(b.id));
+        this.bookmarkedIds.set(nextSet);
       }
     } catch {
       // Quiet background setup
@@ -1147,7 +1189,7 @@ export class App implements OnInit, OnDestroy {
 
   // 3. Direct Filter Navigation (Header tune button & filter presets)
   onHeaderFilterClick(): void {
-    this.goToExploreWithFilter();
+    this.toggleFilter();
   }
 
   goToExploreWithFilter(): void {
@@ -1165,6 +1207,11 @@ export class App implements OnInit, OnDestroy {
     } else {
       this.toggleSearch();
     }
+  }
+
+  applyMobileFilters(): void {
+    this.isMobileFilterDrawerOpen.set(false);
+    this.showToast(`تم تطبيق التصفية — معروض ${this.filteredExploreBooks().length} عملاً`);
   }
 
   applyFastFilter(type: 'longest' | 'translated' | 'completed' | 'short' | 'alphabetical'): void {
@@ -1405,6 +1452,11 @@ export class App implements OnInit, OnDestroy {
       }
     }
     this.bookmarkedIds.set(current);
+    try {
+      localStorage.setItem('mtx_local_bookmarks', JSON.stringify([...current]));
+    } catch {
+      // Ignore storage error
+    }
   }
 
   isBookmarked(id: string): boolean {
@@ -1491,9 +1543,13 @@ export class App implements OnInit, OnDestroy {
     return pool;
   });
 
-  // Header Bookmark Button Action: Direct transfer to profile favorites or auth
+  // Header Bookmark Button Action: Toggles the dedicated Bookmarks Sanctuary drawer
   onHeaderBookmarkClick(): void {
-    this.closeAllModals();
+    this.toggleBookmarks();
+  }
+
+  viewFullVaultFromBookmarks(): void {
+    this.isBookmarksOpen.set(false);
     if (this.currentUser()) {
       this.profileActiveTab.set('vault');
       this.vaultFilter.set('bookmarked');
@@ -1641,13 +1697,19 @@ export class App implements OnInit, OnDestroy {
   }
 
   toggleFilter(): void {
-    const nextState = !this.isFilterOpen();
-    this.closeAllModals();
-    this.isFilterOpen.set(nextState);
+    if (this.currentView() === 'explore') {
+      this.isMobileFilterDrawerOpen.update((v) => !v);
+    } else {
+      const nextState = !this.isFilterOpen();
+      this.closeAllModals();
+      this.isFilterOpen.set(nextState);
+    }
   }
 
   toggleBookmarks(): void {
-    this.onHeaderBookmarkClick();
+    const nextState = !this.isBookmarksOpen();
+    this.closeAllModals();
+    this.isBookmarksOpen.set(nextState);
   }
 
   toggleProfile(): void {
@@ -1693,6 +1755,11 @@ export class App implements OnInit, OnDestroy {
 
   clearAllBookmarks(): void {
     this.bookmarkedIds.set(new Set());
+    try {
+      localStorage.removeItem('mtx_local_bookmarks');
+    } catch {
+      // Ignore storage error
+    }
     this.showToast('تم تفريغ جميع الألواح المحفوظة');
   }
 
@@ -2126,28 +2193,127 @@ export class App implements OnInit, OnDestroy {
     }
   }
 
-  openNovelAndRead(novel: NovelCard): void {
-    this.openNovelDetails(novel);
-    this.startPureReading();
-  }
-
-  resumeReadingNovel(novel: NovelCard): void {
-    this.openNovelDetails(novel);
+  startReadingNovel(novel: NovelCard): void {
+    this.selectedNovel.set(novel);
     const targetChap = this.chapters.find((c) => c.status === 'current') || this.chapters[0];
     this.openChapter(targetChap);
   }
 
-  downloadBookOffline(): void {
-    this.showToast('تم تنزيل المخطوطة كاملة بفك التشفير الفوري للقراءة دون اتصال');
+  openNovelAndRead(novel: NovelCard): void {
+    this.startReadingNovel(novel);
   }
 
-  shareBook(): void {
+  resumeReadingNovel(novel: NovelCard): void {
+    this.startReadingNovel(novel);
+  }
+
+  async downloadBookOffline(): Promise<void> {
+    const novel = this.selectedNovel() || this.defaultEchoesSamarkand;
+    if (!novel) return;
+
+    try {
+      const rawText = this.activeChapterText() || novel.description || novel.quote || novel.title;
+      const compression = await compressToMtx(rawText, {
+        title: novel.title,
+        author: novel.author || 'أروقة الخلود',
+        chapterTitle: 'الفصل المحقق',
+        chapterIndex: 1,
+        genre: novel.genre,
+        createdAt: new Date().toISOString(),
+      });
+
+      // Save binary in base64 within local storage for instant offline read availability
+      try {
+        const base64Mtx = btoa(
+          Array.from(compression.mtxBytes)
+            .map((b) => String.fromCharCode(b))
+            .join('')
+        );
+        localStorage.setItem(`mtx_offline_${novel.id}`, base64Mtx);
+      } catch {
+        // Ignore local storage quota limits
+      }
+
+      // Trigger native browser download of actual .mtx binary file
+      const blob = new Blob([compression.mtxBytes as unknown as BlobPart], { type: 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      const safeTitle = novel.title.replace(/[\\/?%*:|"<>]/g, '_').trim();
+      anchor.download = `${safeTitle}_محقق.mtx`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+
+      this.showToast(`تم تنزيل «${novel.title}» محققة بصيغة MTX v2.2 وحفظها في الذاكرة دون اتصال`);
+    } catch (err) {
+      console.error('Download offline error:', err);
+      this.showToast('حدث خطأ أثناء تشفير المخطوطة وتنزيلها');
+    }
+  }
+
+  async shareBook(): Promise<void> {
+    const novel = this.selectedNovel();
+    const shareTitle = novel ? novel.title : 'أروقة الخلود';
+    const shareText = novel ? `اقرأ سفر «${novel.title}» في صرح أروقة الخلود:` : 'صرح أروقة الخلود للسرد الأدبي';
+    const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
+
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({
+          title: shareTitle,
+          text: shareText,
+          url: shareUrl,
+        });
+        this.showToast('تمت مشاركة المخطوطة بنجاح');
+        return;
+      } catch {
+        // User closed native share sheet or unsupported, fallback to clipboard
+      }
+    }
+
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(window.location.href);
-      this.showToast('تم نسخ رابط الرواية المباشر لمشاركتها');
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        this.showToast('تم نسخ رابط الرواية المباشر لمشاركتها');
+      } catch {
+        this.showToast('تم نسخ رابط الرواية لمشاركتها مع القرّاء');
+      }
     } else {
       this.showToast('تم نسخ رابط الرواية لمشاركتها مع القرّاء');
     }
+  }
+
+  openEditDraft(work: { id: string; title: string; category: string; summary: string }): void {
+    this.publishForm.patchValue({
+      title: work.title,
+      synopsis: work.summary,
+      genreLabel: work.category,
+      authorName: this.userProfile()?.displayName || this.currentUser()?.displayName || 'سادن القلم',
+    });
+    this.isPublishModalOpen.set(true);
+    this.showToast(`تم فتح مسودة «${work.title}» في محرر النشر`);
+  }
+
+  sponsorNewSalon(): void {
+    const salonNames = [
+      { title: 'ملتقى حكمة قرطبة وفلسفة ابن رشد', desc: 'مدارسة مخطوطات الفلسفة والتنوير الأندلسي — حلقة نشطة' },
+      { title: 'ديوان ملاحم الرماد وتدوين الأساطير', desc: 'حلقة تحقيق نصوص البطولات والملاحم الشرقية القديمة' },
+      { title: 'مجلس نقد السرد والرمزية المعاصرة', desc: 'جلسات تحليل التراكيب السردية والبلاغية الرفيعة' },
+      { title: 'ندوة خزائن التراث والمخطوط المرقوم', desc: 'استقراء الوثائق التاريخية والنصوص المحققة الأصيلة' },
+    ];
+    const count = this.literarySalons().length;
+    const nextTemplate = salonNames[(count - 2) % salonNames.length];
+    const newSalon: LiterarySalon = {
+      id: `salon_${Date.now()}`,
+      title: nextTemplate.title,
+      description: nextTemplate.desc,
+      membersCount: 1,
+      isActive: true,
+    };
+    this.literarySalons.update((list) => [...list, newSalon]);
+    this.showToast(`تم تدشين «${newSalon.title}» ورعايته بنجاح`);
   }
 
   scrollToSection(id: string): void {

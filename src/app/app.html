@@ -468,7 +468,10 @@
               <button type="button" (click)="clearAllBookmarks()" class="text-outline hover:text-rose-400 transition-colors cursor-pointer">
                 تفريغ جميع الألواح
               </button>
-              <span class="text-outline">مشفرة ومحفوظة تلقائياً</span>
+              <button type="button" (click)="viewFullVaultFromBookmarks()" class="text-secondary hover:underline cursor-pointer flex items-center gap-1 font-semibold">
+                <span>فتح ديوان الخزانة الكامل</span>
+                <span class="material-symbols-outlined text-[14px]">arrow_left</span>
+              </button>
             </div>
           } @else {
             <div class="py-10 text-center space-y-3">
@@ -827,7 +830,7 @@
                       <div class="flex flex-wrap items-center gap-space-sm pt-space-xs">
                         <button
                           type="button"
-                          (click)="openNovelDetails({ id: spotlight.id, title: spotlight.title, genre: spotlight.genre, coverUrl: spotlight.coverUrl, coverAlt: spotlight.coverAlt, quote: spotlight.quote, description: spotlight.quote })"
+                          (click)="startReadingNovel({ id: spotlight.id, title: spotlight.title, genre: spotlight.genre, coverUrl: spotlight.coverUrl, coverAlt: spotlight.coverAlt, quote: spotlight.quote, description: spotlight.quote })"
                           class="inline-flex items-center justify-center px-space-md py-2 rounded bg-primary text-on-primary font-label-md text-label-md hover:bg-primary-fixed-dim transition-colors shadow-sm cursor-pointer"
                         >
                           <span>بدء القراءة</span>
@@ -1401,34 +1404,22 @@
                 <div class="w-full max-w-[370px] mt-space-lg flex items-center justify-between gap-2 sm:gap-space-sm">
                   <button
                     type="button"
-                    (click)="toggleBookmark(novel)"
-                    [class.bg-amber-400/20]="isBookmarked(novel.id)"
-                    [class.text-amber-400]="isBookmarked(novel.id)"
-                    class="flex-1 py-2 sm:py-2.5 px-2 rounded-xl bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer text-xs sm:text-sm font-semibold"
-                  >
-                    <span class="material-symbols-outlined text-[18px] text-amber-400">
-                      {{ isBookmarked(novel.id) ? 'bookmark_added' : 'bookmark_add' }}
-                    </span>
-                    <span>{{ isBookmarked(novel.id) ? 'في الخزانة' : 'حفظ بالخزانة' }}</span>
-                  </button>
-
-                  <button
-                    type="button"
                     (click)="downloadBookOffline()"
-                    class="flex-1 py-2 sm:py-2.5 px-2 rounded-xl bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer text-xs sm:text-sm font-semibold"
+                    class="flex-1 py-2 sm:py-2.5 px-3 rounded-xl bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer text-xs sm:text-sm font-semibold border border-surface-variant/30"
                   >
                     <span class="material-symbols-outlined text-[18px] text-tertiary">download_for_offline</span>
-                    <span>تحميل أوفلاين</span>
+                    <span>تحميل أوفلاين (.mtx)</span>
                   </button>
 
                   <button
                     type="button"
                     (click)="shareBook()"
                     aria-label="مشاركة السفر"
-                    class="w-10 h-10 rounded-xl bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center shadow-sm transition-all cursor-pointer"
+                    class="flex-1 py-2 sm:py-2.5 px-3 rounded-xl bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer text-xs sm:text-sm font-semibold border border-surface-variant/30"
                     title="مشاركة رابط الرواية"
                   >
-                    <span class="material-symbols-outlined text-[18px]">share</span>
+                    <span class="material-symbols-outlined text-[18px] text-secondary">share</span>
+                    <span>مشاركة السفر</span>
                   </button>
                 </div>
 
@@ -2090,104 +2081,7 @@
 
       </div>
 
-      <!-- ================= 6. IMMERSIVE PURE READING MODAL ================= -->
-      @if (isReadingChapterOpen() && activeReadingChapter(); as actChap) {
-        <div class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-fadeIn">
-          <button
-            type="button"
-            class="fixed inset-0 w-full h-full cursor-default border-none bg-transparent"
-            aria-label="إغلاق القراءة"
-            (click)="closeChapterReader()"
-          ></button>
-
-          <div class="relative z-10 w-full max-w-4xl max-h-[92vh] bg-surface-container-low border border-surface-variant/60 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-            
-            <!-- Modal Header -->
-            <div class="p-3 sm:p-5 border-b border-surface-variant/40 flex items-center justify-between bg-surface-container-lowest">
-              <div class="flex items-center gap-3">
-                <span class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center font-bold text-xs sm:text-sm font-serif" [ngClass]="theme.btnBg">
-                  {{ actChap.arabicNumber }}
-                </span>
-                <div class="flex flex-col min-w-0">
-                  <span class="text-[11px] font-semibold truncate" [class]="theme.textColor">{{ novel.title }}</span>
-                  <h3 class="text-xs sm:text-base font-bold text-on-surface truncate">{{ actChap.title }}</h3>
-                </div>
-              </div>
-
-              <!-- Controls & Close -->
-              <div class="flex items-center gap-2 sm:gap-3">
-                <div class="flex items-center gap-1 bg-surface-container px-2 py-1 rounded-lg border border-surface-variant/30 text-xs">
-                  <button type="button" (click)="setReaderFontSize('sm')" [class.text-primary]="readerFontSize() === 'sm'" class="px-1.5 py-0.5 rounded hover:bg-surface-container-high cursor-pointer font-bold" title="تصغير الخط">أ-</button>
-                  <button type="button" (click)="setReaderFontSize('md')" [class.text-primary]="readerFontSize() === 'md'" class="px-1.5 py-0.5 rounded hover:bg-surface-container-high cursor-pointer font-bold" title="خط قياسي">أ</button>
-                  <button type="button" (click)="setReaderFontSize('lg')" [class.text-primary]="readerFontSize() === 'lg'" class="px-1.5 py-0.5 rounded hover:bg-surface-container-high cursor-pointer font-bold" title="تكبير الخط">أ+</button>
-                </div>
-
-                <button
-                  type="button"
-                  (click)="closeChapterReader()"
-                  class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-surface-container flex items-center justify-center text-outline hover:text-white transition-colors cursor-pointer"
-                  aria-label="إغلاق"
-                >
-                  <span class="material-symbols-outlined text-[18px] sm:text-[20px]">close</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- Reading Body Scrollable Area -->
-            <div class="p-4 sm:p-10 overflow-y-auto space-y-6 flex-1">
-              <div class="text-center space-y-2 border-b border-surface-variant/20 pb-5">
-                <span class="text-xs px-3 py-1 rounded-full border" [ngClass]="theme.badgeBg">
-                  طبعة أروقة الخلود المحققة والمشكولة
-                </span>
-                <h2 class="text-xl sm:text-3xl font-display-hero text-on-surface font-bold pt-1">
-                  {{ actChap.title }}
-                </h2>
-                <span class="text-xs text-outline">{{ actChap.duration }} • قراءة نقية مباشرة</span>
-              </div>
-
-              <article
-                class="font-amiri text-stone-200 text-justify whitespace-pre-line max-w-2xl mx-auto px-2 transition-all leading-[2.4]"
-                [ngClass]="readerFontSize() === 'sm' ? 'text-base sm:text-xl leading-[2.1]' : (readerFontSize() === 'lg' ? 'text-xl sm:text-3xl leading-[2.6]' : 'text-lg sm:text-2xl leading-[2.4]')"
-              >
-                {{ activeChapterText() }}
-              </article>
-            </div>
-
-            <!-- Modal Footer Navigation -->
-            <div class="p-3 sm:p-4 border-t border-surface-variant/40 flex items-center justify-between bg-surface-container-lowest">
-              <button
-                type="button"
-                (click)="prevChapter()"
-                [disabled]="actChap.id === 1"
-                [class.opacity-40]="actChap.id === 1"
-                class="flex items-center gap-1 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-xs font-semibold text-on-surface transition-colors cursor-pointer disabled:cursor-not-allowed"
-              >
-                <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
-                <span>الفصل السابق</span>
-              </button>
-
-              <span class="text-xs text-outline font-medium">
-                فصل {{ actChap.arabicNumber }} من ٢٤
-              </span>
-
-              <button
-                type="button"
-                (click)="nextChapter()"
-                [disabled]="actChap.id === 24"
-                [class.opacity-40]="actChap.id === 24"
-                class="flex items-center gap-1 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer disabled:cursor-not-allowed"
-                [ngClass]="theme.btnBg"
-              >
-                <span>الفصل التالي</span>
-                <span class="material-symbols-outlined text-[16px]">arrow_left</span>
-              </button>
-            </div>
-
-          </div>
-        </div>
-      }
-
-      <!-- ================= 7. EDITORIAL INTEGRITY & ARCHIVE CERTIFICATE MODAL ================= -->
+      <!-- ================= 6. EDITORIAL INTEGRITY & ARCHIVE CERTIFICATE MODAL ================= -->
       @if (isIntegrityDocOpen()) {
         <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
           <button
@@ -2677,7 +2571,7 @@
                 <div class="pt-space-sm flex flex-col gap-space-xs">
                   <button
                     type="button"
-                    (click)="showToast('تم تطبيق الفلاتر المختارة على الخزانة'); isMobileFilterDrawerOpen.set(false)"
+                    (click)="applyMobileFilters()"
                     class="w-full py-space-xs rounded-xl bg-primary-container hover:bg-primary-container/90 text-on-primary font-label-md text-label-md font-semibold transition-all shadow-md flex items-center justify-center gap-space-xs cursor-pointer"
                   >
                     <span class="material-symbols-outlined text-[18px] text-secondary">filter_alt</span>
@@ -2927,7 +2821,7 @@
               <div class="relative z-10 flex items-center gap-space-sm shrink-0 flex-wrap">
                 <button
                   type="button"
-                  (click)="showToast('ديوان النشر المباشر للأقلام مفتوح للمبدعين')"
+                  (click)="openPublishModal()"
                   class="px-space-lg py-space-xs rounded-xl bg-primary-container hover:bg-primary-container/90 text-on-primary font-label-md text-label-md font-semibold transition-all shadow-lg flex items-center gap-space-xs cursor-pointer border border-primary/30"
                 >
                   <span class="material-symbols-outlined text-[18px] text-secondary">edit_note</span>
@@ -2935,7 +2829,7 @@
                 </button>
                 <button
                   type="button"
-                  (click)="showToast('ميثاق النشر والتحرير التحريري مصان 100%')"
+                  (click)="openIntegrityDoc()"
                   class="px-space-md py-space-xs rounded-xl bg-surface-container-high/90 hover:bg-surface-container-highest text-on-surface font-label-md text-label-md transition-all cursor-pointer border border-surface-variant/40 backdrop-blur-md"
                 >
                   دليل التحرير والميثاق
@@ -3677,7 +3571,7 @@
                           <div class="flex items-center gap-2">
                             <button
                               type="button"
-                              (click)="showToast('فتح محرر المسودات الأدبية')"
+                              (click)="openEditDraft(work)"
                               class="text-xs text-primary font-semibold hover:underline cursor-pointer"
                             >
                               متابعة التحرير
@@ -3956,26 +3850,20 @@
                 </div>
 
                 <div class="space-y-3">
-                  <div class="p-3 rounded-xl bg-surface-container/60 border border-surface-variant/20 space-y-1">
-                    <div class="flex items-center justify-between">
-                      <h5 class="font-bold text-xs text-on-surface">صالون الفلك والبارود السمرقندي</h5>
-                      <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                  @for (salon of literarySalons(); track salon.id) {
+                    <div class="p-3 rounded-xl bg-surface-container/60 border border-surface-variant/20 space-y-1">
+                      <div class="flex items-center justify-between">
+                        <h5 class="font-bold text-xs text-on-surface">{{ salon.title }}</h5>
+                        <span class="w-2 h-2 rounded-full" [class.bg-emerald-400]="salon.isActive" [class.bg-amber-400]="!salon.isActive"></span>
+                      </div>
+                      <p class="text-[11px] text-outline">{{ salon.description }}</p>
                     </div>
-                    <p class="text-[11px] text-outline">نقاش حول شفرة النجوم ومذنب زرافشان — ١٤ مشاركاً نشطاً.</p>
-                  </div>
-
-                  <div class="p-3 rounded-xl bg-surface-container/60 border border-surface-variant/20 space-y-1">
-                    <div class="flex items-center justify-between">
-                      <h5 class="font-bold text-xs text-on-surface">مجلس السرد الأندلسي التليد</h5>
-                      <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-                    </div>
-                    <p class="text-[11px] text-outline">تحقيق مخطوطة الزهراء المفقودة — ٩ باحثين.</p>
-                  </div>
+                  }
                 </div>
 
                 <button
                   type="button"
-                  (click)="showToast('تم تقديم طلب رعاية حلقة نقاش أدبية جديدة')"
+                  (click)="sponsorNewSalon()"
                   class="w-full py-2.5 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-surface-variant/30"
                 >
                   <span class="material-symbols-outlined text-[16px] text-secondary">add_circle</span>
@@ -4149,6 +4037,21 @@
                     {{ readerBookmarks().length }}
                   </span>
                 }
+              </button>
+
+              <!-- Soundscape Synth Ambient Toggle -->
+              <button
+                type="button"
+                (click)="toggleSoundscape()"
+                [class.bg-black/10]="soundscapeActive()"
+                [class.dark:bg-white/15]="soundscapeActive()"
+                class="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer border"
+                [ngClass]="readerThemeConfig().cardBorder"
+                [title]="soundscapeActive() ? 'إيقاف السكينة الصوتية' : 'تشغيل السكينة الصوتية والتأمل'"
+              >
+                <span class="material-symbols-outlined text-[19px]" [class.text-amber-400]="soundscapeActive()">
+                  {{ soundscapeActive() ? 'volume_up' : 'volume_off' }}
+                </span>
               </button>
 
               <!-- Settings Drawer Trigger -->
@@ -4924,39 +4827,39 @@
           <h4 class="font-label-md text-label-md text-secondary font-semibold">الأروقة الأربعة</h4>
           <nav class="flex flex-col gap-space-xs">
             <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="returnToNovels()">رواق الروايات (Crimson Noir)</button>
-            <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="showToast('رواق الملاحم قيد الاستعراض')">رواق الملاحم (Mythic Bronze)</button>
-            <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="showToast('رواق الحكمة قيد الاستعراض')">رواق الحكمة (Ivory Sanctuary)</button>
-            <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="showToast('رواق التراث قيد الاستعراض')">رواق التراث (Manuscript Emerald)</button>
+            <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="switchCorridor('epics')">رواق الملاحم (Mythic Bronze)</button>
+            <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="switchCorridor('wisdom')">رواق الحكمة (Ivory Sanctuary)</button>
+            <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="switchCorridor('heritage')">رواق التراث (Manuscript Emerald)</button>
           </nav>
         </div>
 
         <div class="flex flex-col gap-space-sm">
           <h4 class="font-label-md text-label-md text-secondary font-semibold">المصنفات الأدبية</h4>
           <nav class="flex flex-col gap-space-xs">
-            <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="setGenre('الكل')">كلاسيكيات الأدب العالمي</button>
-            <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="setGenre('الكل')">ديوان العرب والشعر الحر</button>
-            <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="setGenre('الكل')">المخطوطات النادرة</button>
-            <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="setGenre('الكل')">سجالات الفكر وفلسفة الكلمة</button>
+            <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="goToExploreWithTag('كلاسيكيات الأدب')">كلاسيكيات الأدب العالمي</button>
+            <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="goToExploreWithTag('ديوان العرب')">ديوان العرب والشعر الحر</button>
+            <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="goToExploreWithTag('مخطوطات نادرة')">المخطوطات النادرة</button>
+            <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="goToExploreWithTag('فلسفة وحكمة')">سجالات الفكر وفلسفة الكلمة</button>
           </nav>
         </div>
 
         <div class="flex flex-col gap-space-sm">
           <h4 class="font-label-md text-label-md text-secondary font-semibold">أدلة القراءة والتأمل</h4>
           <nav class="flex flex-col gap-space-xs">
-            <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="showToast('مسارات القراءة المنظمة متاحة في الرواق')">مسارات القراءة المنظمة</button>
-            <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="showToast('المقالات التحريرية النقدية')">مقالات تحريرية نقدية</button>
-            <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="showToast('فهارس ومعاجم الأروقة الأدبية')">فهارس ومعاجم الأروقة</button>
-            <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="showToast('قراءات صوتية درامية قريباً')">قراءات صوتية درامية</button>
+            <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="goToExploreWithSort('pages')">مسارات القراءة المنظمة</button>
+            <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="goToExploreWithTag('تحقيق ناصع')">مقالات تحريرية نقدية</button>
+            <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="openExplore()">فهارس ومعاجم الأروقة</button>
+            <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="toggleSoundscape()">السكينة الصوتية والتأمل</button>
           </nav>
         </div>
 
         <div class="flex flex-col gap-space-sm">
           <h4 class="font-label-md text-label-md text-secondary font-semibold">عن المعبد السردي</h4>
           <nav class="flex flex-col gap-space-xs">
-            <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="showToast('فلسفة العمارة الرقمية في أروقة الخلود')">فلسفة العمارة الرقمية</button>
-            <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="showToast('ميثاق النقاء التحريري الكامل')">ميثاق النقاء التحريري</button>
-            <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="showToast('رعاة الكلمة الخالدة')">رعاة الكلمة الخالدة</button>
-            <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="showToast('ديوان المراسلات مفتوح لجميع القراء')">ديوان المراسلات</button>
+            <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="openIntegrityDoc()">فلسفة العمارة الرقمية</button>
+            <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="openIntegrityDoc()">ميثاق النقاء التحريري</button>
+            <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="openPublishModal()">رعاة الكلمة الخالدة</button>
+            <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="openPublishModal()">ديوان المراسلات والنشر</button>
           </nav>
         </div>
 
