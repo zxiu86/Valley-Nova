@@ -12,6 +12,7 @@ import {
   NovelCard,
   ProfileQuote,
   ProfileWork,
+  PublishedNovelRecord,
   ReaderBookmarkItem,
   ReaderFontFamilyId,
   ReaderThemeId,
@@ -22,12 +23,17 @@ import { MTX_LITERARY_PRESETS } from '../mtx-presets';
 import { INITIAL_EXPLORE_CATALOG } from '../mtx-catalog-data';
 import { ChapterTextContent, getChapterProse } from '../mtx-reader-chapters';
 import {
+  fetchAllPublishedNovels,
   fetchCloudVaultBooks,
+  publishNovelToFirestore,
+  recordChapterReadInFirestore,
   removeBookmarkFromFirestore,
   saveBookmarkToFirestore,
   saveToCloudVault,
+  syncSavedNovelsCountToFirestore,
 } from '../mtx-firebase';
 import { AuthSessionService } from './auth-session.service';
+import { AccountService } from './account.service';
 import { ThemeService } from './theme.service';
 
 const NAV_STORAGE_KEY = 'mtx_nav_state_v1';
@@ -37,6 +43,7 @@ export class LibraryStateService {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly router = inject(Router);
   readonly authSession = inject(AuthSessionService);
+  readonly accountService = inject(AccountService);
   readonly themeService = inject(ThemeService);
 
   // Navigation & View State ('novels' | 'details' | 'explore' | 'auth' | 'profile' | 'reader')
@@ -1079,10 +1086,12 @@ export class LibraryStateService {
         this.bookmarkedIds.set(nextSet);
       },
       onAuthRestored: (user) => {
-        if (!user && this.currentView() === 'profile') {
+        const cleanUrl = (this.router.url || '').split('?')[0];
+        const isBareProfileRoute = cleanUrl === '/profile' || cleanUrl === '/profile/';
+        if (!user && isBareProfileRoute) {
           this.navigateToView('auth', false);
         } else if (user && this.currentView() === 'auth') {
-          this.navigateToView('profile', false);
+          this.navigateToOwnProfile(false);
         }
       },
     });
@@ -1090,11 +1099,35 @@ export class LibraryStateService {
     await this.authSession.init();
 
     try {
-      const cached = await fetchCloudVaultBooks();
+      const [cached, publishedNovels] = await Promise.all([
+        fetchCloudVaultBooks(),
+        fetchAllPublishedNovels(),
+      ]);
       if (cached && cached.length > 0) {
         const nextSet = new Set(this.bookmarkedIds());
         cached.forEach((b) => nextSet.add(b.id));
         this.bookmarkedIds.set(nextSet);
+      }
+      if (publishedNovels && publishedNovels.length > 0) {
+        const mapped: NovelCard[] = publishedNovels.map((n) => ({
+          id: n.id,
+          title: n.title,
+          author: n.authorName,
+          authorId: n.authorId,
+          genre: n.genre,
+          categoryGroup: n.categoryGroup,
+          coverUrl: n.coverUrl || '/images/writers_sanctuary_bg.jpg',
+          coverAlt: n.title,
+          description: n.description,
+          readingHours: n.readingHours,
+          isCompleted: false,
+          isOriginal: true,
+        }));
+        this.exploreBooksList.update((existing) => {
+          const existingIds = new Set(existing.map((item) => item.id));
+          const fresh = mapped.filter((m) => !existingIds.has(m.id));
+          return [...fresh, ...existing];
+        });
       }
     } catch {
       // Quiet background setup
@@ -1122,7 +1155,28 @@ export class LibraryStateService {
     return n.toString().replace(/\d/g, (d) => digits[+d]);
   }
 
+  navigateToOwnProfile(smoothScroll = true): void {
+    this.currentView.set('profile');
+    this.isMobileNavOpen.set(false);
+    this.persistNavigationState();
+
+    const username = this.accountService.ownProfile()?.username;
+    const targetPath = username ? `/profile/${username}` : '/profile';
+    if (this.router.url !== targetPath) {
+      this.router.navigateByUrl(targetPath).catch(() => false);
+    }
+
+    if (isPlatformBrowser(this.platformId)) {
+      window.scrollTo({ top: 0, behavior: smoothScroll ? 'smooth' : ('instant' as ScrollBehavior) });
+    }
+  }
+
   navigateToView(view: AppView, smoothScroll = true): void {
+    if (view === 'profile') {
+      this.navigateToOwnProfile(smoothScroll);
+      return;
+    }
+
     this.currentView.set(view);
     this.isMobileNavOpen.set(false);
     this.persistNavigationState();
@@ -1143,7 +1197,7 @@ export class LibraryStateService {
     }
 
     if (isPlatformBrowser(this.platformId) && view !== 'reader') {
-      window.scrollTo({ top: 0, behavior: smoothScroll ? 'smooth' : 'instant' as ScrollBehavior });
+      window.scrollTo({ top: 0, behavior: smoothScroll ? 'smooth' : ('instant' as ScrollBehavior) });
     }
   }
 
@@ -1501,7 +1555,7 @@ export class LibraryStateService {
       current.delete(novel.id);
       this.showToast('تمت إزالة الرواية من الألواح المحفوظة');
       if (user) {
-        removeBookmarkFromFirestore(user.uid, novel.id).catch((err) => {
+        removeBookmarkFromFirestore(user.uid, novel.id, current.size).catch((err) => {
           console.warn('Bookmark removal warning:', err);
         });
       }
@@ -1509,7 +1563,7 @@ export class LibraryStateService {
       current.add(novel.id);
       this.showToast('تم حفظ الرواية في ألواحك المفضلة بنجاح');
       if (user) {
-        saveBookmarkToFirestore(user.uid, novel.id, novel.title).catch((err) => {
+        saveBookmarkToFirestore(user.uid, novel, current.size).catch((err) => {
           console.warn('Bookmark save warning:', err);
         });
       }
@@ -1541,6 +1595,14 @@ export class LibraryStateService {
       }
     }
     this.bookmarkedIds.set(current);
+    this.accountService.ownProfile.update((prof) =>
+      prof ? { ...prof, savedNovelsCount: current.size } : prof
+    );
+    if (this.accountService.viewedIsOwner()) {
+      this.accountService.viewedProfile.update((prof) =>
+        prof ? { ...prof, savedNovelsCount: current.size } : prof
+      );
+    }
     try {
       localStorage.setItem('mtx_local_bookmarks', JSON.stringify([...current]));
     } catch {
@@ -1710,7 +1772,23 @@ export class LibraryStateService {
   }
 
   clearAllBookmarks(): void {
+    const previous = Array.from(this.bookmarkedIds());
     this.bookmarkedIds.set(new Set());
+    const user = this.authSession.currentUser();
+    if (user) {
+      previous.forEach((id) => {
+        void removeBookmarkFromFirestore(user.uid, id, 0);
+      });
+      void syncSavedNovelsCountToFirestore(user.uid, 0);
+      this.accountService.ownProfile.update((prof) =>
+        prof ? { ...prof, savedNovelsCount: 0 } : prof
+      );
+      if (this.accountService.viewedIsOwner()) {
+        this.accountService.viewedProfile.update((prof) =>
+          prof ? { ...prof, savedNovelsCount: 0 } : prof
+        );
+      }
+    }
     try {
       localStorage.removeItem('mtx_local_bookmarks');
     } catch {
@@ -1771,6 +1849,30 @@ export class LibraryStateService {
         if (el) el.scrollTop = 0;
         window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
       }, 40);
+    }
+
+    const novel = this.selectedNovel() || this.defaultEchoesSamarkand;
+    const user = this.authSession.currentUser();
+    if (user) {
+      void recordChapterReadInFirestore(
+        user.uid,
+        novel.id,
+        novel.title,
+        chapter.id,
+        chapter.title
+      ).then((count) => {
+        if (count > 0) {
+          this.accountService.ownReadChaptersCount.set(count);
+          this.accountService.ownProfile.update((prof) =>
+            prof ? { ...prof, readChaptersCount: count } : prof
+          );
+          if (this.accountService.viewedIsOwner()) {
+            this.accountService.viewedProfile.update((prof) =>
+              prof ? { ...prof, readChaptersCount: count } : prof
+            );
+          }
+        }
+      });
     }
 
     this.showToast(`قراءة: ${chapter.title}`);
@@ -2339,6 +2441,22 @@ export class LibraryStateService {
   }
 
   openPublishModal(): void {
+    const user = this.authSession.currentUser();
+    if (!user) {
+      this.showToast('يرجى تسجيل الدخول أولاً قبل التقديم أو النشر');
+      this.navigateToView('auth');
+      return;
+    }
+    if (!this.accountService.ownWriterStatus().canPublish) {
+      this.showToast('النشر متاح فقط للحسابات الحاصلة على صلاحية كاتب معتمد. قدّم طلبك من إعدادات الحساب.');
+      this.accountService.activeSettingsSection.set('writer');
+      this.accountService.isSettingsOpen.set(true);
+      this.navigateToOwnProfile();
+      return;
+    }
+    this.publishForm.patchValue({
+      authorName: this.authSession.displayName(),
+    });
     this.isPublishModalOpen.set(true);
   }
 
@@ -2354,43 +2472,93 @@ export class LibraryStateService {
     this.isCharterModalOpen.set(false);
   }
 
-  submitPublish(): void {
+  openPublishedNovel(rec: PublishedNovelRecord): void {
+    const card: NovelCard = {
+      id: rec.id,
+      title: rec.title,
+      author: rec.authorName,
+      authorId: rec.authorId,
+      genre: rec.genre,
+      categoryGroup: rec.categoryGroup,
+      coverUrl: rec.coverUrl || '/images/writers_sanctuary_bg.jpg',
+      coverAlt: rec.title,
+      description: rec.description,
+      readingHours: rec.readingHours,
+      isCompleted: false,
+      isOriginal: true,
+    };
+    this.openNovelDetails(card);
+  }
+
+  async submitPublish(): Promise<void> {
+    const user = this.authSession.currentUser();
+    if (!user || !this.accountService.ownWriterStatus().canPublish) {
+      this.showToast('ليست لديك صلاحية نشر معتمدة في قاعدة البيانات.');
+      return;
+    }
+
     const val = this.publishForm.getRawValue();
-    if (!val.title || !val.synopsis) {
+    if (!val.title.trim() || !val.synopsis.trim()) {
       this.showToast('يرجى كتابة عنوان المصنف وملخصه الأدبي');
       return;
     }
-    const newBook: NovelCard = {
+
+    const now = new Date().toISOString();
+    const record: PublishedNovelRecord = {
       id: 'usr-' + Date.now(),
-      title: val.title,
-      author: val.authorName || this.authSession.displayName(),
+      title: val.title.trim(),
+      authorId: user.uid,
+      authorName: val.authorName.trim() || this.authSession.displayName(),
       genre: val.genreLabel || 'رواية أدبية معاصرة',
-      description: val.synopsis,
-      coverUrl: val.coverUrl || '/images/writers_sanctuary_bg.jpg',
-      coverAlt: val.title,
+      categoryGroup: val.categoryGroup || 'novels',
+      coverUrl: val.coverUrl.trim() || '/images/writers_sanctuary_bg.jpg',
+      description: val.synopsis.trim(),
       readingHours: val.readingHours || 4,
+      isPublished: true,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    try {
+      await publishNovelToFirestore(record);
+    } catch {
+      this.showToast('تعذر حفظ العمل في قاعدة البيانات. تحقق من صلاحيات الكاتب.');
+      return;
+    }
+
+    const newBook: NovelCard = {
+      id: record.id,
+      title: record.title,
+      author: record.authorName,
+      authorId: record.authorId,
+      genre: record.genre,
+      categoryGroup: record.categoryGroup,
+      description: record.description,
+      coverUrl: record.coverUrl,
+      coverAlt: record.title,
+      readingHours: record.readingHours,
       isCompleted: false,
+      isOriginal: true,
     };
     this.exploreBooksList.update((list) => [newBook, ...list]);
-    this.profileWorks.update((works) => [
-      {
-        id: newBook.id,
-        title: newBook.title,
-        category: val.genreLabel,
-        type: 'published',
-        pages: (val.readingHours || 4) * 30,
-        words: (val.readingHours || 4) * 4500,
-        date: 'أُودع للتو في الصرح',
-        summary: val.synopsis,
-      },
-      ...works,
-    ]);
+    this.accountService.ownPublishedNovels.update((list) => [record, ...list]);
+    if (this.accountService.viewedIsOwner()) {
+      this.accountService.viewedPublishedNovels.update((list) => [record, ...list]);
+    }
     this.publishedSuccessSpec.set({
       book: newBook,
       archiveCode: 'MTX-DEP-' + Math.floor(100 + Math.random() * 900),
       depositDate: new Date().toLocaleDateString('ar-SA'),
     });
     this.isPublishModalOpen.set(false);
+    this.publishForm.reset({
+      authorName: this.authSession.displayName(),
+      categoryGroup: 'novels',
+      genreLabel: 'رواية أدبية معاصرة',
+      workNature: 'original',
+      readingHours: 5,
+      originLanguage: 'عربي أصيل',
+    });
     this.showToast('تم إيداع المصنف الأدبي بنجاح واعتماده في خزائن الصرح');
   }
 

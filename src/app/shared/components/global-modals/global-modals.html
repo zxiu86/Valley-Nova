@@ -318,69 +318,7 @@
   </div>
 }
 
-<!-- ================= 4. SANCTUARY READER PROFILE MODAL ================= -->
-@if (lib.isProfileOpen()) {
-  <div class="fixed inset-0 z-50 flex items-start justify-center pt-24 px-4 animate-fadeIn">
-    <button
-      type="button"
-      class="fixed inset-0 w-full h-full bg-black/50 dark:bg-black/70 backdrop-blur-md cursor-default border-none"
-      aria-label="إغلاق ديوان القارئ"
-      (click)="lib.isProfileOpen.set(false)"
-    ></button>
-    <div class="w-full max-w-md bg-surface-container-low border border-surface-variant rounded-2xl shadow-2xl p-6 space-y-5 relative z-10">
-
-      <div class="flex items-center justify-between border-b border-surface-variant/50 pb-3">
-        <div class="flex items-center gap-2 text-primary font-bold text-lg">
-          <span class="material-symbols-outlined text-[22px]">person</span>
-          <span>ديوان القارئ وسادن الرواق</span>
-        </div>
-        <button type="button" (click)="lib.isProfileOpen.set(false)" class="text-outline hover:text-on-surface transition-colors cursor-pointer" aria-label="إغلاق">
-          <span class="material-symbols-outlined">close</span>
-        </button>
-      </div>
-
-      <div class="flex items-center gap-4 bg-surface-container/70 p-4 rounded-xl border border-surface-variant/50">
-        <div class="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-on-primary text-xl font-bold shadow-lg">
-          س
-        </div>
-        <div class="flex flex-col">
-          <div class="flex items-center gap-1.5">
-            <h3 class="font-bold text-on-surface text-base">سادن الكلمات الخالدة</h3>
-            <span class="material-symbols-outlined text-secondary text-[16px]">verified</span>
-          </div>
-          <span class="text-xs text-secondary font-medium">عضوية الرواق النخبوية</span>
-          <span class="text-[11px] text-outline mt-0.5">زائر موثوق في صرح أروقة الخلود</span>
-        </div>
-      </div>
-
-      <div class="grid grid-cols-3 gap-2 text-center">
-        <div class="bg-surface-container p-3 rounded-lg">
-          <span class="text-secondary font-bold text-lg block">{{ lib.bookmarkedIds().size }}</span>
-          <span class="text-[11px] text-outline">ألواح محفوظة</span>
-        </div>
-        <div class="bg-surface-container p-3 rounded-lg">
-          <span class="text-primary font-bold text-lg block">١٨</span>
-          <span class="text-[11px] text-outline">ساعات القراءة</span>
-        </div>
-        <div class="bg-surface-container p-3 rounded-lg">
-          <span class="text-tertiary font-bold text-lg block">١٠٠٪</span>
-          <span class="text-[11px] text-outline">نقاء الفصاحة</span>
-        </div>
-      </div>
-
-      <div class="pt-2 border-t border-surface-variant/50 flex justify-end">
-        <button
-          type="button"
-          (click)="lib.isProfileOpen.set(false)"
-          class="px-4 py-2 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-semibold transition-colors cursor-pointer"
-        >
-          إغلاق
-        </button>
-      </div>
-
-    </div>
-  </div>
-}
+<!-- Legacy quick profile modal removed; account experience lives at /profile -->
 
 <!-- ================= 5. PUBLISHING / DEPOSIT MODAL ================= -->
 @if (lib.isPublishModalOpen()) {

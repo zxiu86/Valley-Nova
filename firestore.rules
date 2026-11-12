@@ -7,7 +7,7 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // Helper functions
+    // ================= HELPER FUNCTIONS ================= //
     function isSignedIn() {
       return request.auth != null;
     }
@@ -20,6 +20,19 @@ service cloud.firestore {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
+    function isValidUsername(name) {
+      return name is string && name.size() >= 3 && name.size() <= 24 && name.matches('^[a-z0-9_]+$');
+    }
+
+    function isReservedUsername(name) {
+      return name in [
+        'admin', 'administrator', 'support', 'help', 'root', 'system',
+        'moderator', 'mod', 'staff', 'founder', 'api', 'auth', 'login',
+        'register', 'profile', 'settings', 'explore', 'reading', 'details',
+        'mtx', 'official', 'null', 'undefined', 'account', 'writer', 'author'
+      ];
+    }
+
     function incoming() {
       return request.resource.data;
     }
@@ -28,26 +41,34 @@ service cloud.firestore {
       return resource.data;
     }
 
-    // Cryptographically verified founder via Firebase Auth token and database record
+    // Cryptographically verified founder / bootstrapped admin via Firebase Auth token
     function isDesignatedFounder() {
       return isSignedIn() &&
         request.auth.token.email_verified == true &&
-        request.auth.token.email == 'alsaid66900@gmail.com';
+        (request.auth.token.email == 'alsaid66900@gmail.com' ||
+         request.auth.token.email == 'zly30257@gmail.com');
     }
 
     function isFounder() {
       return isSignedIn() && (
         isDesignatedFounder() ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
         exists(/databases/$(database)/documents/founders/$(request.auth.uid)) ||
         (exists(/databases/$(database)/documents/user_roles/$(request.auth.uid)) &&
-         get(/databases/$(database)/documents/user_roles/$(request.auth.uid)).data.role == 'founder')
+         get(/databases/$(database)/documents/user_roles/$(request.auth.uid)).data.role == 'founder' &&
+         get(/databases/$(database)/documents/user_roles/$(request.auth.uid)).data.status == 'active')
       );
+    }
+
+    function isAdmin() {
+      return isFounder();
     }
 
     function hasRole(roleName) {
       return isSignedIn() && (
         isFounder() ||
         (exists(/databases/$(database)/documents/user_roles/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/user_roles/$(request.auth.uid)).data.status == 'active' &&
          (get(/databases/$(database)/documents/user_roles/$(request.auth.uid)).data.role == roleName ||
           (get(/databases/$(database)/documents/user_roles/$(request.auth.uid)).data.roles is list &&
            roleName in get(/databases/$(database)/documents/user_roles/$(request.auth.uid)).data.roles)))
@@ -58,60 +79,170 @@ service cloud.firestore {
       return hasRole('auditor');
     }
 
-    function isAuthor() {
-      return hasRole('author');
+    function isApprovedWriter() {
+      return isSignedIn() && (
+        isFounder() ||
+        (exists(/databases/$(database)/documents/user_roles/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/user_roles/$(request.auth.uid)).data.status == 'active' &&
+         get(/databases/$(database)/documents/user_roles/$(request.auth.uid)).data.canPublish == true &&
+         (get(/databases/$(database)/documents/user_roles/$(request.auth.uid)).data.role == 'author' ||
+          (get(/databases/$(database)/documents/user_roles/$(request.auth.uid)).data.roles is list &&
+           'author' in get(/databases/$(database)/documents/user_roles/$(request.auth.uid)).data.roles)))
+      );
     }
 
-    function isTranslator() {
-      return hasRole('translate');
+    function isValidPublicProfile(data) {
+      return data.uid is string &&
+        data.uid.size() <= 128 &&
+        data.displayName is string &&
+        data.displayName.size() >= 1 &&
+        data.displayName.size() <= 80 &&
+        data.isPublic is bool &&
+        data.showSavedNovels is bool &&
+        data.showReadingHistory is bool &&
+        data.showProfileInfo is bool &&
+        (!('username' in data) || data.username == '' || (isValidUsername(data.username) && !isReservedUsername(data.username))) &&
+        (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 450000)) &&
+        (!('coverURL' in data) || (data.coverURL is string && data.coverURL.size() <= 450000)) &&
+        (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 64)) &&
+        (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 64)) &&
+        !('email' in data) &&
+        !('role' in data) &&
+        !('roles' in data) &&
+        !('isWriter' in data) &&
+        !('isAuthor' in data) &&
+        !('canPublish' in data) &&
+        !('isFounder' in data) &&
+        !('isAdmin' in data);
     }
 
-    // Designated Founders Collection
+    function isValidPrivateUserDoc(data) {
+      return data.id is string &&
+        data.id.size() <= 128 &&
+        data.email is string &&
+        data.email.size() <= 200 &&
+        (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 80)) &&
+        (!('username' in data) || data.username == '' || (isValidUsername(data.username) && !isReservedUsername(data.username))) &&
+        (!('bio' in data) || (data.bio is string && data.bio.size() <= 320)) &&
+        (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 450000)) &&
+        (!('coverURL' in data) || (data.coverURL is string && data.coverURL.size() <= 450000)) &&
+        (!('isPublic' in data) || data.isPublic is bool) &&
+        (!('showSavedNovels' in data) || data.showSavedNovels is bool) &&
+        (!('showReadingHistory' in data) || data.showReadingHistory is bool) &&
+        (!('showProfileInfo' in data) || data.showProfileInfo is bool) &&
+        (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 64)) &&
+        (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 64)) &&
+        !('role' in data) &&
+        !('roles' in data) &&
+        !('isWriter' in data) &&
+        !('isAuthor' in data) &&
+        !('canPublish' in data) &&
+        !('isFounder' in data) &&
+        !('isAdmin' in data);
+    }
+
+    function isValidWriterApplication(data) {
+      return data.userId is string &&
+        data.userId.size() <= 128 &&
+        data.penName is string &&
+        data.penName.size() >= 2 &&
+        data.penName.size() <= 80 &&
+        data.shortBio is string &&
+        data.shortBio.size() >= 10 &&
+        data.shortBio.size() <= 400 &&
+        data.genres is list &&
+        data.genres.size() >= 1 &&
+        data.genres.size() <= 8 &&
+        data.genres[0] is string &&
+        data.writingSample is string &&
+        data.writingSample.size() >= 50 &&
+        data.writingSample.size() <= 8000 &&
+        data.status in ['pending', 'approved', 'rejected'] &&
+        (!('reviewNote' in data) || (data.reviewNote is string && data.reviewNote.size() <= 500)) &&
+        (!('reviewedBy' in data) || (data.reviewedBy is string && data.reviewedBy.size() <= 128)) &&
+        (!('reviewedAt' in data) || (data.reviewedAt is string && data.reviewedAt.size() <= 64)) &&
+        (!('submittedAt' in data) || (data.submittedAt is string && data.submittedAt.size() <= 64)) &&
+        (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 64));
+    }
+
+    // ================= ADMIN & FOUNDER COLLECTIONS ================= //
+    match /admins/{adminId} {
+      allow get: if isValidId(adminId) && isOwner(adminId);
+      allow list: if false;
+      allow create, update: if isValidId(adminId) && isDesignatedFounder() && adminId == request.auth.uid;
+      allow delete: if false;
+    }
+
     match /founders/{founderId} {
-      allow read: if isSignedIn();
+      allow get: if isValidId(founderId) && isSignedIn();
+      allow list: if isAdmin();
       allow create, update: if isValidId(founderId) && isDesignatedFounder() && founderId == request.auth.uid;
       allow delete: if false;
     }
 
-    // Trusted User Roles Collection
+    // Trusted User Roles Collection (strictly admin-managed; users cannot grant themselves roles or badges)
     match /user_roles/{userId} {
-      allow read: if true;
-      allow write: if isValidId(userId) && isFounder();
+      allow get: if isValidId(userId);
+      allow list: if isAdmin();
+      allow write: if isValidId(userId) && isAdmin();
     }
 
-    // Role Join Requests Collection
+    // ================= WRITER APPLICATIONS COLLECTION ================= //
+    match /writer_applications/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isValidId(userId) &&
+        isOwner(userId) &&
+        !exists(/databases/$(database)/documents/writer_applications/$(userId)) &&
+        isValidWriterApplication(incoming()) &&
+        incoming().keys().hasAll(['userId', 'penName', 'shortBio', 'genres', 'writingSample', 'status', 'submittedAt', 'updatedAt']) &&
+        incoming().keys().hasOnly(['userId', 'penName', 'shortBio', 'genres', 'writingSample', 'status', 'submittedAt', 'updatedAt']) &&
+        incoming().userId == request.auth.uid &&
+        incoming().status == 'pending';
+      allow update: if isValidId(userId) && isValidWriterApplication(incoming()) && (
+        (isAdmin() && incoming().userId == existing().userId) ||
+        (isOwner(userId) &&
+         existing().status == 'rejected' &&
+         incoming().userId == existing().userId &&
+         incoming().status == 'pending' &&
+         incoming().diff(existing()).affectedKeys().hasOnly(['penName', 'shortBio', 'genres', 'writingSample', 'status', 'submittedAt', 'updatedAt']))
+      );
+      allow delete: if isValidId(userId) && (isOwner(userId) || isAdmin());
+    }
+
+    // Legacy Role Join Requests Collection
     match /role_requests/{requestId} {
-      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isFounder());
+      allow get: if isValidId(requestId) && isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       allow create: if isSignedIn() && isValidId(requestId) &&
         incoming().userId == request.auth.uid &&
         incoming().status == 'pending' &&
         incoming().role in ['auditor', 'author', 'translate'] &&
         incoming().userEmail is string && incoming().userEmail.size() <= 200;
-      allow update: if isFounder();
-      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isFounder());
+      allow update: if isAdmin();
+      allow delete: if isValidId(requestId) && isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
     }
 
-    // User profile: owner can write permitted fields only, non-privileged
+    // ================= PRIVATE OWNER ACCOUNT DOCS (PII ISOLATED) ================= //
     match /users/{userId} {
-      allow get: if isValidId(userId);
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin());
       allow list: if false;
-      allow create: if isValidId(userId) && isOwner(userId) &&
+      allow create: if isValidId(userId) &&
+        isOwner(userId) &&
         incoming().id == userId &&
-        incoming().email is string &&
-        incoming().email.size() <= 200 &&
-        !('role' in incoming()) &&
-        !('roles' in incoming()) &&
-        !('isFounder' in incoming());
-      allow update: if isValidId(userId) && isOwner(userId) &&
+        isValidPrivateUserDoc(incoming());
+      allow update: if isValidId(userId) &&
+        isOwner(userId) &&
         incoming().id == existing().id &&
         incoming().email == existing().email &&
-        !('role' in incoming() && incoming().role != existing().role) &&
-        !('roles' in incoming() && incoming().roles != existing().roles) &&
-        !('isFounder' in incoming() && incoming().isFounder != existing().isFounder) &&
-        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'coverURL', 'updatedAt']);
-      allow delete: if false;
+        isValidPrivateUserDoc(incoming()) &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'displayName', 'username', 'bio', 'photoURL', 'coverURL',
+          'isPublic', 'showSavedNovels', 'showReadingHistory', 'showProfileInfo', 'updatedAt'
+        ]);
+      allow delete: if isValidId(userId) && isOwner(userId);
 
-      // User bookmarks subcollection
+      // Owner-only bookmarks subcollection
       match /bookmarks/{bookmarkId} {
         allow read: if isValidId(userId) && isOwner(userId);
         allow create: if isValidId(userId) && isOwner(userId) &&
@@ -125,28 +256,21 @@ service cloud.firestore {
         allow delete: if isValidId(userId) && isOwner(userId) && isValidId(bookmarkId);
       }
 
-      // User reading history subcollection
+      // Owner-only reading history subcollection
       match /history/{historyId} {
         allow read: if isValidId(userId) && isOwner(userId);
-        allow create: if isValidId(userId) && isOwner(userId) &&
+        allow create, update: if isValidId(userId) && isOwner(userId) &&
           isValidId(historyId) &&
-          incoming().userId == userId;
-        allow update: if isValidId(userId) && isOwner(userId) &&
-          isValidId(historyId) &&
-          incoming().userId == userId;
+          incoming().userId == userId &&
+          incoming().novelId is string && incoming().novelId.size() <= 128 &&
+          incoming().chapterId is number;
         allow delete: if isValidId(userId) && isOwner(userId) && isValidId(historyId);
       }
 
-      // User ratings subcollection
+      // Owner-only ratings subcollection
       match /ratings/{ratingId} {
         allow read: if isValidId(userId) && isOwner(userId);
-        allow create: if isValidId(userId) && isOwner(userId) &&
-          isValidId(ratingId) &&
-          incoming().userId == userId &&
-          incoming().rating is number &&
-          incoming().rating >= 1 &&
-          incoming().rating <= 5;
-        allow update: if isValidId(userId) && isOwner(userId) &&
+        allow create, update: if isValidId(userId) && isOwner(userId) &&
           isValidId(ratingId) &&
           incoming().userId == userId &&
           incoming().rating is number &&
@@ -156,32 +280,163 @@ service cloud.firestore {
       }
     }
 
-    // Public chapter comments and atomic reactions
+    // ================= PRIVACY-GATED PUBLIC PROFILES ================= //
+    match /public_profiles/{userId} {
+      allow get: if isValidId(userId) && (isOwner(userId) || isAdmin() || resource.data.isPublic == true);
+      allow list: if false;
+      allow create: if isValidId(userId) &&
+        isOwner(userId) &&
+        incoming().uid == userId &&
+        isValidPublicProfile(incoming()) &&
+        (!('username' in incoming()) || incoming().username == '' ||
+         (isValidUsername(incoming().username) &&
+          existsAfter(/databases/$(database)/documents/usernames/$(incoming().username)) &&
+          getAfter(/databases/$(database)/documents/usernames/$(incoming().username)).data.uid == userId));
+      allow update: if isValidId(userId) &&
+        isOwner(userId) &&
+        incoming().uid == existing().uid &&
+        isValidPublicProfile(incoming()) &&
+        (incoming().username == existing().username ||
+         incoming().username == '' ||
+         (isValidUsername(incoming().username) &&
+          existsAfter(/databases/$(database)/documents/usernames/$(incoming().username)) &&
+          getAfter(/databases/$(database)/documents/usernames/$(incoming().username)).data.uid == userId)) &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'displayName', 'username', 'photoURL', 'coverURL',
+          'isPublic', 'showSavedNovels', 'showReadingHistory', 'showProfileInfo', 'updatedAt'
+        ]);
+      allow delete: if isValidId(userId) && isOwner(userId);
+
+      // Bio & profile details subcollection (enforces showProfileInfo at DB rules level)
+      match /details/{detailId} {
+        allow get: if isValidId(userId) && detailId == 'bio' && (
+          isOwner(userId) ||
+          isAdmin() ||
+          (exists(/databases/$(database)/documents/public_profiles/$(userId)) &&
+           get(/databases/$(database)/documents/public_profiles/$(userId)).data.isPublic == true &&
+           get(/databases/$(database)/documents/public_profiles/$(userId)).data.showProfileInfo == true)
+        );
+        allow list: if false;
+        allow create, update: if isValidId(userId) && detailId == 'bio' && isOwner(userId) &&
+          incoming().uid == userId &&
+          incoming().bio is string && incoming().bio.size() <= 320;
+        allow delete: if isValidId(userId) && detailId == 'bio' && isOwner(userId);
+      }
+
+      // Account summary statistics (saved novels count & chapters read count gated separately)
+      match /stats/{statId} {
+        allow get: if isValidId(userId) && (
+          isOwner(userId) ||
+          isAdmin() ||
+          (exists(/databases/$(database)/documents/public_profiles/$(userId)) &&
+           get(/databases/$(database)/documents/public_profiles/$(userId)).data.isPublic == true &&
+           ((statId == 'saved' && get(/databases/$(database)/documents/public_profiles/$(userId)).data.showSavedNovels == true) ||
+            (statId == 'reading' && get(/databases/$(database)/documents/public_profiles/$(userId)).data.showReadingHistory == true)))
+        );
+        allow list: if false;
+        allow create, update: if isValidId(userId) && statId in ['saved', 'reading'] && isOwner(userId) &&
+          incoming().uid == userId &&
+          incoming().count is number &&
+          incoming().count >= 0;
+        allow delete: if isValidId(userId) && statId in ['saved', 'reading'] && isOwner(userId);
+      }
+
+      // Visitor-readable saved novels (strictly gated by isPublic && showSavedNovels)
+      match /saved_novels/{novelId} {
+        allow read: if isValidId(userId) && (
+          isOwner(userId) ||
+          isAdmin() ||
+          (exists(/databases/$(database)/documents/public_profiles/$(userId)) &&
+           get(/databases/$(database)/documents/public_profiles/$(userId)).data.isPublic == true &&
+           get(/databases/$(database)/documents/public_profiles/$(userId)).data.showSavedNovels == true)
+        );
+        allow create, update: if isValidId(userId) && isValidId(novelId) && isOwner(userId) &&
+          incoming().userId == userId &&
+          incoming().novelId == novelId;
+        allow delete: if isValidId(userId) && isValidId(novelId) && isOwner(userId);
+      }
+    }
+
+    // ================= ATOMIC USERNAME RESERVATION & REDIRECTS ================= //
+    match /usernames/{usernameLower} {
+      allow get: if isValidUsername(usernameLower);
+      allow list: if false;
+      allow create: if isSignedIn() &&
+        isValidUsername(usernameLower) &&
+        !isReservedUsername(usernameLower) &&
+        !exists(/databases/$(database)/documents/usernames/$(usernameLower)) &&
+        incoming().keys().hasAll(['uid', 'username', 'isPublic', 'updatedAt']) &&
+        incoming().keys().hasOnly(['uid', 'username', 'isPublic', 'updatedAt']) &&
+        incoming().uid == request.auth.uid &&
+        incoming().username == usernameLower &&
+        incoming().isPublic is bool &&
+        getAfter(/databases/$(database)/documents/public_profiles/$(request.auth.uid)).data.username == usernameLower;
+      allow update: if isSignedIn() &&
+        isValidUsername(usernameLower) &&
+        existing().uid == request.auth.uid &&
+        incoming().uid == existing().uid &&
+        incoming().username == usernameLower &&
+        incoming().isPublic is bool &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['isPublic', 'updatedAt']);
+      allow delete: if isSignedIn() &&
+        isValidUsername(usernameLower) &&
+        existing().uid == request.auth.uid;
+    }
+
+    match /username_redirects/{oldUsername} {
+      allow get: if isValidUsername(oldUsername);
+      allow list: if false;
+      allow create, update: if isSignedIn() &&
+        isValidUsername(oldUsername) &&
+        !isReservedUsername(oldUsername) &&
+        incoming().uid == request.auth.uid &&
+        incoming().currentUsername is string &&
+        isValidUsername(incoming().currentUsername);
+      allow delete: if isSignedIn() &&
+        isValidUsername(oldUsername) &&
+        existing().uid == request.auth.uid;
+    }
+
+    // ================= PUBLISHED NOVELS (PUBLIC CONTENT EVEN WHEN ACCOUNT IS PRIVATE) ================= //
+    match /novels/{novelId} {
+      allow read: if resource.data.isPublished == true || (isSignedIn() && (resource.data.authorId == request.auth.uid || isAdmin()));
+      allow create: if isValidId(novelId) &&
+        isApprovedWriter() &&
+        incoming().id == novelId &&
+        incoming().authorId == request.auth.uid &&
+        incoming().title is string && incoming().title.size() >= 2 && incoming().title.size() <= 140 &&
+        incoming().isPublished is bool;
+      allow update: if isValidId(novelId) && (
+        isAdmin() ||
+        (isApprovedWriter() &&
+         existing().authorId == request.auth.uid &&
+         incoming().authorId == existing().authorId &&
+         incoming().id == existing().id &&
+         incoming().title is string && incoming().title.size() >= 2 && incoming().title.size() <= 140)
+      );
+      allow delete: if isValidId(novelId) && isSignedIn() && (existing().authorId == request.auth.uid || isAdmin());
+    }
+
+    // ================= PUBLIC CHAPTER COMMENTS & MODERATION ================= //
     match /comments/{commentId} {
       allow read: if true;
       allow create: if isSignedIn() && isValidId(commentId) &&
         incoming().userId == request.auth.uid &&
         incoming().text is string && incoming().text.size() <= 1500 &&
         incoming().likes == 0;
-      
       allow update: if isSignedIn() && isValidId(commentId) && (
-        // Case 1: Author editing comment text
         (existing().userId == request.auth.uid &&
          incoming().userId == existing().userId &&
          incoming().likes == existing().likes &&
-         incoming().text is string && incoming().text.size() <= 1500)
-        ||
-        // Case 2: Atomic reaction increment or decrement (+1 or -1)
+         incoming().text is string && incoming().text.size() <= 1500) ||
         (incoming().userId == existing().userId &&
          incoming().text == existing().text &&
          (incoming().likes == existing().likes + 1 ||
           (incoming().likes == existing().likes - 1 && incoming().likes >= 0)))
       );
-
       allow delete: if isSignedIn() && isValidId(commentId) &&
-        (existing().userId == request.auth.uid || isFounder());
+        (existing().userId == request.auth.uid || isAdmin());
 
-      // Individual user reaction record
       match /reactions/{reactionUserId} {
         allow read: if true;
         allow create: if isSignedIn() &&
@@ -192,31 +447,27 @@ service cloud.firestore {
           incoming().type is string && incoming().type.size() <= 20;
         allow delete: if isSignedIn() &&
           isValidId(reactionUserId) &&
-          (reactionUserId == request.auth.uid || isFounder());
+          (reactionUserId == request.auth.uid || isAdmin());
       }
     }
 
-    // Auditor reviews collection
     match /audit_reviews/{reviewId} {
       allow read: if true;
       allow create: if isAuditor() && isValidId(reviewId) &&
         incoming().reviewerId == request.auth.uid &&
         incoming().decision in ['approved', 'issues_found'] &&
         incoming().novelId is string && incoming().novelId.size() <= 128;
-      allow update: if isFounder();
-      allow delete: if isFounder();
+      allow update, delete: if isAdmin();
     }
 
-    // Work moderation and audit progress tracking
     match /work_moderation/{novelId} {
       allow read: if true;
-      allow write: if isFounder() || isAuditor();
+      allow write: if isAdmin() || isAuditor();
     }
 
-    // Administrative moderation logs
     match /moderation_logs/{logId} {
-      allow read: if isSignedIn() && (isFounder() || isAuditor());
-      allow create: if isFounder() && isValidId(logId) && incoming().decidedBy == request.auth.uid;
+      allow read: if isSignedIn() && (isAdmin() || isAuditor());
+      allow create: if isAdmin() && isValidId(logId) && incoming().decidedBy == request.auth.uid;
       allow update, delete: if false;
     }
   }

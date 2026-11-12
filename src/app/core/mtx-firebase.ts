@@ -10,6 +10,10 @@ import {
   createUserWithEmailAndPassword,
   signInWithPopup,
   GoogleAuthProvider,
+  EmailAuthProvider,
+  reauthenticateWithPopup,
+  reauthenticateWithCredential,
+  deleteUser,
   signOut,
   updateProfile,
   onAuthStateChanged,
@@ -22,14 +26,36 @@ import {
   doc,
   getDoc,
   setDoc,
-  deleteDoc,
+  updateDoc,
   getDocFromServer,
   collection,
   getDocs,
   query,
+  where,
   limit,
+  runTransaction,
+  writeBatch,
 } from 'firebase/firestore';
+import {
+  getStorage,
+  FirebaseStorage,
+  ref as storageRef,
+  uploadBytes,
+  getDownloadURL,
+  deleteObject,
+} from 'firebase/storage';
 import firebaseConfig from '../../../firebase-applet-config.json';
+import {
+  FullAccountProfile,
+  NovelCard,
+  PrivacySettings,
+  PublishedNovelRecord,
+  PublicProfile,
+  UserRoleRecord,
+  UsernameCheckResult,
+  VerifiedWriterStatus,
+  WriterApplication,
+} from './models/library.models';
 
 export enum OperationType {
   CREATE = 'create',
@@ -57,9 +83,57 @@ export interface FirestoreErrorInfo {
   };
 }
 
+export interface StoredUserProfile {
+  id: string;
+  email: string;
+  displayName?: string;
+  username?: string;
+  bio?: string;
+  photoURL?: string;
+  coverURL?: string;
+  isPublic?: boolean;
+  showSavedNovels?: boolean;
+  showReadingHistory?: boolean;
+  showProfileInfo?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+const RESERVED_USERNAMES = new Set([
+  'admin',
+  'administrator',
+  'support',
+  'help',
+  'root',
+  'system',
+  'moderator',
+  'mod',
+  'staff',
+  'founder',
+  'api',
+  'auth',
+  'login',
+  'register',
+  'profile',
+  'settings',
+  'explore',
+  'reading',
+  'details',
+  'mtx',
+  'official',
+  'null',
+  'undefined',
+  'account',
+  'writer',
+  'author',
+]);
+
+const DESIGNATED_ADMIN_EMAILS = new Set(['alsaid66900@gmail.com', 'zly30257@gmail.com']);
+
 let appInstance: FirebaseApp | null = null;
 let dbInstance: Firestore | null = null;
 let authInstance: Auth | null = null;
+let storageInstance: FirebaseStorage | null = null;
 let persistencePromise: Promise<void> | null = null;
 
 export function getFirebaseApp(): FirebaseApp {
@@ -86,10 +160,14 @@ export function getFirebaseAuth(): Auth {
   return authInstance;
 }
 
-/**
- * Ensures Firebase Auth uses persistent storage (IndexedDB primary, localStorage fallback)
- * so authenticated sessions survive page reloads, restarts, and deployments.
- */
+export function getFirebaseStorage(): FirebaseStorage {
+  if (!storageInstance) {
+    const app = getFirebaseApp();
+    storageInstance = getStorage(app);
+  }
+  return storageInstance;
+}
+
 export async function ensureAuthPersistence(): Promise<void> {
   if (typeof window === 'undefined') return;
   if (!persistencePromise) {
@@ -103,9 +181,6 @@ export async function ensureAuthPersistence(): Promise<void> {
   return persistencePromise;
 }
 
-/**
- * Waits until Firebase Auth finishes resolving the stored session on page boot.
- */
 export async function waitForAuthSessionReady(): Promise<User | null> {
   if (typeof window === 'undefined') return null;
   await ensureAuthPersistence();
@@ -152,6 +227,11 @@ export function handleFirestoreError(
   throw new Error(JSON.stringify(errInfo));
 }
 
+function isPermissionDeniedError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err);
+  return msg.includes('permission-denied') || msg.includes('Missing or insufficient permissions');
+}
+
 export async function verifyFirestoreConnection(): Promise<boolean> {
   try {
     const db = getDb();
@@ -171,6 +251,9 @@ export async function loginWithEmail(email: string, pass: string): Promise<User>
   await ensureAuthPersistence();
   const auth = getFirebaseAuth();
   const credential = await signInWithEmailAndPassword(auth, email, pass);
+  if (credential.user) {
+    await ensureUserDocumentsOnLogin(credential.user);
+  }
   return credential.user;
 }
 
@@ -186,13 +269,7 @@ export async function registerWithEmail(
     await updateProfile(credential.user, { displayName });
   }
   if (credential.user) {
-    await saveUserProfileToFirestore(credential.user.uid, {
-      id: credential.user.uid,
-      email: credential.user.email || email,
-      displayName: displayName || credential.user.displayName || 'سادن الكلمات الخالدة',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
+    await ensureUserDocumentsOnLogin(credential.user, displayName);
   }
   return credential.user;
 }
@@ -204,14 +281,7 @@ export async function loginWithGoogle(): Promise<User> {
   provider.setCustomParameters({ prompt: 'select_account' });
   const credential = await signInWithPopup(auth, provider);
   if (credential.user) {
-    await saveUserProfileToFirestore(credential.user.uid, {
-      id: credential.user.uid,
-      email: credential.user.email || '',
-      displayName: credential.user.displayName || 'سادن الكلمات الخالدة',
-      photoURL: credential.user.photoURL || '',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
+    await ensureUserDocumentsOnLogin(credential.user);
   }
   return credential.user;
 }
@@ -231,72 +301,719 @@ export function subscribeToTokenState(callback: (user: User | null) => void): Un
   return onIdTokenChanged(auth, callback);
 }
 
-// ================= USER PROFILE & BOOKMARK FIRESTORE SERVICES ================= //
+// ================= USERNAME HELPERS (CASE-INSENSITIVE & ATOMIC) ================= //
 
-export interface StoredUserProfile {
-  id: string;
-  email: string;
-  displayName?: string;
-  photoURL?: string;
-  coverURL?: string;
-  createdAt?: string;
-  updatedAt?: string;
+export function normalizeUsername(raw: string): string {
+  return raw.trim().replace(/^@+/, '').toLowerCase();
 }
 
-export async function saveUserProfileToFirestore(
-  userId: string,
-  data: Partial<StoredUserProfile>
-): Promise<void> {
-  try {
-    const db = getDb();
-    const userRef = doc(db, 'users', userId);
-    await setDoc(userRef, { ...data, id: userId, updatedAt: new Date().toISOString() }, { merge: true });
-  } catch (error) {
-    console.warn('Could not save user profile to Firestore (using local storage fallback):', error);
+export function validateUsernameFormat(raw: string): {
+  valid: boolean;
+  normalized: string;
+  reserved?: boolean;
+  reason?: string;
+} {
+  const normalized = normalizeUsername(raw);
+  if (!normalized) {
+    return { valid: false, normalized, reason: 'يرجى كتابة اسم مستخدم.' };
   }
+  if (normalized.length < 3 || normalized.length > 24) {
+    return {
+      valid: false,
+      normalized,
+      reason: 'يجب أن يتراوح طول اسم المستخدم بين ٣ و٢٤ حرفاً.',
+    };
+  }
+  if (!/^[a-z0-9_]+$/.test(normalized)) {
+    return {
+      valid: false,
+      normalized,
+      reason: 'يُسمح فقط بالأحرف اللاتينية (a-z) والأرقام والشرطة السفلية (_).',
+    };
+  }
+  if (RESERVED_USERNAMES.has(normalized)) {
+    return {
+      valid: false,
+      normalized,
+      reserved: true,
+      reason: 'هذا الاسم محجوز للنظام ولا يمكن استخدامه.',
+    };
+  }
+  return { valid: true, normalized };
 }
 
-export async function getUserProfileFromFirestore(userId: string): Promise<StoredUserProfile | null> {
+export async function checkUsernameAvailability(
+  rawUsername: string,
+  currentUid?: string,
+  currentSavedUsername?: string
+): Promise<UsernameCheckResult> {
+  const validation = validateUsernameFormat(rawUsername);
+  if (!validation.normalized) {
+    return {
+      status: 'idle',
+      normalized: '',
+      message: '',
+      suggestions: [],
+    };
+  }
+
+  if (validation.reserved) {
+    return {
+      status: 'reserved',
+      normalized: validation.normalized,
+      message: validation.reason || 'هذا الاسم محجوز للنظام.',
+      suggestions: [],
+    };
+  }
+
+  if (!validation.valid) {
+    return {
+      status: 'invalid',
+      normalized: validation.normalized,
+      message: validation.reason || 'صيغة اسم المستخدم غير صالحة.',
+      suggestions: [],
+    };
+  }
+
+  if (currentSavedUsername && normalizeUsername(currentSavedUsername) === validation.normalized) {
+    return {
+      status: 'unchanged',
+      normalized: validation.normalized,
+      message: 'هذا هو اسم المستخدم الحالي الخاص بك.',
+      suggestions: [],
+    };
+  }
+
   try {
     const db = getDb();
-    const userRef = doc(db, 'users', userId);
-    const snap = await getDoc(userRef);
-    if (snap.exists()) {
-      return snap.data() as StoredUserProfile;
+    const snap = await getDoc(doc(db, 'usernames', validation.normalized));
+    if (!snap.exists()) {
+      return {
+        status: 'available',
+        normalized: validation.normalized,
+        message: `الاسم @${validation.normalized} متاح ويمكنك اعتماده.`,
+        suggestions: [],
+      };
     }
-    return null;
+
+    const ownerUid = (snap.data() as { uid?: string })?.uid;
+    if (currentUid && ownerUid === currentUid) {
+      return {
+        status: 'unchanged',
+        normalized: validation.normalized,
+        message: 'هذا الاسم مسجل باسم حسابك حالياً.',
+        suggestions: [],
+      };
+    }
+
+    const base = validation.normalized.slice(0, 20);
+    const candidateExamples = [`${base}5`, `${base}_5`, `${base}2`].filter(
+      (s) => s.length <= 24 && !RESERVED_USERNAMES.has(s)
+    );
+    const suggestions: string[] = [];
+    for (const candidate of candidateExamples) {
+      try {
+        const cSnap = await getDoc(doc(db, 'usernames', candidate));
+        if (!cSnap.exists()) {
+          suggestions.push(candidate);
+        }
+      } catch {
+        suggestions.push(candidate);
+      }
+      if (suggestions.length >= 2) break;
+    }
+
+    return {
+      status: 'taken',
+      normalized: validation.normalized,
+      message: `الاسم @${validation.normalized} محجوز لحساب آخر، يمكنك إجراء تعديل بسيط أو تجربة أمثلة متاحة.`,
+      suggestions,
+    };
+  } catch (err) {
+    console.warn('Username availability check warning:', err);
+    return {
+      status: 'invalid',
+      normalized: validation.normalized,
+      message: 'تعذر التحقق من توفر الاسم حالياً، تأكد من اتصالك بالإنترنت.',
+      suggestions: [],
+    };
+  }
+}
+
+export async function resolveUsernameToUid(rawUsername: string): Promise<{
+  uid: string | null;
+  redirectedTo?: string;
+}> {
+  const normalized = normalizeUsername(rawUsername);
+  if (!normalized || !/^[a-z0-9_]{3,24}$/.test(normalized)) {
+    return { uid: null };
+  }
+  const db = getDb();
+  try {
+    const activeSnap = await getDoc(doc(db, 'usernames', normalized));
+    if (activeSnap.exists()) {
+      const data = activeSnap.data() as { uid?: string };
+      return { uid: data.uid || null };
+    }
+
+    const redirectSnap = await getDoc(doc(db, 'username_redirects', normalized));
+    if (redirectSnap.exists()) {
+      const data = redirectSnap.data() as { uid?: string; currentUsername?: string };
+      return {
+        uid: data.uid || null,
+        redirectedTo: data.currentUsername || undefined,
+      };
+    }
+    return { uid: null };
+  } catch (err) {
+    console.warn('Error resolving username:', err);
+    return { uid: null };
+  }
+}
+
+// ================= USER INITIALIZATION & PROFILE CRUD ================= //
+
+export async function ensureUserDocumentsOnLogin(
+  user: User,
+  overrideDisplayName?: string
+): Promise<void> {
+  const db = getDb();
+  const now = new Date().toISOString();
+  const userRef = doc(db, 'users', user.uid);
+  const publicRef = doc(db, 'public_profiles', user.uid);
+  const bioRef = doc(db, 'public_profiles', user.uid, 'details', 'bio');
+  const savedStatRef = doc(db, 'public_profiles', user.uid, 'stats', 'saved');
+  const readingStatRef = doc(db, 'public_profiles', user.uid, 'stats', 'reading');
+
+  const initialDisplayName =
+    overrideDisplayName?.trim() || user.displayName?.trim() || 'قارئ أروقة الخلود';
+  const initialEmail = user.email || '';
+  const initialPhoto = user.photoURL || '';
+
+  try {
+    const [userSnap, publicSnap] = await Promise.all([getDoc(userRef), getDoc(publicRef)]);
+    const batch = writeBatch(db);
+    let hasWrites = false;
+
+    if (!userSnap.exists()) {
+      batch.set(userRef, {
+        id: user.uid,
+        email: initialEmail,
+        displayName: initialDisplayName,
+        username: '',
+        bio: '',
+        photoURL: initialPhoto,
+        coverURL: '',
+        isPublic: true,
+        showSavedNovels: true,
+        showReadingHistory: true,
+        showProfileInfo: true,
+        createdAt: now,
+        updatedAt: now,
+      });
+      hasWrites = true;
+    }
+
+    if (!publicSnap.exists()) {
+      const existingPrivate = userSnap.exists() ? (userSnap.data() as StoredUserProfile) : null;
+      batch.set(publicRef, {
+        uid: user.uid,
+        displayName: existingPrivate?.displayName || initialDisplayName,
+        username: existingPrivate?.username || '',
+        photoURL: existingPrivate?.photoURL || initialPhoto,
+        coverURL: existingPrivate?.coverURL || '',
+        isPublic: existingPrivate?.isPublic ?? true,
+        showSavedNovels: existingPrivate?.showSavedNovels ?? true,
+        showReadingHistory: existingPrivate?.showReadingHistory ?? true,
+        showProfileInfo: existingPrivate?.showProfileInfo ?? true,
+        createdAt: existingPrivate?.createdAt || now,
+        updatedAt: now,
+      });
+      batch.set(bioRef, {
+        uid: user.uid,
+        bio: existingPrivate?.bio || '',
+        updatedAt: now,
+      });
+      batch.set(savedStatRef, { uid: user.uid, count: 0, updatedAt: now });
+      batch.set(readingStatRef, { uid: user.uid, count: 0, updatedAt: now });
+      hasWrites = true;
+    }
+
+    if (hasWrites) {
+      await batch.commit();
+    }
   } catch (error) {
-    console.warn('Could not get user profile from Firestore:', error);
+    console.warn('Could not initialize user documents cleanly:', error);
+  }
+}
+
+export async function loadOwnerAccountProfile(uid: string): Promise<FullAccountProfile | null> {
+  const db = getDb();
+  try {
+    const [userSnap, publicSnap, bioSnap, bookmarksSnap, historySnap] = await Promise.all([
+      getDoc(doc(db, 'users', uid)),
+      getDoc(doc(db, 'public_profiles', uid)),
+      getDoc(doc(db, 'public_profiles', uid, 'details', 'bio')).catch(() => null),
+      getDocs(query(collection(db, 'users', uid, 'bookmarks'), limit(200))).catch(() => null),
+      getDocs(query(collection(db, 'users', uid, 'history'), limit(500))).catch(() => null),
+    ]);
+
+    const priv = userSnap.exists() ? (userSnap.data() as StoredUserProfile) : null;
+    const pub = publicSnap.exists() ? (publicSnap.data() as PublicProfile) : null;
+    const bioDoc = bioSnap && bioSnap.exists() ? (bioSnap.data() as { bio?: string }) : null;
+
+    if (!priv && !pub) return null;
+
+    const savedCount = bookmarksSnap ? bookmarksSnap.size : 0;
+    const readCount = historySnap ? historySnap.size : 0;
+
+    return {
+      uid,
+      email: priv?.email || '',
+      displayName: pub?.displayName || priv?.displayName || 'قارئ أروقة الخلود',
+      username: pub?.username || priv?.username || '',
+      bio: bioDoc?.bio ?? priv?.bio ?? '',
+      photoURL: pub?.photoURL ?? priv?.photoURL ?? '',
+      coverURL: pub?.coverURL ?? priv?.coverURL ?? '',
+      isPublic: pub?.isPublic ?? priv?.isPublic ?? true,
+      showSavedNovels: pub?.showSavedNovels ?? priv?.showSavedNovels ?? true,
+      showReadingHistory: pub?.showReadingHistory ?? priv?.showReadingHistory ?? true,
+      showProfileInfo: pub?.showProfileInfo ?? priv?.showProfileInfo ?? true,
+      savedNovelsCount: savedCount,
+      readChaptersCount: readCount,
+      createdAt: pub?.createdAt || priv?.createdAt,
+      updatedAt: pub?.updatedAt || priv?.updatedAt,
+    };
+  } catch (err) {
+    console.warn('Error loading owner account profile:', err);
     return null;
   }
 }
+
+export async function loadVisitorAccountProfile(targetUid: string): Promise<{
+  state: 'ok' | 'private' | 'not_found' | 'error';
+  profile?: FullAccountProfile;
+  savedNovels?: NovelCard[];
+}> {
+  const db = getDb();
+  let pubSnap;
+  try {
+    pubSnap = await getDoc(doc(db, 'public_profiles', targetUid));
+  } catch (err) {
+    if (isPermissionDeniedError(err)) {
+      return { state: 'private' };
+    }
+    return { state: 'error' };
+  }
+
+  if (!pubSnap.exists()) {
+    return { state: 'not_found' };
+  }
+
+  const pub = pubSnap.data() as PublicProfile;
+  if (!pub.isPublic) {
+    return { state: 'private' };
+  }
+
+  // Read privacy-gated subdocuments independently (Firestore rules enforce visibility server-side)
+  let bio = '';
+  if (pub.showProfileInfo) {
+    try {
+      const bioSnap = await getDoc(doc(db, 'public_profiles', targetUid, 'details', 'bio'));
+      if (bioSnap.exists()) {
+        bio = (bioSnap.data() as { bio?: string })?.bio || '';
+      }
+    } catch {
+      bio = '';
+    }
+  }
+
+  let savedNovelsCount: number | null = null;
+  let savedNovels: NovelCard[] = [];
+  if (pub.showSavedNovels) {
+    try {
+      const [statSnap, savedSnap] = await Promise.all([
+        getDoc(doc(db, 'public_profiles', targetUid, 'stats', 'saved')),
+        getDocs(query(collection(db, 'public_profiles', targetUid, 'saved_novels'), limit(50))),
+      ]);
+      savedNovels = savedSnap.docs.map((d) => {
+        const data = d.data() as {
+          novelId?: string;
+          novelTitle?: string;
+          author?: string;
+          genre?: string;
+          coverUrl?: string;
+        };
+        return {
+          id: data.novelId || d.id,
+          title: data.novelTitle || 'عمل أدبي محفوظ',
+          author: data.author || 'أروقة الخلود',
+          genre: data.genre || 'رواية',
+          coverUrl: data.coverUrl || '/images/writers_sanctuary_bg.jpg',
+          coverAlt: data.novelTitle || 'غلاف الرواية',
+        };
+      });
+      savedNovelsCount = statSnap.exists()
+        ? Number((statSnap.data() as { count?: number })?.count ?? savedNovels.length)
+        : savedNovels.length;
+    } catch {
+      savedNovelsCount = null;
+    }
+  }
+
+  let readChaptersCount: number | null = null;
+  if (pub.showReadingHistory) {
+    try {
+      const readSnap = await getDoc(doc(db, 'public_profiles', targetUid, 'stats', 'reading'));
+      if (readSnap.exists()) {
+        readChaptersCount = Number((readSnap.data() as { count?: number })?.count ?? 0);
+      } else {
+        readChaptersCount = 0;
+      }
+    } catch {
+      readChaptersCount = null;
+    }
+  }
+
+  return {
+    state: 'ok',
+    profile: {
+      ...pub,
+      bio: pub.showProfileInfo ? bio : '',
+      displayName: pub.showProfileInfo ? pub.displayName : 'قارئ في أروقة الخلود',
+      savedNovelsCount,
+      readChaptersCount,
+    },
+    savedNovels,
+  };
+}
+
+export async function saveAccountProfileChanges(
+  uid: string,
+  updates: {
+    displayName: string;
+    username: string;
+    bio: string;
+    photoURL: string;
+    coverURL: string;
+  },
+  previousUsername: string,
+  privacy: PrivacySettings
+): Promise<{ savedUsername: string }> {
+  const db = getDb();
+  const auth = getFirebaseAuth();
+  const now = new Date().toISOString();
+
+  const cleanDisplayName = updates.displayName.trim().slice(0, 80);
+  if (!cleanDisplayName) {
+    throw new Error('يرجى إدخال اسم العرض.');
+  }
+
+  const cleanBio = updates.bio.trim().slice(0, 320);
+  const prevNorm = normalizeUsername(previousUsername || '');
+  const nextRaw = updates.username.trim();
+  let nextNorm = prevNorm;
+
+  if (nextRaw) {
+    const validation = validateUsernameFormat(nextRaw);
+    if (!validation.valid) {
+      throw new Error(validation.reason || 'اسم المستخدم غير صالح.');
+    }
+    nextNorm = validation.normalized;
+  } else {
+    nextNorm = '';
+  }
+
+  try {
+    await runTransaction(db, async (tx) => {
+      const userRef = doc(db, 'users', uid);
+      const publicRef = doc(db, 'public_profiles', uid);
+      const bioRef = doc(db, 'public_profiles', uid, 'details', 'bio');
+
+      const [userSnap, publicSnap] = await Promise.all([tx.get(userRef), tx.get(publicRef)]);
+      const email = auth.currentUser?.email || (userSnap.data() as StoredUserProfile | undefined)?.email || '';
+
+      if (nextNorm && nextNorm !== prevNorm) {
+        const nextUsernameRef = doc(db, 'usernames', nextNorm);
+        const existingClaim = await tx.get(nextUsernameRef);
+        if (existingClaim.exists() && (existingClaim.data() as { uid?: string })?.uid !== uid) {
+          throw new Error('USERNAME_TAKEN');
+        }
+
+        if (prevNorm) {
+          const oldUsernameRef = doc(db, 'usernames', prevNorm);
+          const oldSnap = await tx.get(oldUsernameRef);
+          if (oldSnap.exists() && (oldSnap.data() as { uid?: string })?.uid === uid) {
+            tx.delete(oldUsernameRef);
+          }
+          tx.set(doc(db, 'username_redirects', prevNorm), {
+            uid,
+            currentUsername: nextNorm,
+            updatedAt: now,
+          });
+        }
+
+        tx.set(nextUsernameRef, {
+          uid,
+          username: nextNorm,
+          isPublic: privacy.isPublic,
+          updatedAt: now,
+        });
+      } else if (nextNorm) {
+        tx.update(doc(db, 'usernames', nextNorm), {
+          isPublic: privacy.isPublic,
+          updatedAt: now,
+        });
+      }
+
+      if (!publicSnap.exists()) {
+        tx.set(publicRef, {
+          uid,
+          displayName: cleanDisplayName,
+          username: nextNorm,
+          photoURL: updates.photoURL,
+          coverURL: updates.coverURL,
+          isPublic: privacy.isPublic,
+          showSavedNovels: privacy.showSavedNovels,
+          showReadingHistory: privacy.showReadingHistory,
+          showProfileInfo: privacy.showProfileInfo,
+          createdAt: now,
+          updatedAt: now,
+        });
+      } else {
+        tx.update(publicRef, {
+          displayName: cleanDisplayName,
+          username: nextNorm,
+          photoURL: updates.photoURL,
+          coverURL: updates.coverURL,
+          updatedAt: now,
+        });
+      }
+
+      tx.set(bioRef, {
+        uid,
+        bio: cleanBio,
+        updatedAt: now,
+      });
+
+      if (!userSnap.exists()) {
+        tx.set(userRef, {
+          id: uid,
+          email,
+          displayName: cleanDisplayName,
+          username: nextNorm,
+          bio: cleanBio,
+          photoURL: updates.photoURL,
+          coverURL: updates.coverURL,
+          isPublic: privacy.isPublic,
+          showSavedNovels: privacy.showSavedNovels,
+          showReadingHistory: privacy.showReadingHistory,
+          showProfileInfo: privacy.showProfileInfo,
+          createdAt: now,
+          updatedAt: now,
+        });
+      } else {
+        tx.update(userRef, {
+          displayName: cleanDisplayName,
+          username: nextNorm,
+          bio: cleanBio,
+          photoURL: updates.photoURL,
+          coverURL: updates.coverURL,
+          updatedAt: now,
+        });
+      }
+    });
+  } catch (err) {
+    if (err instanceof Error && err.message === 'USERNAME_TAKEN') {
+      throw new Error(`اسم المستخدم @${nextNorm} محجوز بالفعل لحساب آخر.`);
+    }
+    if (isPermissionDeniedError(err)) {
+      handleFirestoreError(err, OperationType.WRITE, `public_profiles/${uid}`);
+    }
+    throw err;
+  }
+
+  if (auth.currentUser) {
+    const profilePatch: { displayName?: string; photoURL?: string } = {
+      displayName: cleanDisplayName,
+    };
+    if (updates.photoURL && updates.photoURL.startsWith('http')) {
+      profilePatch.photoURL = updates.photoURL;
+    }
+    await updateProfile(auth.currentUser, profilePatch).catch(() => false);
+  }
+
+  return { savedUsername: nextNorm };
+}
+
+export async function savePrivacySettingsToFirestore(
+  uid: string,
+  privacy: PrivacySettings,
+  currentUsername?: string
+): Promise<void> {
+  const db = getDb();
+  const now = new Date().toISOString();
+  const batch = writeBatch(db);
+
+  batch.update(doc(db, 'public_profiles', uid), {
+    isPublic: privacy.isPublic,
+    showSavedNovels: privacy.showSavedNovels,
+    showReadingHistory: privacy.showReadingHistory,
+    showProfileInfo: privacy.showProfileInfo,
+    updatedAt: now,
+  });
+
+  batch.update(doc(db, 'users', uid), {
+    isPublic: privacy.isPublic,
+    showSavedNovels: privacy.showSavedNovels,
+    showReadingHistory: privacy.showReadingHistory,
+    showProfileInfo: privacy.showProfileInfo,
+    updatedAt: now,
+  });
+
+  const normUsername = normalizeUsername(currentUsername || '');
+  if (normUsername) {
+    batch.update(doc(db, 'usernames', normUsername), {
+      isPublic: privacy.isPublic,
+      updatedAt: now,
+    });
+  }
+
+  try {
+    await batch.commit();
+  } catch (err) {
+    if (isPermissionDeniedError(err)) {
+      handleFirestoreError(err, OperationType.UPDATE, `public_profiles/${uid}`);
+    }
+    throw err;
+  }
+}
+
+// ================= PROFILE IMAGE STORAGE UPLOAD ================= //
+
+export async function uploadProfileImageAsset(
+  uid: string,
+  kind: 'avatar' | 'banner',
+  blob: Blob,
+  fallbackDataUrl: string,
+  previousUrl?: string
+): Promise<string> {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    throw new Error('انقطع الاتصال بالإنترنت أثناء رفع الصورة. يرجى المحاولة لاحقاً.');
+  }
+
+  try {
+    const storage = getFirebaseStorage();
+    const path = `users/${uid}/${kind}_${Date.now()}.webp`;
+    const fileRef = storageRef(storage, path);
+
+    const uploadTask = uploadBytes(fileRef, blob, {
+      contentType: blob.type || 'image/webp',
+      cacheControl: 'public, max-age=31536000',
+    });
+
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('STORAGE_TIMEOUT')), 9000)
+    );
+
+    const snap = await Promise.race([uploadTask, timeoutPromise]);
+    const url = await getDownloadURL(snap.ref);
+
+    if (previousUrl && previousUrl.includes('firebasestorage.googleapis.com')) {
+      try {
+        await deleteObject(storageRef(storage, previousUrl));
+      } catch {
+        // Ignore stale image cleanup failure
+      }
+    }
+    return url;
+  } catch (storageErr) {
+    const msg = storageErr instanceof Error ? storageErr.message : String(storageErr);
+    // Fallback to compact WebP data URI ONLY if Storage bucket is unconfigured/unauthorized in this Firebase project
+    if (
+      fallbackDataUrl &&
+      fallbackDataUrl.length <= 360000 &&
+      (msg.includes('storage/') || msg.includes('STORAGE_TIMEOUT') || msg.includes('403') || msg.includes('404'))
+    ) {
+      return fallbackDataUrl;
+    }
+    throw new Error('تعذر رفع الصورة. تأكد من اتصالك بالإنترنت وحجم الصورة ثم أعد المحاولة.');
+  }
+}
+
+// ================= BOOKMARKS & READING HISTORY SYNC ================= //
 
 export async function saveBookmarkToFirestore(
   userId: string,
-  novelId: string,
-  novelTitle: string
+  novel: Pick<NovelCard, 'id' | 'title' | 'author' | 'genre' | 'coverUrl'>,
+  totalSavedCount?: number
 ): Promise<void> {
   try {
     const db = getDb();
-    const bookmarkRef = doc(db, 'users', userId, 'bookmarks', novelId);
-    await setDoc(bookmarkRef, {
+    const now = new Date().toISOString();
+    const batch = writeBatch(db);
+    const payload = {
       userId,
-      novelId,
-      novelTitle,
-      createdAt: new Date().toISOString(),
-    });
+      novelId: novel.id,
+      novelTitle: novel.title,
+      author: novel.author || 'أروقة الخلود',
+      genre: novel.genre || 'رواية',
+      coverUrl: novel.coverUrl || '/images/writers_sanctuary_bg.jpg',
+      createdAt: now,
+    };
+
+    batch.set(doc(db, 'users', userId, 'bookmarks', novel.id), payload);
+    batch.set(doc(db, 'public_profiles', userId, 'saved_novels', novel.id), payload);
+    if (typeof totalSavedCount === 'number') {
+      batch.set(doc(db, 'public_profiles', userId, 'stats', 'saved'), {
+        uid: userId,
+        count: totalSavedCount,
+        updatedAt: now,
+      });
+    }
+    await batch.commit();
   } catch (error) {
-    console.warn('Could not save bookmark to Firestore (using local storage):', error);
+    console.warn('Could not save bookmark to Firestore:', error);
   }
 }
 
-export async function removeBookmarkFromFirestore(userId: string, novelId: string): Promise<void> {
+export async function removeBookmarkFromFirestore(
+  userId: string,
+  novelId: string,
+  totalSavedCount?: number
+): Promise<void> {
   try {
     const db = getDb();
-    const bookmarkRef = doc(db, 'users', userId, 'bookmarks', novelId);
-    await deleteDoc(bookmarkRef);
+    const now = new Date().toISOString();
+    const batch = writeBatch(db);
+    batch.delete(doc(db, 'users', userId, 'bookmarks', novelId));
+    batch.delete(doc(db, 'public_profiles', userId, 'saved_novels', novelId));
+    if (typeof totalSavedCount === 'number') {
+      batch.set(doc(db, 'public_profiles', userId, 'stats', 'saved'), {
+        uid: userId,
+        count: totalSavedCount,
+        updatedAt: now,
+      });
+    }
+    await batch.commit();
   } catch (error) {
-    console.warn('Could not remove bookmark from Firestore (using local storage):', error);
+    console.warn('Could not remove bookmark from Firestore:', error);
+  }
+}
+
+export async function syncSavedNovelsCountToFirestore(
+  userId: string,
+  count: number
+): Promise<void> {
+  try {
+    const db = getDb();
+    await setDoc(doc(db, 'public_profiles', userId, 'stats', 'saved'), {
+      uid: userId,
+      count,
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.warn('Could not sync saved count:', err);
   }
 }
 
@@ -309,6 +1026,424 @@ export async function getUserBookmarksFromFirestore(userId: string): Promise<str
   } catch (error) {
     console.warn('Could not fetch bookmarks from Firestore:', error);
     return [];
+  }
+}
+
+export async function recordChapterReadInFirestore(
+  userId: string,
+  novelId: string,
+  novelTitle: string,
+  chapterId: number,
+  chapterTitle: string
+): Promise<number> {
+  const db = getDb();
+  const safeNovel = novelId.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80);
+  const historyDocId = `${safeNovel}__ch_${chapterId}`;
+  const now = new Date().toISOString();
+
+  try {
+    await setDoc(doc(db, 'users', userId, 'history', historyDocId), {
+      userId,
+      novelId,
+      novelTitle,
+      chapterId,
+      chapterTitle,
+      readAt: now,
+    });
+    const historySnap = await getDocs(query(collection(db, 'users', userId, 'history'), limit(500)));
+    const count = historySnap.size;
+    await setDoc(doc(db, 'public_profiles', userId, 'stats', 'reading'), {
+      uid: userId,
+      count,
+      updatedAt: now,
+    });
+    return count;
+  } catch (err) {
+    console.warn('Could not record reading history:', err);
+    return 0;
+  }
+}
+
+export async function getUserReadChaptersCount(userId: string): Promise<number> {
+  try {
+    const db = getDb();
+    const historySnap = await getDocs(query(collection(db, 'users', userId, 'history'), limit(500)));
+    return historySnap.size;
+  } catch {
+    return 0;
+  }
+}
+
+// ================= WRITER ROLE VERIFICATION & APPLICATIONS ================= //
+
+export async function getVerifiedWriterStatus(userId: string): Promise<VerifiedWriterStatus> {
+  const auth = getFirebaseAuth();
+  const currentUser = auth.currentUser;
+  const isCurrentDesignatedAdmin =
+    Boolean(currentUser) &&
+    currentUser?.uid === userId &&
+    currentUser?.emailVerified === true &&
+    Boolean(currentUser?.email && DESIGNATED_ADMIN_EMAILS.has(currentUser.email));
+
+  const db = getDb();
+  try {
+    const roleSnap = await getDoc(doc(db, 'user_roles', userId));
+    if (roleSnap.exists()) {
+      const record = roleSnap.data() as UserRoleRecord;
+      const isActive = record.status === 'active';
+      const hasAuthorRole =
+        record.role === 'author' ||
+        record.role === 'founder' ||
+        (Array.isArray(record.roles) &&
+          (record.roles.includes('author') || record.roles.includes('founder')));
+
+      const isFounder = record.role === 'founder' && isActive;
+      const isBadge = isCurrentDesignatedAdmin || (isActive && hasAuthorRole);
+      const canPublish =
+        isCurrentDesignatedAdmin || isFounder || (isActive && hasAuthorRole && record.canPublish === true);
+
+      return {
+        isWriterBadge: isBadge,
+        canPublish,
+        isAdmin: isCurrentDesignatedAdmin || isFounder,
+        roleRecord: record,
+      };
+    }
+  } catch (err) {
+    console.warn('Error fetching user role:', err);
+  }
+
+  return {
+    isWriterBadge: isCurrentDesignatedAdmin,
+    canPublish: isCurrentDesignatedAdmin,
+    isAdmin: isCurrentDesignatedAdmin,
+    roleRecord: null,
+  };
+}
+
+export async function getWriterApplicationFromFirestore(
+  userId: string
+): Promise<WriterApplication | null> {
+  try {
+    const db = getDb();
+    const snap = await getDoc(doc(db, 'writer_applications', userId));
+    if (!snap.exists()) return null;
+    return snap.data() as WriterApplication;
+  } catch (err) {
+    console.warn('Could not load writer application:', err);
+    return null;
+  }
+}
+
+export async function submitWriterApplicationToFirestore(
+  userId: string,
+  payload: {
+    penName: string;
+    shortBio: string;
+    genres: string[];
+    writingSample: string;
+  }
+): Promise<WriterApplication> {
+  const db = getDb();
+  const now = new Date().toISOString();
+  const appRef = doc(db, 'writer_applications', userId);
+  const existing = await getDoc(appRef);
+
+  if (existing.exists()) {
+    const prev = existing.data() as WriterApplication;
+    if (prev.status === 'pending') {
+      throw new Error('لديك طلب قيد المراجعة حالياً، لا يمكن إرسال طلب مكرر.');
+    }
+    if (prev.status === 'approved') {
+      throw new Error('تمت الموافقة على طلبك مسبقاً.');
+    }
+
+    const updatedPayload = {
+      penName: payload.penName.trim(),
+      shortBio: payload.shortBio.trim(),
+      genres: payload.genres,
+      writingSample: payload.writingSample.trim(),
+      status: 'pending' as const,
+      submittedAt: now,
+      updatedAt: now,
+    };
+
+    try {
+      await updateDoc(appRef, updatedPayload);
+      return {
+        ...prev,
+        ...updatedPayload,
+      };
+    } catch (err) {
+      if (isPermissionDeniedError(err)) {
+        handleFirestoreError(err, OperationType.UPDATE, `writer_applications/${userId}`);
+      }
+      throw err;
+    }
+  }
+
+  const newApplication: WriterApplication = {
+    userId,
+    penName: payload.penName.trim(),
+    shortBio: payload.shortBio.trim(),
+    genres: payload.genres,
+    writingSample: payload.writingSample.trim(),
+    status: 'pending',
+    submittedAt: now,
+    updatedAt: now,
+  };
+
+  try {
+    await setDoc(appRef, newApplication);
+    return newApplication;
+  } catch (err) {
+    if (isPermissionDeniedError(err)) {
+      handleFirestoreError(err, OperationType.CREATE, `writer_applications/${userId}`);
+    }
+    throw err;
+  }
+}
+
+export async function fetchPendingWriterApplicationsForAdmin(): Promise<WriterApplication[]> {
+  const db = getDb();
+  try {
+    const q = query(
+      collection(db, 'writer_applications'),
+      where('status', '==', 'pending'),
+      limit(30)
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map((d) => d.data() as WriterApplication);
+  } catch (err) {
+    console.warn('Admin applications fetch warning:', err);
+    return [];
+  }
+}
+
+export async function reviewWriterApplicationAsAdmin(
+  applicantUid: string,
+  decision: 'approved' | 'rejected',
+  adminUid: string,
+  reviewNote = ''
+): Promise<void> {
+  const db = getDb();
+  const now = new Date().toISOString();
+  const batch = writeBatch(db);
+
+  batch.update(doc(db, 'writer_applications', applicantUid), {
+    status: decision,
+    reviewNote: reviewNote.trim(),
+    reviewedBy: adminUid,
+    reviewedAt: now,
+    updatedAt: now,
+  });
+
+  if (decision === 'approved') {
+    batch.set(doc(db, 'user_roles', applicantUid), {
+      userId: applicantUid,
+      role: 'author',
+      roles: ['author'],
+      status: 'active',
+      canPublish: true,
+      assignedBy: adminUid,
+      assignedAt: now,
+    });
+  }
+
+  try {
+    await batch.commit();
+  } catch (err) {
+    if (isPermissionDeniedError(err)) {
+      handleFirestoreError(err, OperationType.WRITE, `writer_applications/${applicantUid}`);
+    }
+    throw err;
+  }
+}
+
+// ================= PUBLISHED NOVELS (PUBLIC CONTENT) ================= //
+
+export async function publishNovelToFirestore(
+  novel: PublishedNovelRecord
+): Promise<PublishedNovelRecord> {
+  const db = getDb();
+  try {
+    await setDoc(doc(db, 'novels', novel.id), novel);
+    return novel;
+  } catch (err) {
+    if (isPermissionDeniedError(err)) {
+      handleFirestoreError(err, OperationType.CREATE, `novels/${novel.id}`);
+    }
+    throw err;
+  }
+}
+
+export async function fetchAuthorPublishedNovels(authorId: string): Promise<PublishedNovelRecord[]> {
+  const db = getDb();
+  try {
+    const q = query(
+      collection(db, 'novels'),
+      where('authorId', '==', authorId),
+      where('isPublished', '==', true),
+      limit(40)
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map((d) => d.data() as PublishedNovelRecord);
+  } catch (err) {
+    console.warn('Could not fetch author published novels:', err);
+    return [];
+  }
+}
+
+export async function fetchAllPublishedNovels(): Promise<PublishedNovelRecord[]> {
+  const db = getDb();
+  try {
+    const q = query(collection(db, 'novels'), where('isPublished', '==', true), limit(50));
+    const snap = await getDocs(q);
+    return snap.docs.map((d) => d.data() as PublishedNovelRecord);
+  } catch {
+    return [];
+  }
+}
+
+// ================= ACCOUNT RE-AUTH & PERMANENT DELETION ================= //
+
+export async function reauthenticateUserForDeletion(password?: string): Promise<User> {
+  const auth = getFirebaseAuth();
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error('لم يتم العثور على جلسة مستخدم نشطة.');
+  }
+
+  const usesPassword = user.providerData.some((p) => p.providerId === 'password');
+  const usesGoogle = user.providerData.some((p) => p.providerId === 'google.com');
+
+  if (usesGoogle && !password) {
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    const res = await reauthenticateWithPopup(user, provider);
+    return res.user;
+  }
+
+  if (usesPassword && user.email) {
+    if (!password) {
+      throw new Error('PASSWORD_REQUIRED');
+    }
+    const cred = EmailAuthProvider.credential(user.email, password);
+    const res = await reauthenticateWithCredential(user, cred);
+    return res.user;
+  }
+
+  const provider = new GoogleAuthProvider();
+  const res = await reauthenticateWithPopup(user, provider);
+  return res.user;
+}
+
+export async function deleteAppAccountAndData(
+  uid: string,
+  options: {
+    username?: string;
+    photoURL?: string;
+    coverURL?: string;
+    passwordForReauth?: string;
+  }
+): Promise<void> {
+  const auth = getFirebaseAuth();
+  const user = auth.currentUser;
+  if (!user || user.uid !== uid) {
+    throw new Error('انتهت جلسة المستخدم، يرجى تسجيل الدخول مجدداً لإتمام الحذف.');
+  }
+
+  // Re-authenticate first if last sign-in is older than 4 minutes so we never delete Firestore data and then fail deleteUser()
+  const lastSignInMs = user.metadata.lastSignInTime
+    ? Date.parse(user.metadata.lastSignInTime)
+    : 0;
+  if (!lastSignInMs || Date.now() - lastSignInMs > 4 * 60 * 1000) {
+    await reauthenticateUserForDeletion(options.passwordForReauth);
+  }
+
+  const db = getDb();
+
+  // Delete subcollections cleanly
+  const [bookmarksSnap, historySnap, ratingsSnap, savedMirrorSnap] = await Promise.all([
+    getDocs(collection(db, 'users', uid, 'bookmarks')).catch(() => null),
+    getDocs(collection(db, 'users', uid, 'history')).catch(() => null),
+    getDocs(collection(db, 'users', uid, 'ratings')).catch(() => null),
+    getDocs(collection(db, 'public_profiles', uid, 'saved_novels')).catch(() => null),
+  ]);
+
+  const batch = writeBatch(db);
+  bookmarksSnap?.docs.forEach((d) => batch.delete(d.ref));
+  historySnap?.docs.forEach((d) => batch.delete(d.ref));
+  ratingsSnap?.docs.forEach((d) => batch.delete(d.ref));
+  savedMirrorSnap?.docs.forEach((d) => batch.delete(d.ref));
+
+  batch.delete(doc(db, 'public_profiles', uid, 'details', 'bio'));
+  batch.delete(doc(db, 'public_profiles', uid, 'stats', 'saved'));
+  batch.delete(doc(db, 'public_profiles', uid, 'stats', 'reading'));
+  batch.delete(doc(db, 'public_profiles', uid));
+  batch.delete(doc(db, 'users', uid));
+  batch.delete(doc(db, 'writer_applications', uid));
+
+  const cleanUsername = normalizeUsername(options.username || '');
+  if (cleanUsername) {
+    batch.delete(doc(db, 'usernames', cleanUsername));
+    batch.delete(doc(db, 'username_redirects', cleanUsername));
+  }
+
+  await batch.commit();
+
+  // Clean up Storage assets if present
+  const storage = getFirebaseStorage();
+  for (const url of [options.photoURL, options.coverURL]) {
+    if (url && url.includes('firebasestorage.googleapis.com')) {
+      try {
+        await deleteObject(storageRef(storage, url));
+      } catch {
+        // Ignore non-fatal storage cleanup error
+      }
+    }
+  }
+
+  // Delete Firebase Auth record for this app only (never touches Google Account)
+  try {
+    await deleteUser(user);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('requires-recent-login')) {
+      await reauthenticateUserForDeletion(options.passwordForReauth);
+      await deleteUser(user);
+    } else {
+      throw err;
+    }
+  }
+}
+
+// Legacy compatibility wrapper
+export async function saveUserProfileToFirestore(
+  userId: string,
+  data: Partial<StoredUserProfile>
+): Promise<void> {
+  try {
+    const db = getDb();
+    await setDoc(
+      doc(db, 'users', userId),
+      { ...data, id: userId, updatedAt: new Date().toISOString() },
+      { merge: true }
+    );
+  } catch (error) {
+    console.warn('Could not save user profile to Firestore:', error);
+  }
+}
+
+export async function getUserProfileFromFirestore(
+  userId: string
+): Promise<StoredUserProfile | null> {
+  try {
+    const db = getDb();
+    const snap = await getDoc(doc(db, 'users', userId));
+    return snap.exists() ? (snap.data() as StoredUserProfile) : null;
+  } catch {
+    return null;
   }
 }
 

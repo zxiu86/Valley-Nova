@@ -29,7 +29,12 @@ export const routes: Routes = [
   {
     path: 'profile',
     loadComponent: () => import('./pages/profile/profile-page').then((m) => m.ProfilePage),
-    title: 'أروقة الخلود | ديوان القارئ والباحث',
+    title: 'أروقة الخلود | الحساب الشخصي',
+  },
+  {
+    path: 'profile/:username',
+    loadComponent: () => import('./pages/profile/profile-page').then((m) => m.ProfilePage),
+    title: 'أروقة الخلود | الحساب الشخصي',
   },
   {
     path: '**',

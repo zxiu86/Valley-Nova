@@ -1,763 +1,1291 @@
-<div class="flex flex-col w-full animate-fadeIn pb-space-2xl" id="profile-view">
-  <!-- Ambient Backdrop Banner & Persona Hero -->
-  <div class="relative w-full overflow-hidden bg-surface-container-lowest border-b border-surface-variant/30">
-    <!-- Banner Image Layer -->
-    <div class="relative w-full h-64 sm:h-72 md:h-80 overflow-hidden">
-      <img
-        src="/images/writers_sanctuary_bg.jpg"
-        alt="الستار الأندلسي لديوان القارئ"
-        class="w-full h-full object-cover object-center filter brightness-75 scale-105"
-        referrerpolicy="no-referrer"
-      />
-      <div class="absolute inset-0 bg-gradient-to-t from-surface via-surface/65 to-surface/25"></div>
-      <div class="absolute inset-0 bg-gradient-to-r from-surface/85 via-transparent to-surface/85"></div>
+<div class="flex flex-col w-full min-h-[75vh] bg-surface text-on-surface pb-space-2xl animate-fadeIn" id="profile-view">
 
-      <!-- Breadcrumbs in Top Banner -->
-      <div class="absolute top-6 inset-x-0 w-full px-margin-mobile lg:px-margin max-w-7xl mx-auto flex items-center justify-between z-10 text-xs">
-        <nav aria-label="مسار الحساب" class="flex items-center gap-2 text-on-surface-variant bg-surface/75 backdrop-blur-md px-3 py-1.5 rounded-lg border border-surface-variant/40">
-          <button type="button" (click)="lib.returnToNovels()" class="hover:text-primary transition-colors cursor-pointer">أروقة الخلود</button>
-          <span>/</span>
-          <span class="text-on-surface font-semibold">ديوان القارئ وسادن الرواق</span>
-        </nav>
+  <!-- ================= STATE 1: LOADING ================= -->
+  @if (account.viewedState() === 'loading') {
+    <div class="w-full max-w-5xl mx-auto px-4 sm:px-6 pt-10 space-y-6">
+      <div class="w-full aspect-[15/8] max-h-[360px] rounded-3xl bg-surface-container animate-pulse flex items-center justify-center">
+        <span class="text-xs text-outline font-medium">جارٍ تحميل بيانات الحساب...</span>
+      </div>
+      <div class="flex flex-col items-center -mt-20 space-y-3">
+        <div class="w-32 h-32 rounded-full bg-surface-container-high ring-4 ring-surface animate-pulse"></div>
+        <div class="w-48 h-6 rounded-lg bg-surface-container animate-pulse"></div>
+        <div class="w-32 h-4 rounded-lg bg-surface-container animate-pulse"></div>
+      </div>
+      <div class="grid grid-cols-2 gap-4 max-w-xl mx-auto pt-4">
+        <div class="h-24 rounded-2xl bg-surface-container animate-pulse"></div>
+        <div class="h-24 rounded-2xl bg-surface-container animate-pulse"></div>
+      </div>
+    </div>
+  }
 
+  <!-- ================= STATE 2: PRIVATE ACCOUNT ================= -->
+  @else if (account.viewedState() === 'private') {
+    <div class="w-full max-w-xl mx-auto px-4 py-20 text-center space-y-5">
+      <div class="w-20 h-20 rounded-full bg-surface-container-high border border-surface-variant/50 mx-auto flex items-center justify-center text-secondary shadow-md">
+        <span class="material-symbols-outlined text-[38px]">lock</span>
+      </div>
+      <h1 class="text-2xl sm:text-3xl font-display-hero font-bold text-on-surface">هذا الحساب خاص</h1>
+      <p class="text-sm text-on-surface-variant leading-relaxed">
+        اختار صاحب هذا الحساب إبقاء ملفه الشخصي ومحتواه غير مرئي للزوار.
+      </p>
+      <div class="pt-2 flex items-center justify-center gap-3">
         <button
           type="button"
-          (click)="lib.handleLogout()"
-          class="btn-tactile px-3 py-1.5 rounded-lg bg-surface/80 hover:bg-rose-500/15 hover:text-rose-700 dark:hover:text-rose-300 text-on-surface-variant border border-surface-variant/40 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer backdrop-blur-md"
-          title="تسجيل الخروج من الحساب"
+          (click)="lib.returnToNovels()"
+          class="btn-tactile px-5 py-2.5 rounded-xl bg-primary text-on-primary text-xs sm:text-sm font-bold flex items-center gap-2 cursor-pointer shadow-sm"
         >
-          <span class="material-symbols-outlined text-[16px]">logout</span>
-          <span class="hidden sm:inline">تسجيل الخروج</span>
+          <span class="material-symbols-outlined text-[18px]">home</span>
+          <span>العودة إلى الرئيسية</span>
+        </button>
+        <button
+          type="button"
+          (click)="lib.openExplore()"
+          class="btn-tactile px-5 py-2.5 rounded-xl bg-surface-container-high text-on-surface text-xs sm:text-sm font-semibold border border-surface-variant/40 cursor-pointer"
+        >
+          استكشاف الروايات
         </button>
       </div>
     </div>
+  }
 
-    <!-- Persona Identity Header Card -->
-    <div class="w-full px-margin-mobile lg:px-margin max-w-7xl mx-auto relative -mt-20 sm:-mt-24 z-20 pb-6">
-      <div class="flex flex-col md:flex-row items-center md:items-end justify-between gap-6 bg-surface-container-low/95 backdrop-blur-xl p-6 sm:p-8 rounded-3xl border border-surface-variant/50 shadow-xl dark:shadow-2xl">
-        <!-- Avatar & Details -->
-        <div class="flex flex-col sm:flex-row items-center sm:items-end gap-5 text-center sm:text-right">
-          <div class="relative shrink-0">
-            <div class="w-24 h-24 sm:w-28 sm:h-28 rounded-full ring-4 ring-secondary/50 shadow-xl overflow-hidden bg-primary flex items-center justify-center">
-              @if (auth.photoUrl()) {
-                <img [src]="auth.photoUrl()" [alt]="auth.displayName()" class="w-full h-full object-cover" referrerpolicy="no-referrer" />
-              } @else {
-                <span class="text-on-primary font-bold text-3xl sm:text-4xl">
-                  {{ auth.displayName().slice(0, 1) }}
+  <!-- ================= STATE 3: NOT FOUND ================= -->
+  @else if (account.viewedState() === 'not_found') {
+    <div class="w-full max-w-xl mx-auto px-4 py-20 text-center space-y-5">
+      <div class="w-20 h-20 rounded-full bg-surface-container-high border border-surface-variant/50 mx-auto flex items-center justify-center text-outline shadow-md">
+        <span class="material-symbols-outlined text-[38px]">person_off</span>
+      </div>
+      <h1 class="text-2xl sm:text-3xl font-display-hero font-bold text-on-surface">الحساب غير موجود</h1>
+      <p class="text-sm text-on-surface-variant leading-relaxed">
+        تعذر العثور على الحساب المطلوب. ربما تغير اسم المستخدم أو تم حذف الحساب نهائياً.
+      </p>
+      <div class="pt-2 flex items-center justify-center gap-3">
+        <button
+          type="button"
+          (click)="lib.returnToNovels()"
+          class="btn-tactile px-5 py-2.5 rounded-xl bg-primary text-on-primary text-xs sm:text-sm font-bold flex items-center gap-2 cursor-pointer shadow-sm"
+        >
+          <span class="material-symbols-outlined text-[18px]">home</span>
+          <span>العودة إلى الرئيسية</span>
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- ================= STATE 4: ERROR ================= -->
+  @else if (account.viewedState() === 'error') {
+    <div class="w-full max-w-xl mx-auto px-4 py-20 text-center space-y-5">
+      <div class="w-20 h-20 rounded-full bg-rose-500/10 border border-rose-500/30 mx-auto flex items-center justify-center text-rose-600 dark:text-rose-400">
+        <span class="material-symbols-outlined text-[38px]">cloud_off</span>
+      </div>
+      <h1 class="text-2xl font-bold text-on-surface">تعذر تحميل بيانات الحساب</h1>
+      <p class="text-sm text-on-surface-variant">يرجى التحقق من اتصال الإنترنت ثم المحاولة مجدداً.</p>
+      <button
+        type="button"
+        (click)="retryLoadProfile()"
+        class="btn-tactile px-5 py-2.5 rounded-xl bg-primary text-on-primary text-xs sm:text-sm font-bold inline-flex items-center gap-2 cursor-pointer"
+      >
+        <span class="material-symbols-outlined text-[18px]">refresh</span>
+        <span>إعادة المحاولة</span>
+      </button>
+    </div>
+  }
+
+  <!-- ================= STATE 5: ACTIVE PROFILE VIEW ================= -->
+  @else if (account.viewedProfile()) {
+    @let profile = account.viewedProfile()!;
+
+    <!-- Owner Incomplete Profile Banner -->
+    @if (account.viewedIsOwner() && account.isOwnProfileIncomplete()) {
+      <div class="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-4">
+        <div class="p-3.5 sm:p-4 rounded-2xl bg-secondary/10 border border-secondary/35 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+          <div class="flex items-center gap-2.5 text-on-surface">
+            <span class="material-symbols-outlined text-secondary text-[20px] shrink-0">edit_note</span>
+            <span>
+              حسابك يفتقد بعض البيانات التكميلية (مثل <strong>&#64;اسم_المستخدم</strong> أو <strong>النبذة الشخصية</strong>) ليصبح رابطك الفريد جاهزاً للمشاركة.
+            </span>
+          </div>
+          <button
+            type="button"
+            (click)="openSettingsDrawer('edit')"
+            class="btn-tactile shrink-0 px-4 py-1.5 rounded-xl bg-secondary text-on-secondary font-bold text-xs cursor-pointer shadow-xs"
+          >
+            إكمال الملف الشخصي
+          </button>
+        </div>
+      </div>
+    }
+
+    <!-- 1. PROFILE BANNER (1500x800 aspect responsive with seamless multi-edge fades) -->
+    <section class="relative w-full max-w-6xl mx-auto px-0 sm:px-6 pt-2 sm:pt-5">
+      <div class="relative w-full aspect-[15/8] max-h-[380px] sm:max-h-[430px] overflow-hidden sm:rounded-3xl bg-surface-container-lowest">
+        <img
+          [src]="profile.coverURL || '/images/writers_sanctuary_bg.jpg'"
+          [alt]="'غلاف حساب ' + profile.displayName"
+          class="w-full h-full object-cover object-center select-none"
+          referrerpolicy="no-referrer"
+        />
+
+        <!-- Multi-edge Soft Gradient Fades adapting seamlessly to Dark & Light Mode backgrounds -->
+        <div class="absolute inset-0 bg-gradient-to-t from-surface via-surface/35 to-transparent pointer-events-none"></div>
+        <div class="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-surface via-surface/80 to-transparent pointer-events-none"></div>
+        <div class="absolute inset-y-0 right-0 w-24 sm:w-44 bg-gradient-to-l from-surface via-surface/45 to-transparent pointer-events-none"></div>
+        <div class="absolute inset-y-0 left-0 w-24 sm:w-44 bg-gradient-to-r from-surface via-surface/45 to-transparent pointer-events-none"></div>
+        <div class="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-surface/45 to-transparent pointer-events-none"></div>
+
+        <!-- Top Floating Utility Controls (Owner & Visitors) -->
+        <div class="absolute top-4 inset-x-4 sm:inset-x-6 flex items-center justify-between gap-2 z-20">
+          <button
+            type="button"
+            (click)="lib.returnToNovels()"
+            class="px-3 py-1.5 rounded-xl bg-surface/80 hover:bg-surface backdrop-blur-md border border-surface-variant/40 text-xs text-on-surface font-medium flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+          >
+            <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+            <span class="hidden sm:inline">الرئيسية</span>
+          </button>
+
+          <div class="flex items-center gap-2">
+            @if (profile.username) {
+              <button
+                type="button"
+                (click)="copyProfileUrl(profile.username)"
+                class="px-3 py-1.5 rounded-xl bg-surface/80 hover:bg-surface backdrop-blur-md border border-surface-variant/40 text-xs text-on-surface font-medium flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                [attr.aria-label]="'نسخ رابط الحساب'"
+              >
+                <span class="material-symbols-outlined text-[16px] text-secondary">
+                  {{ copiedProfileLink() ? 'check' : 'share' }}
                 </span>
-              }
-            </div>
-            <div class="absolute bottom-1 right-1 w-5 h-5 rounded-full bg-emerald-600 dark:bg-emerald-500 ring-2 ring-surface flex items-center justify-center" title="سادن نشط في الصرح">
-              <span class="w-2 h-2 rounded-full bg-white animate-pulse"></span>
-            </div>
+                <span class="hidden sm:inline">{{ copiedProfileLink() ? 'تم النسخ' : 'مشاركة الحساب' }}</span>
+              </button>
+            }
+
+            @if (account.viewedIsOwner()) {
+              <button
+                type="button"
+                (click)="openSettingsDrawer('edit')"
+                class="btn-tactile px-3.5 py-1.5 rounded-xl bg-surface/90 hover:bg-surface-container-high backdrop-blur-md border border-secondary/40 text-xs text-on-surface font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                aria-label="إعدادات الحساب"
+              >
+                <span class="material-symbols-outlined text-[17px] text-secondary">settings</span>
+                <span>إعدادات الحساب</span>
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. CIRCULAR AVATAR (Centered & overlapping banner bottom fade) -->
+      <div class="relative z-20 flex flex-col items-center -mt-16 sm:-mt-20 px-4">
+        <div class="w-28 h-28 sm:w-36 sm:h-36 rounded-full ring-4 ring-surface bg-primary shadow-2xl overflow-hidden flex items-center justify-center relative">
+          @if (profile.photoURL) {
+            <img
+              [src]="profile.photoURL"
+              [alt]="profile.displayName"
+              class="w-full h-full object-cover"
+              referrerpolicy="no-referrer"
+            />
+          } @else {
+            <span class="text-on-primary font-display-hero font-bold text-4xl sm:text-5xl select-none">
+              {{ profile.displayName.slice(0, 1) }}
+            </span>
+          }
+        </div>
+
+        <!-- 3. ACCOUNT IDENTITY INFO (Centered) -->
+        <div class="mt-4 text-center max-w-xl mx-auto space-y-2">
+          <!-- Display Name + Unified Verified Writer Badge -->
+          <div class="flex items-center justify-center gap-2 flex-wrap">
+            <h1 class="text-2xl sm:text-3xl font-display-hero font-bold text-on-surface leading-snug">
+              {{ profile.displayName }}
+            </h1>
+            <app-writer-badge [authorId]="profile.uid" [compact]="false" />
           </div>
 
-          <div class="space-y-1.5">
-            <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-              <h2 class="text-2xl sm:text-3xl font-display-hero font-bold text-on-surface">
-                {{ auth.displayName() }}
-              </h2>
-              <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-secondary/15 text-secondary text-xs font-semibold border border-secondary/30">
-                <span class="material-symbols-outlined text-[14px]">verified</span>
-                <span>عضوية الرواق النخبوية</span>
+          <!-- @username -->
+          <div class="flex items-center justify-center gap-2 flex-wrap">
+            @if (profile.username) {
+              <span
+                dir="ltr"
+                class="inline-flex items-center px-3 py-0.5 rounded-full bg-surface-container-high border border-surface-variant/50 text-xs font-mono text-secondary font-semibold"
+              >
+                &#64;{{ profile.username }}
               </span>
-            </div>
+            } @else if (account.viewedIsOwner()) {
+              <button
+                type="button"
+                (click)="openSettingsDrawer('edit')"
+                class="inline-flex items-center gap-1 px-3 py-0.5 rounded-full bg-surface-container hover:bg-surface-container-high border border-dashed border-secondary/50 text-xs text-secondary cursor-pointer transition-colors"
+              >
+                <span class="material-symbols-outlined text-[14px]">alternate_email</span>
+                <span>تعيين اسم مستخدم فريد</span>
+              </button>
+            }
 
-            <p class="text-xs sm:text-sm text-outline">
-              {{ auth.displayEmail() || 'قارئ موثوق في صرح أروقة الخلود' }}
-            </p>
-
-            <p class="text-xs text-on-surface-variant italic font-serif max-w-lg pt-1">
-              «في محراب الكلمات الخالدة، تزهو المعارف وتخلد الحكايات، وتصان الأفكار من عاديات النسيان.»
-            </p>
-          </div>
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="flex flex-wrap items-center justify-center gap-3 shrink-0">
-          <button
-            type="button"
-            (click)="lib.openPublishModal()"
-            class="btn-tactile px-4 py-2.5 rounded-xl bg-primary hover:bg-primary-fixed-dim text-on-primary font-bold text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer shadow-lg hover:shadow-primary/25"
-          >
-            <span class="material-symbols-outlined text-[18px]">history_edu</span>
-            <span>إيداع مصنف جديد</span>
-          </button>
-
-          <button
-            type="button"
-            (click)="lib.openExplore()"
-            class="btn-tactile px-4 py-2.5 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-semibold text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer border border-surface-variant/40"
-          >
-            <span class="material-symbols-outlined text-[18px] text-secondary">explore</span>
-            <span>استكشاف الخزانة المركزية</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Metrics Dashboard Row -->
-  <section class="w-full px-margin-mobile lg:px-margin max-w-7xl mx-auto pt-6">
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-      <div class="p-4 sm:p-5 rounded-2xl bg-surface-container-low border border-surface-variant/40 flex items-center gap-4 shadow-sm">
-        <div class="w-12 h-12 rounded-xl bg-secondary/15 text-secondary flex items-center justify-center shrink-0">
-          <span class="material-symbols-outlined text-[26px]">bookmark</span>
-        </div>
-        <div>
-          <span class="text-xl sm:text-2xl font-bold text-on-surface block tabular-nums">{{ lib.bookmarkedIds().size }}</span>
-          <span class="text-xs text-outline">ألواح محفوظة في الخزانة</span>
-        </div>
-      </div>
-
-      <div class="p-4 sm:p-5 rounded-2xl bg-surface-container-low border border-surface-variant/40 flex items-center gap-4 shadow-sm">
-        <div class="w-12 h-12 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0">
-          <span class="material-symbols-outlined text-[26px]">edit_note</span>
-        </div>
-        <div>
-          <span class="text-xl sm:text-2xl font-bold text-on-surface block tabular-nums">{{ lib.profileWorks().length }}</span>
-          <span class="text-xs text-outline">مصنفات ومسودات مودعة</span>
-        </div>
-      </div>
-
-      <div class="p-4 sm:p-5 rounded-2xl bg-surface-container-low border border-surface-variant/40 flex items-center gap-4 shadow-sm">
-        <div class="w-12 h-12 rounded-xl bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0">
-          <span class="material-symbols-outlined text-[26px]">auto_stories</span>
-        </div>
-        <div>
-          <span class="text-xl sm:text-2xl font-bold text-on-surface block">٤٨</span>
-          <span class="text-xs text-outline">ساعة إبحار وقراءة عميقة</span>
-        </div>
-      </div>
-
-      <div class="p-4 sm:p-5 rounded-2xl bg-surface-container-low border border-surface-variant/40 flex items-center gap-4 shadow-sm">
-        <div class="w-12 h-12 rounded-xl bg-amber-500/15 text-amber-700 dark:text-amber-400 flex items-center justify-center shrink-0">
-          <span class="material-symbols-outlined text-[26px]">spellcheck</span>
-        </div>
-        <div>
-          <span class="text-xl sm:text-2xl font-bold text-on-surface block">٩٩.٦٪</span>
-          <span class="text-xs text-outline">نقاء التدقيق والتوثيق الأدبي</span>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Main Layout: 2 Columns -->
-  <div class="w-full px-margin-mobile lg:px-margin max-w-7xl mx-auto pt-8">
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-      <!-- MAIN COLUMN (8 COLS) -->
-      <div class="lg:col-span-8 space-y-6">
-        <!-- 5 Vault Tabs Navigation Bar -->
-        <div class="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none border-b border-surface-variant/40">
-          <button
-            type="button"
-            (click)="lib.setProfileTab('vault')"
-            [class.text-secondary]="lib.profileActiveTab() === 'vault'"
-            [class.border-secondary]="lib.profileActiveTab() === 'vault'"
-            [class.bg-surface-container-high]="lib.profileActiveTab() === 'vault'"
-            class="px-4 py-2.5 rounded-xl border border-transparent font-semibold text-xs sm:text-sm text-outline hover:text-on-surface whitespace-nowrap transition-all cursor-pointer flex items-center gap-2"
-          >
-            <span class="material-symbols-outlined text-[18px]">menu_book</span>
-            <span>خزانتي القرائية</span>
-            @if (lib.bookmarkedIds().size > 0) {
-              <span class="px-1.5 py-0.5 rounded-full bg-secondary/20 text-secondary text-[10px] font-bold">
-                {{ lib.bookmarkedIds().size }}
+            @if (account.viewedIsOwner() && !profile.isPublic) {
+              <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-surface-container-high border border-surface-variant/50 text-[11px] text-outline">
+                <span class="material-symbols-outlined text-[13px]">lock</span>
+                <span>حساب خاص</span>
               </span>
             }
-          </button>
+          </div>
 
-          <button
-            type="button"
-            (click)="lib.setProfileTab('works')"
-            [class.text-primary]="lib.profileActiveTab() === 'works'"
-            [class.border-primary]="lib.profileActiveTab() === 'works'"
-            [class.bg-surface-container-high]="lib.profileActiveTab() === 'works'"
-            class="px-4 py-2.5 rounded-xl border border-transparent font-semibold text-xs sm:text-sm text-outline hover:text-on-surface whitespace-nowrap transition-all cursor-pointer flex items-center gap-2"
-          >
-            <span class="material-symbols-outlined text-[18px]">history_edu</span>
-            <span>مؤلفاتي ومسوداتي</span>
-          </button>
+          <!-- Bio (Privacy-Aware) -->
+          @if (account.viewedIsOwner() || profile.showProfileInfo) {
+            @if (profile.bio) {
+              <p class="text-sm text-on-surface-variant leading-relaxed pt-1 max-w-lg mx-auto">
+                {{ profile.bio }}
+              </p>
+            } @else if (account.viewedIsOwner()) {
+              <button
+                type="button"
+                (click)="openSettingsDrawer('edit')"
+                class="text-xs text-outline hover:text-secondary transition-colors cursor-pointer pt-1"
+              >
+                + أضف نبذة تعريفية قصيرة عن ذائقتك الأدبية
+              </button>
+            }
+          } @else {
+            <p class="text-xs text-outline italic pt-1">المعلومات التعريفية مخفية حسب إعدادات الخصوصية</p>
+          }
 
-          <button
-            type="button"
-            (click)="lib.setProfileTab('quotes')"
-            [class.text-tertiary]="lib.profileActiveTab() === 'quotes'"
-            [class.border-tertiary]="lib.profileActiveTab() === 'quotes'"
-            [class.bg-surface-container-high]="lib.profileActiveTab() === 'quotes'"
-            class="px-4 py-2.5 rounded-xl border border-transparent font-semibold text-xs sm:text-sm text-outline hover:text-on-surface whitespace-nowrap transition-all cursor-pointer flex items-center gap-2"
-          >
-            <span class="material-symbols-outlined text-[18px]">format_quote</span>
-            <span>الاقتباسات والعلامات</span>
-          </button>
+          <!-- Owner Quick Action Row -->
+          @if (account.viewedIsOwner()) {
+            <div class="flex items-center justify-center gap-2.5 pt-2 flex-wrap">
+              <button
+                type="button"
+                (click)="openSettingsDrawer('edit')"
+                class="btn-tactile px-4 py-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-semibold border border-surface-variant/40 flex items-center gap-1.5 cursor-pointer"
+              >
+                <span class="material-symbols-outlined text-[16px] text-secondary">tune</span>
+                <span>تعديل الملف والإعدادات</span>
+              </button>
 
-          <button
-            type="button"
-            (click)="lib.setProfileTab('timeline')"
-            [class.text-secondary]="lib.profileActiveTab() === 'timeline'"
-            [class.border-secondary]="lib.profileActiveTab() === 'timeline'"
-            [class.bg-surface-container-high]="lib.profileActiveTab() === 'timeline'"
-            class="px-4 py-2.5 rounded-xl border border-transparent font-semibold text-xs sm:text-sm text-outline hover:text-on-surface whitespace-nowrap transition-all cursor-pointer flex items-center gap-2"
-          >
-            <span class="material-symbols-outlined text-[18px]">timeline</span>
-            <span>مسار القراءة الزمني</span>
-          </button>
+              @if (canShowPublishedWorksSection()) {
+                <button
+                  type="button"
+                  (click)="lib.openPublishModal()"
+                  class="btn-tactile px-4 py-2 rounded-xl bg-primary hover:bg-primary-fixed-dim text-on-primary text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm"
+                >
+                  <span class="material-symbols-outlined text-[16px]">history_edu</span>
+                  <span>نشر عمل جديد</span>
+                </button>
+              } @else if (account.ownApplicationStatus() === 'none' || account.ownApplicationStatus() === 'rejected') {
+                <button
+                  type="button"
+                  (click)="openSettingsDrawer('writer')"
+                  class="btn-tactile px-4 py-2 rounded-xl bg-secondary/15 hover:bg-secondary/25 text-secondary text-xs font-bold border border-secondary/35 flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span class="material-symbols-outlined text-[16px]">ink_pen</span>
+                  <span>التقديم ككاتب</span>
+                </button>
+              }
+            </div>
+          }
+        </div>
+      </div>
+    </section>
 
-          <button
-            type="button"
-            (click)="lib.setProfileTab('rituals')"
-            [class.text-secondary]="lib.profileActiveTab() === 'rituals'"
-            [class.border-secondary]="lib.profileActiveTab() === 'rituals'"
-            [class.bg-surface-container-high]="lib.profileActiveTab() === 'rituals'"
-            class="px-4 py-2.5 rounded-xl border border-transparent font-semibold text-xs sm:text-sm text-outline hover:text-on-surface whitespace-nowrap transition-all cursor-pointer flex items-center gap-2"
-          >
-            <span class="material-symbols-outlined text-[18px]">tune</span>
-            <span>طقوس القراءة والتخصيص</span>
-          </button>
+    <!-- 4. ACCOUNT STATISTICS (STRICTLY ONLY TWO STATS) -->
+    <section class="w-full max-w-2xl mx-auto px-4 sm:px-6 pt-8" aria-label="إحصائيات الحساب">
+      <div class="grid grid-cols-2 gap-3 sm:gap-5">
+        <!-- Stat 1: Saved Novels Count -->
+        <div class="p-4 sm:p-5 rounded-2xl bg-surface-container-low border border-surface-variant/40 shadow-xs flex items-center gap-3.5">
+          <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-secondary/15 text-secondary flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[24px]">bookmark</span>
+          </div>
+          <div class="min-w-0">
+            @if (displaySavedCount() !== null) {
+              <span class="text-xl sm:text-2xl font-bold text-on-surface block tabular-nums leading-tight">
+                {{ displaySavedCount() }}
+              </span>
+            } @else {
+              <span class="text-xs font-semibold text-outline block leading-tight">مخفي</span>
+            }
+            <span class="text-xs text-on-surface-variant block mt-0.5">عدد الروايات المحفوظة</span>
+          </div>
         </div>
 
-        <!-- TAB 1: خزانتي القرائية -->
-        @if (lib.profileActiveTab() === 'vault') {
-          <div class="space-y-6">
-            <!-- Currently Reading Highlight Card -->
-            <div class="p-6 rounded-3xl bg-surface-container-low border border-secondary/35 relative overflow-hidden shadow-lg">
-              <div class="absolute -top-20 -left-20 w-48 h-48 bg-secondary/10 rounded-full blur-3xl pointer-events-none"></div>
+        <!-- Stat 2: Chapters Read Count -->
+        <div class="p-4 sm:p-5 rounded-2xl bg-surface-container-low border border-surface-variant/40 shadow-xs flex items-center gap-3.5">
+          <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-[24px]">menu_book</span>
+          </div>
+          <div class="min-w-0">
+            @if (displayReadChaptersCount() !== null) {
+              <span class="text-xl sm:text-2xl font-bold text-on-surface block tabular-nums leading-tight">
+                {{ displayReadChaptersCount() }}
+              </span>
+            } @else {
+              <span class="text-xs font-semibold text-outline block leading-tight">مخفي</span>
+            }
+            <span class="text-xs text-on-surface-variant block mt-0.5">عدد الفصول المقروءة</span>
+          </div>
+        </div>
+      </div>
+    </section>
 
-              <div class="flex flex-col sm:flex-row items-center sm:items-start gap-5 relative z-10">
-                <div class="w-24 sm:w-28 aspect-[1/1.5] rounded-xl overflow-hidden shadow-lg shrink-0 border border-secondary/40 bg-black">
+    <!-- 5. PUBLISHED WORKS («أعمالي المنشورة» - ONLY FOR VERIFIED WRITER PERMISSION) -->
+    @if (canShowPublishedWorksSection()) {
+      <section class="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-10" aria-label="أعمالي المنشورة">
+        <div class="flex items-center justify-between gap-3 mb-5">
+          <div class="flex items-center gap-2.5">
+            <span class="w-1.5 h-6 rounded-full bg-secondary"></span>
+            <h2 class="text-lg sm:text-xl font-bold text-on-surface font-display-hero">أعمالي المنشورة</h2>
+            <span class="text-xs text-outline font-mono tabular-nums">({{ account.viewedPublishedNovels().length }})</span>
+          </div>
+
+          @if (account.viewedIsOwner()) {
+            <button
+              type="button"
+              (click)="lib.openPublishModal()"
+              class="btn-tactile px-3.5 py-2 rounded-xl bg-primary text-on-primary text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
+            >
+              <span class="material-symbols-outlined text-[16px]">add</span>
+              <span>إيداع رواية جديدة</span>
+            </button>
+          }
+        </div>
+
+        @if (account.viewedPublishedNovels().length > 0) {
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            @for (work of account.viewedPublishedNovels(); track work.id) {
+              <article
+                role="button"
+                tabindex="0"
+                (click)="lib.openPublishedNovel(work)"
+                (keydown.enter)="lib.openPublishedNovel(work)"
+                class="novel-card-interactive group flex gap-4 p-4 rounded-2xl bg-surface-container-low border border-surface-variant/40 hover:border-secondary/45 shadow-xs hover:shadow-md transition-all cursor-pointer"
+              >
+                <div class="w-20 aspect-[2/3] rounded-xl overflow-hidden bg-surface-container-highest shrink-0 shadow-sm">
                   <img
-                    [src]="lib.defaultEchoesSamarkand.coverUrl"
-                    [alt]="lib.defaultEchoesSamarkand.title"
-                    class="w-full h-full object-cover"
+                    [src]="work.coverUrl || '/images/writers_sanctuary_bg.jpg'"
+                    [alt]="work.title"
+                    class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     referrerpolicy="no-referrer"
                   />
                 </div>
-
-                <div class="flex-1 space-y-3 text-center sm:text-right">
-                  <div class="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                    <span class="px-2.5 py-0.5 rounded-full bg-secondary/20 text-secondary text-xs font-bold">
-                      أقرأها حالياً
-                    </span>
-                    <span class="text-xs text-outline font-medium">رواق الروايات (Crimson Noir)</span>
-                  </div>
-
+                <div class="flex flex-col justify-between min-w-0 flex-1">
                   <div>
-                    <h3 class="text-xl font-bold text-on-surface font-display-hero">أصداء سمرقند</h3>
-                    <p class="text-xs text-outline">الشيخ جلال الدين الموصلي — الباب الأول: الفصل الرابع</p>
+                    <span class="text-[11px] font-semibold text-secondary">{{ work.genre }}</span>
+                    <h3 class="text-sm sm:text-base font-bold text-on-surface group-hover:text-primary transition-colors line-clamp-1 mt-0.5">
+                      {{ work.title }}
+                    </h3>
+                    <p class="text-xs text-on-surface-variant line-clamp-2 mt-1 leading-relaxed">
+                      {{ work.description }}
+                    </p>
                   </div>
-
-                  <div class="space-y-1.5">
-                    <div class="flex items-center justify-between text-xs text-outline">
-                      <span>نسبة الإنجاز: ٦٤٪</span>
-                      <span>متبقي: ساعتان و ٢٠ دقيقة</span>
-                    </div>
-                    <div class="w-full h-2 rounded-full bg-surface-container-highest overflow-hidden">
-                      <div class="h-full bg-secondary rounded-full shadow-[0_0_10px_rgba(154,114,9,0.5)] dark:shadow-[0_0_10px_rgba(233,195,73,0.8)]" style="width: 64%"></div>
-                    </div>
-                  </div>
-
-                  <div class="flex flex-wrap items-center justify-center sm:justify-start gap-3 pt-1">
-                    <button
-                      type="button"
-                      (click)="lib.startPureReading()"
-                      class="btn-tactile px-4 py-2 rounded-xl bg-secondary text-on-secondary font-bold text-xs flex items-center gap-1.5 hover:bg-secondary-fixed transition-colors cursor-pointer shadow-md"
-                    >
-                      <span class="material-symbols-outlined text-[16px]">menu_book</span>
-                      <span>استئناف القراءة النقية</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      (click)="lib.openNovelDetails(lib.defaultEchoesSamarkand)"
-                      class="btn-tactile px-4 py-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer border border-surface-variant/40"
-                    >
-                      <span class="material-symbols-outlined text-[16px]">info</span>
-                      <span>تفاصيل الرواية</span>
-                    </button>
+                  <div class="flex items-center justify-between pt-2 text-[11px] text-outline border-t border-surface-variant/30 mt-2">
+                    <span>عمل منشور رسمياً</span>
+                    <span class="text-primary font-semibold flex items-center gap-1">
+                      <span>عرض</span>
+                      <span class="material-symbols-outlined text-[14px]">arrow_back</span>
+                    </span>
                   </div>
                 </div>
-              </div>
-            </div>
-
-            <!-- Vault Sub-Filter Toolbar & Search Bar -->
-            <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-surface-container-low p-3 rounded-2xl border border-surface-variant/40">
-              <div class="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
-                <button
-                  type="button"
-                  (click)="lib.setVaultFilter('all')"
-                  [class.bg-surface-container-highest]="lib.vaultFilter() === 'all'"
-                  [class.text-secondary]="lib.vaultFilter() === 'all'"
-                  [class.font-bold]="lib.vaultFilter() === 'all'"
-                  class="px-3 py-1.5 rounded-lg text-xs text-outline hover:text-on-surface transition-colors cursor-pointer whitespace-nowrap"
-                >
-                  الكل ({{ lib.profileVaultBooks().length }})
-                </button>
-                <button
-                  type="button"
-                  (click)="lib.setVaultFilter('bookmarked')"
-                  [class.bg-surface-container-highest]="lib.vaultFilter() === 'bookmarked'"
-                  [class.text-secondary]="lib.vaultFilter() === 'bookmarked'"
-                  [class.font-bold]="lib.vaultFilter() === 'bookmarked'"
-                  class="px-3 py-1.5 rounded-lg text-xs text-outline hover:text-on-surface transition-colors cursor-pointer whitespace-nowrap"
-                >
-                  المحفوظة في الألواح
-                </button>
-                <button
-                  type="button"
-                  (click)="lib.setVaultFilter('reading')"
-                  [class.bg-surface-container-highest]="lib.vaultFilter() === 'reading'"
-                  [class.text-secondary]="lib.vaultFilter() === 'reading'"
-                  [class.font-bold]="lib.vaultFilter() === 'reading'"
-                  class="px-3 py-1.5 rounded-lg text-xs text-outline hover:text-on-surface transition-colors cursor-pointer whitespace-nowrap"
-                >
-                  قيد الإبحار
-                </button>
-                <button
-                  type="button"
-                  (click)="lib.setVaultFilter('completed')"
-                  [class.bg-surface-container-highest]="lib.vaultFilter() === 'completed'"
-                  [class.text-secondary]="lib.vaultFilter() === 'completed'"
-                  [class.font-bold]="lib.vaultFilter() === 'completed'"
-                  class="px-3 py-1.5 rounded-lg text-xs text-outline hover:text-on-surface transition-colors cursor-pointer whitespace-nowrap"
-                >
-                  المكتملة
-                </button>
-              </div>
-
-              <div class="flex items-center bg-surface-container rounded-xl px-3 py-1.5 border border-surface-variant/40 text-xs sm:w-60">
-                <span class="material-symbols-outlined text-outline text-[16px] ml-1.5">search</span>
-                <input
-                  type="text"
-                  [formControl]="lib.vaultSearchControl"
-                  placeholder="ابحث في خزانتك..."
-                  class="bg-transparent text-xs text-on-surface placeholder:text-outline/60 focus:outline-none w-full"
-                />
-              </div>
-            </div>
-
-            <!-- Vault Books Grid -->
-            @if (lib.profileVaultBooks().length > 0) {
-              <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                @for (book of lib.profileVaultBooks(); track book.id) {
-                  <div class="group rounded-2xl bg-surface-container-low border border-surface-variant/40 overflow-hidden flex flex-col justify-between hover:border-secondary/40 transition-all duration-300 shadow-md">
-                    <div
-                      role="button"
-                      tabindex="0"
-                      (click)="lib.openNovelDetails(book)"
-                      (keydown.enter)="lib.openNovelDetails(book)"
-                      class="relative aspect-[1/1.45] w-full overflow-hidden bg-black cursor-pointer"
-                    >
-                      <img
-                        [src]="book.coverUrl"
-                        [alt]="book.title"
-                        class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                        referrerpolicy="no-referrer"
-                      />
-                      <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none"></div>
-
-                      <span class="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full bg-black/65 backdrop-blur-md text-white text-[10px] font-semibold">
-                        {{ book.genre }}
-                      </span>
-
-                      <button
-                        type="button"
-                        (click)="lib.toggleBookmark(book, $event)"
-                        class="absolute top-2.5 left-2.5 w-7 h-7 rounded-full bg-black/65 backdrop-blur-md text-amber-300 flex items-center justify-center hover:bg-black/85 transition-colors cursor-pointer"
-                        title="إزالة من الألواح"
-                      >
-                        <span class="material-symbols-outlined text-[16px]">bookmark</span>
-                      </button>
-                    </div>
-
-                    <div class="p-3.5 space-y-2 flex-1 flex flex-col justify-between">
-                      <div>
-                        <button
-                          type="button"
-                          (click)="lib.openNovelDetails(book)"
-                          class="font-bold text-sm text-on-surface truncate group-hover:text-secondary transition-colors cursor-pointer text-right w-full bg-transparent border-none p-0 block"
-                        >
-                          {{ book.title }}
-                        </button>
-                        <p class="text-[11px] text-outline truncate">{{ book.author || 'أروقة الخلود' }}</p>
-                      </div>
-
-                      <div class="pt-2 border-t border-surface-variant/30 flex items-center justify-between">
-                        <button
-                          type="button"
-                          (click)="lib.openNovelDetails(book)"
-                          class="text-xs font-semibold text-primary hover:text-primary-fixed-dim transition-colors cursor-pointer flex items-center gap-1"
-                        >
-                          <span>قراءة</span>
-                          <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
-                        </button>
-
-                        <span class="text-[10px] text-outline">
-                          @if (book.isCompleted) {
-                            مكتمل
-                          } @else {
-                            سفر نشط
-                          }
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                }
-              </div>
-            } @else {
-              <div class="p-12 text-center rounded-3xl bg-surface-container-low border border-surface-variant/40 space-y-4">
-                <span class="material-symbols-outlined text-5xl text-outline/40">bookmark_border</span>
-                <div class="space-y-1">
-                  <h4 class="font-bold text-on-surface text-base">لا توجد أعمال في هذا التصنيف حالياً</h4>
-                  <p class="text-xs text-outline max-w-sm mx-auto">
-                    انقر على أيقونة الإشارة المرجعية عند استعراض أي رواية لتثبيتها في خزانتك الشخصية للرجوع السريع.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  (click)="lib.openExplore()"
-                  class="btn-tactile px-4 py-2 rounded-xl bg-secondary text-on-secondary font-bold text-xs inline-flex items-center gap-2 hover:bg-secondary-fixed transition-colors cursor-pointer shadow-md"
-                >
-                  <span class="material-symbols-outlined text-[16px]">explore</span>
-                  <span>استكشاف الأعمال والروايات</span>
-                </button>
-              </div>
+              </article>
             }
           </div>
-        }
-
-        <!-- TAB 2: مؤلفاتي ومسوداتي -->
-        @if (lib.profileActiveTab() === 'works') {
-          <div class="space-y-4">
-            <div class="flex items-center justify-between pb-2">
-              <h3 class="font-bold text-lg text-on-surface">المصنفات المحققة والمسودات قيد التحرير</h3>
+        } @else {
+          <div class="p-8 rounded-2xl bg-surface-container-low border border-surface-variant/40 text-center space-y-3">
+            <span class="material-symbols-outlined text-4xl text-secondary/70">history_edu</span>
+            <p class="text-sm font-semibold text-on-surface">لا توجد أعمال منشورة بعد</p>
+            @if (account.viewedIsOwner()) {
+              <p class="text-xs text-outline max-w-md mx-auto">
+                حسابك معتمد للنشر في أروقة الخلود. ابدأ بإيداع أول رواية لك لتظهر هنا وفي خزانة الاستكشاف.
+              </p>
               <button
                 type="button"
                 (click)="lib.openPublishModal()"
-                class="btn-tactile px-3.5 py-1.5 rounded-xl bg-primary text-on-primary font-bold text-xs flex items-center gap-1.5 hover:bg-primary-fixed-dim transition-colors cursor-pointer shadow-sm"
+                class="btn-tactile px-4 py-2 rounded-xl bg-primary text-on-primary text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-sm"
               >
-                <span class="material-symbols-outlined text-[16px]">add</span>
-                <span>إيداع سفر جديد</span>
+                <span class="material-symbols-outlined text-[16px]">publish</span>
+                <span>انشر عملك الأول</span>
               </button>
-            </div>
-
-            <div class="space-y-3">
-              @for (work of lib.profileWorks(); track work.id) {
-                <div class="p-5 rounded-2xl bg-surface-container-low border border-surface-variant/40 hover:border-primary/40 transition-colors space-y-3">
-                  <div class="flex items-start justify-between gap-3">
-                    <div class="space-y-1">
-                      <div class="flex items-center gap-2">
-                        <span
-                          [class]="work.type === 'published'
-                            ? 'px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
-                            : 'px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-400'"
-                        >
-                          {{ work.type === 'published' ? 'منشور في الرواق' : 'مسودة قيد التنقيح' }}
-                        </span>
-                        <span class="text-xs text-outline font-medium">{{ work.category }}</span>
-                      </div>
-                      <h4 class="font-bold text-base text-on-surface">{{ work.title }}</h4>
-                    </div>
-
-                    <span class="text-xs text-outline shrink-0">{{ work.date }}</span>
-                  </div>
-
-                  <p class="text-xs text-on-surface-variant leading-relaxed">{{ work.summary }}</p>
-
-                  <div class="pt-2 border-t border-surface-variant/30 flex items-center justify-between text-xs text-outline">
-                    <div class="flex items-center gap-4">
-                      <span>{{ work.pages }} صفحة</span>
-                      <span>{{ work.words.toLocaleString() }} كلمة</span>
-                    </div>
-
-                    <div class="flex items-center gap-2">
-                      <button
-                        type="button"
-                        (click)="lib.openEditDraft(work)"
-                        class="text-xs text-primary font-semibold hover:underline cursor-pointer"
-                      >
-                        متابعة التحرير
-                      </button>
-                      <span class="text-outline-variant">|</span>
-                      <button
-                        type="button"
-                        (click)="lib.openIntegrityDoc()"
-                        class="text-xs text-secondary font-semibold hover:underline cursor-pointer"
-                      >
-                        ميثاق الإيداع
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              }
-            </div>
+            }
           </div>
         }
+      </section>
+    }
 
-        <!-- TAB 3: الاقتباسات والعلامات الخالدة -->
-        @if (lib.profileActiveTab() === 'quotes') {
-          <div class="space-y-4">
-            <div class="flex items-center justify-between pb-2">
-              <h3 class="font-bold text-lg text-on-surface">الاقتباسات المذهبة والشواهد الأدبية المحفوظة</h3>
-              <span class="text-xs text-outline">٤ شواهد خالدة</span>
-            </div>
+    <!-- 6. SAVED NOVELS («رواياتي المحفوظة» — HORIZONTAL CAROUSEL) -->
+    <section class="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-10" aria-label="رواياتي المحفوظة">
+      <div class="flex items-center justify-between gap-3 mb-5">
+        <div class="flex items-center gap-2.5">
+          <span class="w-1.5 h-6 rounded-full bg-primary"></span>
+          <h2 class="text-lg sm:text-xl font-bold text-on-surface font-display-hero">رواياتي المحفوظة</h2>
+          @if (account.viewedIsOwner() || profile.showSavedNovels) {
+            <span class="text-xs text-outline font-mono tabular-nums">({{ savedNovelsForDisplay().length }})</span>
+          }
+        </div>
 
-            <div class="grid grid-cols-1 gap-4">
-              @for (q of lib.profileQuotes(); track q.id) {
-                <div class="p-6 rounded-2xl bg-surface-container-low border border-surface-variant/40 space-y-4 relative overflow-hidden">
-                  <span class="material-symbols-outlined text-4xl text-secondary/20 absolute -top-1 -right-1 pointer-events-none">format_quote</span>
-
-                  <blockquote class="text-sm sm:text-base font-serif text-on-surface leading-relaxed text-right relative z-10 pr-2 border-r-2 border-secondary/60">
-                    {{ q.quote }}
-                  </blockquote>
-
-                  <div class="flex items-center justify-between text-xs pt-2 border-t border-surface-variant/30">
-                    <div class="flex items-center gap-2">
-                      <span [class]="q.realmColor + ' font-semibold'">{{ q.source }}</span>
-                      <span class="text-outline">({{ q.realm }})</span>
-                    </div>
-
-                    <button
-                      type="button"
-                      (click)="lib.copyQuote(q.quote)"
-                      class="btn-tactile px-3 py-1 rounded-lg bg-surface-container text-outline hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer flex items-center gap-1.5 border border-surface-variant/30"
-                      title="نسخ الشاهد الأدبي"
-                    >
-                      <span class="material-symbols-outlined text-[14px]">content_copy</span>
-                      <span>نسخ</span>
-                    </button>
-                  </div>
-                </div>
-              }
-            </div>
-          </div>
-        }
-
-        <!-- TAB 4: مسار القراءة الزمني -->
-        @if (lib.profileActiveTab() === 'timeline') {
-          <div class="space-y-4">
-            <div class="flex items-center justify-between pb-2">
-              <h3 class="font-bold text-lg text-on-surface">سجل الأنشطة القرائية ومسار السكينة</h3>
-              <span class="text-xs text-secondary font-semibold">٣٤ يوماً متواصلاً</span>
-            </div>
-
-            <div class="relative border-r-2 border-surface-variant/40 mr-3 pr-6 space-y-6">
-              @for (item of lib.profileTimeline; track item.title) {
-                <div class="relative space-y-1">
-                  <div class="absolute -right-[31px] top-1 w-3.5 h-3.5 rounded-full bg-secondary ring-4 ring-surface"></div>
-
-                  <div class="flex items-center justify-between text-xs text-outline">
-                    <span>{{ item.time }}</span>
-                    <span class="px-2 py-0.5 rounded bg-surface-container text-on-surface-variant font-medium">{{ item.duration }}</span>
-                  </div>
-
-                  <h4 class="font-bold text-sm text-on-surface">{{ item.title }}</h4>
-                  <p class="text-xs text-secondary font-medium">{{ item.book }}</p>
-                </div>
-              }
-            </div>
-          </div>
-        }
-
-        <!-- TAB 5: طقوس القراءة والتخصيص -->
-        @if (lib.profileActiveTab() === 'rituals') {
-          <div class="space-y-6">
-            <div class="pb-2">
-              <h3 class="font-bold text-lg text-on-surface">طقوس الإبحار القرائي وتفضيلات الرواق</h3>
-              <p class="text-xs text-outline">تخصيص نمط العرض والخطوط والسكينة الصوتية لحسابك.</p>
-            </div>
-
-            <div class="p-6 rounded-2xl bg-surface-container-low border border-surface-variant/40 space-y-5">
-              <!-- Font Size Setting -->
-              <div class="space-y-2">
-                <span class="block text-xs font-semibold text-on-surface">حجم خط القراءة في الأسفار والمخطوطات:</span>
-                <div class="grid grid-cols-3 gap-2">
-                  <button
-                    type="button"
-                    (click)="lib.setReaderFontSize('sm')"
-                    [class.bg-primary]="lib.readerFontSize() === 'sm'"
-                    [class.text-on-primary]="lib.readerFontSize() === 'sm'"
-                    class="py-2.5 rounded-xl bg-surface-container text-xs font-semibold transition-colors cursor-pointer text-center border border-surface-variant/30"
-                  >
-                    دقيق (صغير)
-                  </button>
-                  <button
-                    type="button"
-                    (click)="lib.setReaderFontSize('md')"
-                    [class.bg-primary]="lib.readerFontSize() === 'md'"
-                    [class.text-on-primary]="lib.readerFontSize() === 'md'"
-                    class="py-2.5 rounded-xl bg-surface-container text-xs font-semibold transition-colors cursor-pointer text-center border border-surface-variant/30"
-                  >
-                    قياسي (متوازن)
-                  </button>
-                  <button
-                    type="button"
-                    (click)="lib.setReaderFontSize('lg')"
-                    [class.bg-primary]="lib.readerFontSize() === 'lg'"
-                    [class.text-on-primary]="lib.readerFontSize() === 'lg'"
-                    class="py-2.5 rounded-xl bg-surface-container text-xs font-semibold transition-colors cursor-pointer text-center border border-surface-variant/30"
-                  >
-                    وافر (كبير)
-                  </button>
-                </div>
-              </div>
-
-              <!-- Ambient Soundscape Setting -->
-              <div class="flex items-center justify-between pt-3 border-t border-surface-variant/30">
-                <div class="space-y-0.5">
-                  <span class="text-xs font-semibold text-on-surface block">المقطع الصوتي الافتتاحي (Soundscape):</span>
-                  <span class="text-[11px] text-outline">عزف نغمات السكينة التحريرية عند فتح الأسفار</span>
-                </div>
-                <button
-                  type="button"
-                  (click)="lib.toggleSoundscape()"
-                  [class.bg-secondary]="lib.soundscapeActive()"
-                  [class.text-on-secondary]="lib.soundscapeActive()"
-                  class="px-4 py-2 rounded-xl bg-surface-container text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5 border border-surface-variant/30"
-                >
-                  <span class="material-symbols-outlined text-[16px]">{{ lib.soundscapeActive() ? 'volume_up' : 'volume_off' }}</span>
-                  <span>{{ lib.soundscapeActive() ? 'مفعّل' : 'متوقف' }}</span>
-                </button>
-              </div>
-
-              <!-- Logout Button -->
-              <div class="pt-4 border-t border-surface-variant/30 flex items-center justify-between">
-                <div class="space-y-0.5">
-                  <span class="text-xs font-semibold text-rose-700 dark:text-rose-400 block">تسجيل الخروج من الحساب:</span>
-                  <span class="text-[11px] text-outline">إنهاء الجلسة الحالية وإغلاق ديوان القارئ</span>
-                </div>
-                <button
-                  type="button"
-                  (click)="lib.handleLogout()"
-                  class="px-4 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-700 dark:text-rose-300 border border-rose-500/35 text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1.5"
-                >
-                  <span class="material-symbols-outlined text-[16px]">logout</span>
-                  <span>تسجيل الخروج</span>
-                </button>
-              </div>
-            </div>
+        <!-- Desktop Carousel Arrows -->
+        @if ((account.viewedIsOwner() || profile.showSavedNovels) && savedNovelsForDisplay().length > 0) {
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              (click)="scrollSavedCarousel('prev')"
+              aria-label="الروايات السابقة"
+              class="hidden sm:flex w-9 h-9 rounded-xl bg-surface-container-low hover:bg-surface-container-high border border-surface-variant/40 text-on-surface items-center justify-center transition-colors cursor-pointer shadow-xs"
+            >
+              <span class="material-symbols-outlined text-[20px]">chevron_right</span>
+            </button>
+            <button
+              type="button"
+              (click)="scrollSavedCarousel('next')"
+              aria-label="الروايات التالية"
+              class="hidden sm:flex w-9 h-9 rounded-xl bg-surface-container-low hover:bg-surface-container-high border border-surface-variant/40 text-on-surface items-center justify-center transition-colors cursor-pointer shadow-xs"
+            >
+              <span class="material-symbols-outlined text-[20px]">chevron_left</span>
+            </button>
           </div>
         }
       </div>
 
-      <!-- SIDE RAIL COLUMN (4 COLS) -->
-      <div class="lg:col-span-4 space-y-6">
-        <!-- Reading Streak Card -->
-        <div class="p-6 rounded-3xl bg-surface-container-low border border-secondary/35 relative overflow-hidden space-y-4 shadow-sm">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <span class="material-symbols-outlined text-secondary text-[22px]">local_fire_department</span>
-              <span class="font-bold text-sm text-on-surface">مؤشر الاستمرار والسكينة</span>
-            </div>
-            <span class="px-2 py-0.5 rounded bg-secondary/15 text-secondary text-xs font-bold">٣٤ يوماً</span>
-          </div>
+      @if (!account.viewedIsOwner() && !profile.showSavedNovels) {
+        <div class="p-8 rounded-2xl bg-surface-container-low border border-surface-variant/40 text-center space-y-2">
+          <span class="material-symbols-outlined text-3xl text-outline">visibility_off</span>
+          <p class="text-sm font-semibold text-on-surface">قائمة الروايات المحفوظة مخفية وفق إعدادات الخصوصية</p>
+        </div>
+      } @else if (savedNovelsForDisplay().length > 0) {
+        <!-- Horizontal Scroll Carousel (Touch swipe on mobile, prev/next arrows on desktop) -->
+        <div
+          #savedCarouselEl
+          class="smooth-horizontal-rail flex flex-row flex-nowrap overflow-x-auto snap-x snap-mandatory gap-4 pb-3 scroll-smooth scrollbar-none"
+        >
+          @for (book of savedNovelsForDisplay(); track book.id) {
+            <article
+              role="button"
+              tabindex="0"
+              (click)="lib.openNovelDetails(book)"
+              (keydown.enter)="lib.openNovelDetails(book)"
+              class="novel-card-interactive group shrink-0 snap-start w-[165px] sm:w-[195px] rounded-2xl bg-surface-container-low border border-surface-variant/40 hover:border-secondary/45 overflow-hidden flex flex-col justify-between shadow-xs hover:shadow-lg transition-all cursor-pointer"
+            >
+              <div class="relative aspect-[2/3] w-full overflow-hidden bg-surface-container-highest">
+                <img
+                  [src]="book.coverUrl"
+                  [alt]="book.title"
+                  class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  referrerpolicy="no-referrer"
+                />
+                <div class="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-black/25 pointer-events-none"></div>
 
-          <p class="text-xs text-outline leading-relaxed">
-            أنت في وتيرة قراءة متواصلة منذ ٣٤ يوماً. نلت وسام «سادن الاعتكاف القرائي» في صرح أروقة الخلود.
+                <span class="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-amber-300 text-[10px] font-semibold max-w-[115px] truncate">
+                  {{ book.genre }}
+                </span>
+
+                @if (account.viewedIsOwner()) {
+                  <button
+                    type="button"
+                    (click)="lib.toggleBookmark(book, $event)"
+                    aria-label="إزالة من الروايات المحفوظة"
+                    title="إزالة من المحفوظات"
+                    class="absolute top-2 left-2 w-7 h-7 rounded-full bg-black/70 hover:bg-rose-700 text-amber-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                  >
+                    <span class="material-symbols-outlined text-[15px]">bookmark_remove</span>
+                  </button>
+                }
+              </div>
+
+              <div class="p-3 space-y-1">
+                <h3 class="text-xs sm:text-sm font-bold text-on-surface group-hover:text-primary transition-colors line-clamp-1">
+                  {{ book.title }}
+                </h3>
+                <p class="text-[11px] text-on-surface-variant line-clamp-1">
+                  {{ book.author || 'أروقة الخلود' }}
+                </p>
+              </div>
+            </article>
+          }
+        </div>
+      } @else {
+        <div class="p-10 rounded-2xl bg-surface-container-low border border-surface-variant/40 text-center space-y-3">
+          <span class="material-symbols-outlined text-4xl text-outline/60">bookmark_border</span>
+          <p class="text-sm font-semibold text-on-surface">لا توجد روايات محفوظة حالياً</p>
+          <p class="text-xs text-outline max-w-sm mx-auto">
+            تصفّح الروايات وأضف ما يلامس ذائقتك لتظهر هنا في شريط محفوظاتك.
           </p>
-
-          <div class="space-y-1.5 pt-1">
-            <span class="text-[11px] text-outline block">أيام الإبحار هذا الأسبوع:</span>
-            <div class="grid grid-cols-7 gap-1.5 text-center">
-              <div class="p-1.5 rounded-lg bg-secondary text-on-secondary font-bold text-[10px]">سبت</div>
-              <div class="p-1.5 rounded-lg bg-secondary text-on-secondary font-bold text-[10px]">أحد</div>
-              <div class="p-1.5 rounded-lg bg-secondary text-on-secondary font-bold text-[10px]">إثن</div>
-              <div class="p-1.5 rounded-lg bg-secondary text-on-secondary font-bold text-[10px]">ثلا</div>
-              <div class="p-1.5 rounded-lg bg-secondary text-on-secondary font-bold text-[10px]">أرب</div>
-              <div class="p-1.5 rounded-lg bg-secondary text-on-secondary font-bold text-[10px]">خمي</div>
-              <div class="p-1.5 rounded-lg bg-secondary/25 text-secondary font-bold text-[10px]">جمع</div>
-            </div>
-          </div>
+          <button
+            type="button"
+            (click)="lib.openExplore()"
+            class="btn-tactile px-4 py-2 rounded-xl bg-secondary text-on-secondary text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
+          >
+            <span class="material-symbols-outlined text-[16px]">explore</span>
+            <span>استكشاف الروايات</span>
+          </button>
         </div>
+      }
+    </section>
 
-        <!-- Corridor Distribution Donut Chart (theme-aware tokens) -->
-        <div class="p-6 rounded-3xl bg-surface-container-low border border-surface-variant/40 space-y-4 shadow-sm">
-          <div class="flex items-center gap-2 pb-1 border-b border-surface-variant/30">
-            <span class="material-symbols-outlined text-primary text-[20px]">pie_chart</span>
-            <span class="font-bold text-sm text-on-surface">توزيع الإبحار في الأروقة الأربعة</span>
+    <!-- ================= SLIDING SIDE SETTINGS DRAWER ================= -->
+    @if (account.viewedIsOwner() && account.isSettingsOpen()) {
+      <div class="fixed inset-0 z-50 flex justify-end animate-fadeIn">
+        <!-- Translucent Backdrop -->
+        <button
+          type="button"
+          class="fixed inset-0 w-full h-full bg-black/55 dark:bg-black/75 backdrop-blur-sm border-none cursor-default"
+          aria-label="إغلاق لوحة الإعدادات"
+          (click)="closeSettingsDrawer()"
+        ></button>
+
+        <!-- Sliding Side Panel -->
+        <aside
+          aria-label="إعدادات الحساب"
+          class="relative z-10 w-full max-w-lg h-full bg-surface-container-low border-r border-surface-variant/50 shadow-2xl flex flex-col overflow-hidden"
+        >
+          <!-- Drawer Top Header -->
+          <div class="px-5 py-4 border-b border-surface-variant/40 flex items-center justify-between bg-surface-container">
+            <div class="flex items-center gap-2.5">
+              <span class="material-symbols-outlined text-secondary text-[22px]">manage_accounts</span>
+              <div>
+                <h2 class="text-base font-bold text-on-surface">إعدادات الحساب</h2>
+                <span class="text-[11px] text-outline">تعديل الملف، الخصوصية، طلب الكتابة، والأمان</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              (click)="closeSettingsDrawer()"
+              aria-label="إغلاق الإعدادات"
+              class="w-9 h-9 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors cursor-pointer"
+            >
+              <span class="material-symbols-outlined text-[20px]">close</span>
+            </button>
           </div>
 
-          <div class="flex items-center justify-center py-2">
-            <div class="relative w-36 h-36">
-              <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
-                <circle cx="18" cy="18" r="14" fill="transparent" stroke="var(--mtx-surface-container-highest)" stroke-width="3.5"></circle>
-                <circle cx="18" cy="18" r="14" fill="transparent" stroke="var(--mtx-on-surface)" stroke-width="3.5" stroke-dasharray="37 63" stroke-dashoffset="0"></circle>
-                <circle cx="18" cy="18" r="14" fill="transparent" stroke="var(--mtx-primary)" stroke-width="3.5" stroke-dasharray="25 75" stroke-dashoffset="-37"></circle>
-                <circle cx="18" cy="18" r="14" fill="transparent" stroke="var(--mtx-tertiary)" stroke-width="3.5" stroke-dasharray="18 82" stroke-dashoffset="-62"></circle>
-                <circle cx="18" cy="18" r="14" fill="transparent" stroke="var(--mtx-secondary)" stroke-width="3.5" stroke-dasharray="9 91" stroke-dashoffset="-80"></circle>
-              </svg>
-              <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
-                <span class="text-lg font-bold text-on-surface">٤٨</span>
-                <span class="text-[9px] text-outline">ساعة قراءة</span>
-              </div>
-            </div>
+          <!-- Section Tabs Bar -->
+          <div class="px-4 py-2.5 border-b border-surface-variant/30 bg-surface-container-low flex items-center gap-1.5 overflow-x-auto scrollbar-none shrink-0">
+            <button
+              type="button"
+              (click)="account.activeSettingsSection.set('edit'); account.settingsError.set(null); account.settingsSuccess.set(null)"
+              [class]="account.activeSettingsSection() === 'edit'
+                ? 'px-3 py-1.5 rounded-lg bg-primary text-on-primary text-xs font-bold whitespace-nowrap cursor-pointer'
+                : 'px-3 py-1.5 rounded-lg bg-surface-container text-on-surface-variant hover:text-on-surface text-xs font-medium whitespace-nowrap cursor-pointer'"
+            >
+              تعديل الملف
+            </button>
+            <button
+              type="button"
+              (click)="account.activeSettingsSection.set('privacy'); account.settingsError.set(null); account.settingsSuccess.set(null)"
+              [class]="account.activeSettingsSection() === 'privacy'
+                ? 'px-3 py-1.5 rounded-lg bg-primary text-on-primary text-xs font-bold whitespace-nowrap cursor-pointer'
+                : 'px-3 py-1.5 rounded-lg bg-surface-container text-on-surface-variant hover:text-on-surface text-xs font-medium whitespace-nowrap cursor-pointer'"
+            >
+              الخصوصية
+            </button>
+            <button
+              type="button"
+              (click)="account.activeSettingsSection.set('writer'); account.settingsError.set(null); account.settingsSuccess.set(null)"
+              [class]="account.activeSettingsSection() === 'writer'
+                ? 'px-3 py-1.5 rounded-lg bg-secondary text-on-secondary text-xs font-bold whitespace-nowrap cursor-pointer'
+                : 'px-3 py-1.5 rounded-lg bg-surface-container text-on-surface-variant hover:text-on-surface text-xs font-medium whitespace-nowrap cursor-pointer'"
+            >
+              طلب كاتب
+            </button>
+            <button
+              type="button"
+              (click)="account.activeSettingsSection.set('security'); account.settingsError.set(null); account.settingsSuccess.set(null)"
+              [class]="account.activeSettingsSection() === 'security'
+                ? 'px-3 py-1.5 rounded-lg bg-rose-700 text-white text-xs font-bold whitespace-nowrap cursor-pointer'
+                : 'px-3 py-1.5 rounded-lg bg-surface-container text-on-surface-variant hover:text-on-surface text-xs font-medium whitespace-nowrap cursor-pointer'"
+            >
+              الحساب والأمان
+            </button>
+            @if (account.ownWriterStatus().isAdmin) {
+              <button
+                type="button"
+                (click)="account.activeSettingsSection.set('admin'); account.settingsError.set(null); account.settingsSuccess.set(null)"
+                [class]="account.activeSettingsSection() === 'admin'
+                  ? 'px-3 py-1.5 rounded-lg bg-emerald-700 text-white text-xs font-bold whitespace-nowrap cursor-pointer flex items-center gap-1'
+                  : 'px-3 py-1.5 rounded-lg bg-surface-container text-on-surface-variant hover:text-on-surface text-xs font-medium whitespace-nowrap cursor-pointer flex items-center gap-1'"
+              >
+                <span>مراجعة الطلبات</span>
+                @if (account.pendingAdminApplications().length > 0) {
+                  <span class="px-1.5 py-0.2 rounded-full bg-white/20 text-[10px]">
+                    {{ account.pendingAdminApplications().length }}
+                  </span>
+                }
+              </button>
+            }
           </div>
 
-          <div class="space-y-2 text-xs">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <span class="w-2.5 h-2.5 rounded-full bg-on-surface"></span>
-                <span class="text-on-surface-variant">رواق الحكمة والتأمل</span>
+          <!-- Feedback Alerts -->
+          <div class="px-5 pt-3 space-y-2 shrink-0">
+            @if (account.settingsError()) {
+              <div class="p-3 rounded-xl bg-rose-500/10 border border-rose-500/35 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px] shrink-0">error</span>
+                <span>{{ account.settingsError() }}</span>
               </div>
-              <span class="font-bold text-on-surface">٤٢٪</span>
-            </div>
-
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <span class="w-2.5 h-2.5 rounded-full bg-primary"></span>
-                <span class="text-on-surface-variant">رواق الروايات (Noir)</span>
-              </div>
-              <span class="font-bold text-on-surface">٢٨٪</span>
-            </div>
-
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <span class="w-2.5 h-2.5 rounded-full bg-tertiary"></span>
-                <span class="text-on-surface-variant">رواق التراث والمخطوطات</span>
-              </div>
-              <span class="font-bold text-on-surface">٢٠٪</span>
-            </div>
-
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2">
-                <span class="w-2.5 h-2.5 rounded-full bg-secondary"></span>
-                <span class="text-on-surface-variant">رواق الملاحم والبطولات</span>
-              </div>
-              <span class="font-bold text-on-surface">١٠٪</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Community Circles Card -->
-        <div class="p-6 rounded-3xl bg-surface-container-low border border-surface-variant/40 space-y-4 shadow-sm">
-          <div class="flex items-center justify-between pb-1 border-b border-surface-variant/30">
-            <div class="flex items-center gap-2">
-              <span class="material-symbols-outlined text-secondary text-[20px]">forum</span>
-              <span class="font-bold text-sm text-on-surface">حلقات النقاش التحريري</span>
-            </div>
-            <span class="text-[10px] text-outline">حلقات ترعاها</span>
-          </div>
-
-          <div class="space-y-3">
-            @for (salon of lib.literarySalons(); track salon.id) {
-              <div class="p-3 rounded-xl bg-surface-container/70 border border-surface-variant/30 space-y-1">
-                <div class="flex items-center justify-between">
-                  <h5 class="font-bold text-xs text-on-surface">{{ salon.title }}</h5>
-                  <span [class]="'w-2 h-2 rounded-full ' + (salon.isActive ? 'bg-emerald-500' : 'bg-amber-500')"></span>
-                </div>
-                <p class="text-[11px] text-outline">{{ salon.description }}</p>
+            }
+            @if (account.settingsSuccess()) {
+              <div class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/35 text-emerald-700 dark:text-emerald-300 text-xs flex items-center gap-2">
+                <span class="material-symbols-outlined text-[18px] shrink-0">check_circle</span>
+                <span>{{ account.settingsSuccess() }}</span>
               </div>
             }
           </div>
 
-          <button
-            type="button"
-            (click)="lib.sponsorNewSalon()"
-            class="btn-tactile w-full py-2.5 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-surface-variant/40"
-          >
-            <span class="material-symbols-outlined text-[16px] text-secondary">add_circle</span>
-            <span>رعاية حلقة نقاش جديدة</span>
-          </button>
-        </div>
+          <!-- Scrollable Body Content -->
+          <div class="flex-1 overflow-y-auto p-5 space-y-6">
+
+            <!-- SECTION A: INLINE EDIT PROFILE + CROPPER -->
+            @if (account.activeSettingsSection() === 'edit') {
+              <form [formGroup]="editForm" (ngSubmit)="saveProfileChanges()" class="space-y-5">
+
+                <!-- Media Upload & Interactive Preview -->
+                <div class="p-4 rounded-2xl bg-surface-container border border-surface-variant/40 space-y-4">
+                  <span class="text-xs font-bold text-on-surface block">صور الحساب والغلاف (معاينة وضبط قبل الحفظ)</span>
+
+                  <!-- Banner Picker & Preview -->
+                  <div class="space-y-2">
+                    <div class="flex items-center justify-between text-xs">
+                      <span class="text-on-surface-variant">صورة الغلاف (1500×800)</span>
+                      <label
+                        for="banner-file-input"
+                        class="px-3 py-1 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-secondary font-semibold cursor-pointer border border-surface-variant/40 transition-colors"
+                      >
+                        تغيير الغلاف
+                      </label>
+                      <input
+                        id="banner-file-input"
+                        type="file"
+                        accept="image/*"
+                        class="hidden"
+                        (change)="onSelectProfileImage($event, 'banner')"
+                      />
+                    </div>
+
+                    <div class="relative w-full aspect-[15/8] rounded-xl overflow-hidden bg-surface-container-lowest border border-surface-variant/40">
+                      <img
+                        [src]="bannerDraft()?.previewDataUrl || profile.coverURL || '/images/writers_sanctuary_bg.jpg'"
+                        alt="معاينة الغلاف"
+                        class="w-full h-full object-cover"
+                        referrerpolicy="no-referrer"
+                      />
+                      @if (bannerDraft()) {
+                        <div class="absolute bottom-2 inset-x-2 flex items-center justify-between gap-2">
+                          <button
+                            type="button"
+                            (click)="activeCropperKind.set(activeCropperKind() === 'banner' ? null : 'banner')"
+                            class="px-2.5 py-1 rounded-lg bg-black/75 text-white text-[11px] font-semibold cursor-pointer"
+                          >
+                            {{ activeCropperKind() === 'banner' ? 'إخفاء أداة القص' : 'تحريك وتكبير الغلاف' }}
+                          </button>
+                          <button
+                            type="button"
+                            (click)="discardImageDraft('banner')"
+                            class="px-2.5 py-1 rounded-lg bg-rose-700/90 text-white text-[11px] cursor-pointer"
+                          >
+                            إلغاء المسودة
+                          </button>
+                        </div>
+                      }
+                    </div>
+
+                    <!-- Interactive Pan & Zoom Box for Banner -->
+                    @if (activeCropperKind() === 'banner' && bannerDraft()) {
+                      <div class="p-3 rounded-xl bg-surface-container-low border border-secondary/35 space-y-3">
+                        <span class="text-[11px] text-secondary font-semibold block">اسحب الصورة لتحديد الإطار المطلوب أو استخدم شريط التكبير:</span>
+                        <div
+                          class="relative w-full aspect-[15/8] rounded-lg overflow-hidden bg-black cursor-grab active:cursor-grabbing touch-none border border-secondary/40 select-none"
+                          (pointerdown)="onCropperPointerDown($event, 'banner')"
+                          (pointermove)="onCropperPointerMove($event, 'banner')"
+                          (pointerup)="onCropperPointerUp('banner')"
+                          (pointercancel)="onCropperPointerUp('banner')"
+                        >
+                          <img
+                            [src]="bannerDraft()!.sourceUrl"
+                            alt="ضبط إطار الغلاف"
+                            class="w-full h-full object-cover pointer-events-none select-none transition-transform duration-75"
+                            [style.transform]="activeBannerCropperTransform()"
+                          />
+                        </div>
+                        <div class="flex items-center gap-3 text-xs">
+                          <label for="banner-zoom-slider" class="text-outline shrink-0">التكبير:</label>
+                          <input
+                            id="banner-zoom-slider"
+                            type="range"
+                            min="1"
+                            max="3"
+                            step="0.05"
+                            [value]="bannerDraft()!.zoom"
+                            (input)="onCropperZoomChange($event, 'banner')"
+                            class="w-full accent-secondary cursor-pointer"
+                          />
+                          <button
+                            type="button"
+                            (click)="resetCropperFraming('banner')"
+                            class="text-[11px] text-primary hover:underline shrink-0 cursor-pointer"
+                          >
+                            توسيط
+                          </button>
+                        </div>
+                      </div>
+                    }
+                  </div>
+
+                  <!-- Avatar Picker & Preview -->
+                  <div class="space-y-2 pt-2 border-t border-surface-variant/30">
+                    <div class="flex items-center justify-between gap-3">
+                      <div class="flex items-center gap-3">
+                        <div class="w-14 h-14 rounded-full overflow-hidden bg-primary border-2 border-secondary/50 flex items-center justify-center shrink-0">
+                          @if (avatarDraft()?.previewDataUrl || profile.photoURL) {
+                            <img
+                              [src]="avatarDraft()?.previewDataUrl || profile.photoURL"
+                              alt="معاينة الصورة الشخصية"
+                              class="w-full h-full object-cover"
+                              referrerpolicy="no-referrer"
+                            />
+                          } @else {
+                            <span class="text-on-primary font-bold text-lg">{{ profile.displayName.slice(0, 1) }}</span>
+                          }
+                        </div>
+                        <div>
+                          <span class="text-xs font-semibold text-on-surface block">الصورة الشخصية</span>
+                          <span class="text-[11px] text-outline">صورة دائرية متداخلة مع الغلاف</span>
+                        </div>
+                      </div>
+
+                      <div class="flex items-center gap-1.5">
+                        <label
+                          for="avatar-file-input"
+                          class="px-3 py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-primary text-xs font-semibold cursor-pointer border border-surface-variant/40 transition-colors"
+                        >
+                          اختيار صورة
+                        </label>
+                        <input
+                          id="avatar-file-input"
+                          type="file"
+                          accept="image/*"
+                          class="hidden"
+                          (change)="onSelectProfileImage($event, 'avatar')"
+                        />
+                      </div>
+                    </div>
+
+                    @if (avatarDraft()) {
+                      <div class="flex items-center justify-between text-[11px] pt-1">
+                        <button
+                          type="button"
+                          (click)="activeCropperKind.set(activeCropperKind() === 'avatar' ? null : 'avatar')"
+                          class="text-secondary font-semibold hover:underline cursor-pointer"
+                        >
+                          {{ activeCropperKind() === 'avatar' ? 'إغلاق أداة قص الصورة الشخصية' : 'قص وتحريك الصورة الشخصية' }}
+                        </button>
+                        <button
+                          type="button"
+                          (click)="discardImageDraft('avatar')"
+                          class="text-rose-600 dark:text-rose-400 hover:underline cursor-pointer"
+                        >
+                          إلغاء الصورة المختارة
+                        </button>
+                      </div>
+                    }
+
+                    @if (activeCropperKind() === 'avatar' && avatarDraft()) {
+                      <div class="p-3 rounded-xl bg-surface-container-low border border-primary/35 space-y-3">
+                        <span class="text-[11px] text-primary font-semibold block">اسحب الصورة داخل الدائرة واضبط التكبير:</span>
+                        <div class="flex justify-center">
+                          <div
+                            class="relative w-40 h-40 rounded-full overflow-hidden bg-black cursor-grab active:cursor-grabbing touch-none border-2 border-primary/60 select-none"
+                            (pointerdown)="onCropperPointerDown($event, 'avatar')"
+                            (pointermove)="onCropperPointerMove($event, 'avatar')"
+                            (pointerup)="onCropperPointerUp('avatar')"
+                            (pointercancel)="onCropperPointerUp('avatar')"
+                          >
+                            <img
+                              [src]="avatarDraft()!.sourceUrl"
+                              alt="ضبط الصورة الشخصية"
+                              class="w-full h-full object-cover pointer-events-none select-none transition-transform duration-75"
+                              [style.transform]="activeAvatarCropperTransform()"
+                            />
+                          </div>
+                        </div>
+                        <div class="flex items-center gap-3 text-xs">
+                          <label for="avatar-zoom-slider" class="text-outline shrink-0">التكبير:</label>
+                          <input
+                            id="avatar-zoom-slider"
+                            type="range"
+                            min="1"
+                            max="3"
+                            step="0.05"
+                            [value]="avatarDraft()!.zoom"
+                            (input)="onCropperZoomChange($event, 'avatar')"
+                            class="w-full accent-primary cursor-pointer"
+                          />
+                          <button
+                            type="button"
+                            (click)="resetCropperFraming('avatar')"
+                            class="text-[11px] text-secondary hover:underline shrink-0 cursor-pointer"
+                          >
+                            توسيط
+                          </button>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                </div>
+
+                <!-- Display Name -->
+                <div class="space-y-1.5">
+                  <label for="edit-display-name" class="text-xs font-semibold text-on-surface block">الاسم الظاهر</label>
+                  <input
+                    id="edit-display-name"
+                    type="text"
+                    formControlName="displayName"
+                    placeholder="اكتب اسمك كما يظهر للقراء"
+                    class="w-full p-3 rounded-xl bg-surface-container border border-surface-variant/60 text-sm text-on-surface focus:outline-none focus:border-primary"
+                  />
+                </div>
+
+                <!-- Username (@username) with Real-Time Check + Optional Suggestions -->
+                <div class="space-y-1.5">
+                  <label for="edit-username" class="text-xs font-semibold text-on-surface block">
+                    اسم المستخدم الفريد (&#64;username)
+                  </label>
+                  <div class="flex items-center bg-surface-container rounded-xl px-3 border border-surface-variant/60 focus-within:border-secondary" dir="ltr">
+                    <span class="text-secondary font-mono font-bold text-sm select-none">&#64;</span>
+                    <input
+                      id="edit-username"
+                      type="text"
+                      formControlName="username"
+                      (input)="onUsernameInput($event)"
+                      placeholder="zaid_99"
+                      class="w-full p-2.5 bg-transparent text-sm font-mono text-on-surface focus:outline-none"
+                    />
+                  </div>
+                  <p class="text-[11px] text-outline">
+                    أحرف إنجليزية، أرقام، وشرطة سفلية (_) فقط، دون حساسية لحالة الأحرف (٣ إلى ٢٤ حرفاً).
+                  </p>
+
+                  @if (account.usernameCheck().status !== 'idle') {
+                    <div
+                      [class]="
+                        account.usernameCheck().status === 'available' || account.usernameCheck().status === 'unchanged'
+                          ? 'text-xs text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5 pt-0.5'
+                          : account.usernameCheck().status === 'checking'
+                          ? 'text-xs text-secondary flex items-center gap-1.5 pt-0.5'
+                          : 'text-xs text-rose-700 dark:text-rose-400 flex items-center gap-1.5 pt-0.5'
+                      "
+                    >
+                      <span class="material-symbols-outlined text-[15px]">
+                        {{
+                          account.usernameCheck().status === 'available' || account.usernameCheck().status === 'unchanged'
+                            ? 'check_circle'
+                            : account.usernameCheck().status === 'checking'
+                            ? 'progress_activity'
+                            : 'info'
+                        }}
+                      </span>
+                      <span>{{ account.usernameCheck().message }}</span>
+                    </div>
+                  }
+
+                  @if (account.usernameCheck().suggestions.length > 0) {
+                    <div class="flex items-center gap-2 flex-wrap pt-1 text-xs">
+                      <span class="text-[11px] text-outline">أمثلة متاحة اختيارية:</span>
+                      @for (sug of account.usernameCheck().suggestions; track sug) {
+                        <button
+                          type="button"
+                          dir="ltr"
+                          (click)="applySuggestedUsername(sug)"
+                          class="px-2.5 py-0.5 rounded-full bg-surface-container-high hover:bg-secondary/20 border border-surface-variant/50 font-mono text-[11px] text-secondary cursor-pointer transition-colors"
+                        >
+                          &#64;{{ sug }}
+                        </button>
+                      }
+                    </div>
+                  }
+                </div>
+
+                <!-- Bio -->
+                <div class="space-y-1.5">
+                  <label for="edit-bio" class="text-xs font-semibold text-on-surface block">النبذة التعريفية</label>
+                  <textarea
+                    id="edit-bio"
+                    rows="3"
+                    formControlName="bio"
+                    placeholder="اكتب نبذة مختصرة عن ذوقك القرائي أو رحلتك مع الأدب..."
+                    class="w-full p-3 rounded-xl bg-surface-container border border-surface-variant/60 text-xs sm:text-sm text-on-surface focus:outline-none focus:border-primary leading-relaxed"
+                  ></textarea>
+                </div>
+
+                <div class="pt-2 flex items-center justify-end gap-2 border-t border-surface-variant/30">
+                  <button
+                    type="button"
+                    (click)="closeSettingsDrawer()"
+                    class="px-4 py-2.5 rounded-xl bg-surface-container text-on-surface-variant text-xs font-semibold cursor-pointer"
+                  >
+                    إلغاء
+                  </button>
+                  <button
+                    type="submit"
+                    [disabled]="account.isSavingProfile()"
+                    class="btn-tactile px-5 py-2.5 rounded-xl bg-primary text-on-primary font-bold text-xs flex items-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
+                  >
+                    @if (account.isSavingProfile()) {
+                      <span class="material-symbols-outlined animate-spin text-[16px]">progress_activity</span>
+                      <span>جارٍ الحفظ والرفع...</span>
+                    } @else {
+                      <span class="material-symbols-outlined text-[16px]">save</span>
+                      <span>حفظ التغييرات</span>
+                    }
+                  </button>
+                </div>
+              </form>
+            }
+
+            <!-- SECTION B: PRIVACY -->
+            @if (account.activeSettingsSection() === 'privacy') {
+              <form [formGroup]="privacyForm" (ngSubmit)="savePrivacySettings()" class="space-y-4">
+                <div class="p-4 rounded-2xl bg-surface-container border border-surface-variant/40 space-y-4">
+                  <label class="flex items-start justify-between gap-3 cursor-pointer">
+                    <div>
+                      <span class="text-sm font-bold text-on-surface block">جعل الحساب عاماً</span>
+                      <span class="text-xs text-outline leading-relaxed block mt-0.5">
+                        عند الإيقاف يصبح الحساب خاصاً، ولن يظهر للزوار سوى رسالة «هذا الحساب خاص» دون عرض أي بيانات شخصية.
+                      </span>
+                    </div>
+                    <input type="checkbox" formControlName="isPublic" class="mt-1 w-4 h-4 accent-primary cursor-pointer shrink-0" />
+                  </label>
+
+                  <div class="border-t border-surface-variant/30 pt-3 space-y-3">
+                    <span class="text-xs font-bold text-secondary block">ضوابط العناصر المرئية في الحساب العام</span>
+
+                    <label class="flex items-center justify-between gap-3 cursor-pointer text-xs">
+                      <span class="text-on-surface">إظهار الروايات المحفوظة وعددها للزوار</span>
+                      <input type="checkbox" formControlName="showSavedNovels" class="w-4 h-4 accent-secondary cursor-pointer" />
+                    </label>
+
+                    <label class="flex items-center justify-between gap-3 cursor-pointer text-xs">
+                      <span class="text-on-surface">إظهار عدد الفصول المقروءة للزوار</span>
+                      <input type="checkbox" formControlName="showReadingHistory" class="w-4 h-4 accent-secondary cursor-pointer" />
+                    </label>
+
+                    <label class="flex items-center justify-between gap-3 cursor-pointer text-xs">
+                      <span class="text-on-surface">إظهار النبذة والمعلومات التعريفية للزوار</span>
+                      <input type="checkbox" formControlName="showProfileInfo" class="w-4 h-4 accent-secondary cursor-pointer" />
+                    </label>
+                  </div>
+                </div>
+
+                <div class="p-3.5 rounded-xl bg-secondary/10 border border-secondary/30 text-[11px] text-on-surface-variant flex items-start gap-2">
+                  <span class="material-symbols-outlined text-secondary text-[18px] shrink-0">public</span>
+                  <span>
+                    ملاحظة: الأعمال والروايات التي تنشرها بصفتك كاتباً معتمداً تبقى متاحة للقراءة العامة في الموقع حتى عند تحويل الحساب الشخصي إلى خاص.
+                  </span>
+                </div>
+
+                <button
+                  type="submit"
+                  [disabled]="account.isSavingPrivacy()"
+                  class="btn-tactile w-full py-3 rounded-xl bg-primary text-on-primary font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
+                >
+                  @if (account.isSavingPrivacy()) {
+                    <span class="material-symbols-outlined animate-spin text-[16px]">progress_activity</span>
+                    <span>جارٍ تطبيق الخصوصية...</span>
+                  } @else {
+                    <span class="material-symbols-outlined text-[16px]">shield</span>
+                    <span>حفظ إعدادات الخصوصية</span>
+                  }
+                </button>
+              </form>
+            }
+
+            <!-- SECTION C: WRITER APPLICATION -->
+            @if (account.activeSettingsSection() === 'writer') {
+              <div class="space-y-4">
+                @if (account.ownWriterStatus().canPublish) {
+                  <div class="p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/35 space-y-3">
+                    <div class="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold text-sm">
+                      <span class="material-symbols-outlined text-[22px]">verified</span>
+                      <span>حسابك معتمد ككاتب في أروقة الخلود</span>
+                    </div>
+                    <p class="text-xs text-on-surface-variant leading-relaxed">
+                      تحمل شارة الكاتب المعتمد وتملك صلاحية نشر الروايات والأعمال وإدارتها مباشرة.
+                    </p>
+                    <button
+                      type="button"
+                      (click)="closeSettingsDrawer(); lib.openPublishModal()"
+                      class="btn-tactile px-4 py-2 rounded-xl bg-primary text-on-primary text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <span class="material-symbols-outlined text-[16px]">publish</span>
+                      <span>نشر عمل جديد</span>
+                    </button>
+                  </div>
+                } @else if (account.ownApplicationStatus() === 'pending') {
+                  <div class="p-5 rounded-2xl bg-secondary/10 border border-secondary/35 space-y-3">
+                    <div class="flex items-center gap-2 text-secondary font-bold text-sm">
+                      <span class="material-symbols-outlined text-[22px]">hourglass_top</span>
+                      <span>طلبك قيد المراجعة</span>
+                    </div>
+                    <p class="text-xs text-on-surface-variant leading-relaxed">
+                      تم إرسال طلب الانضمام ككاتب إلى الإدارة، ولا يمكن إرسال طلب مكرر أثناء بقاء الطلب قيد المراجعة.
+                    </p>
+                    @if (account.ownApplication()) {
+                      <div class="p-3 rounded-xl bg-surface-container text-xs space-y-1 border border-surface-variant/30">
+                        <div><strong>الاسم الأدبي:</strong> {{ account.ownApplication()!.penName }}</div>
+                        <div><strong>التصنيفات:</strong> {{ account.ownApplication()!.genres.join('، ') }}</div>
+                      </div>
+                    }
+                  </div>
+                } @else {
+                  @if (account.ownApplicationStatus() === 'rejected') {
+                    <div class="p-4 rounded-xl bg-rose-500/10 border border-rose-500/35 text-xs space-y-1 text-rose-700 dark:text-rose-300">
+                      <div class="font-bold flex items-center gap-1.5">
+                        <span class="material-symbols-outlined text-[17px]">cancel</span>
+                        <span>تم رفض الطلب السابق — يمكنك التعديل وإعادة الإرسال</span>
+                      </div>
+                      @if (account.ownApplication()?.reviewNote) {
+                        <p class="opacity-90">ملاحظة المراجع: {{ account.ownApplication()!.reviewNote }}</p>
+                      }
+                    </div>
+                  }
+
+                  <form [formGroup]="writerForm" (ngSubmit)="submitWriterRequest()" class="space-y-4">
+                    <div class="space-y-1.5">
+                      <label for="writer-pen-name" class="text-xs font-semibold text-on-surface block">الاسم الأدبي / اسم القلم</label>
+                      <input
+                        id="writer-pen-name"
+                        type="text"
+                        formControlName="penName"
+                        placeholder="الاسم الذي تكتب وتنشر به"
+                        class="w-full p-3 rounded-xl bg-surface-container border border-surface-variant/60 text-sm text-on-surface focus:outline-none focus:border-secondary"
+                      />
+                    </div>
+
+                    <div class="space-y-1.5">
+                      <span class="text-xs font-semibold text-on-surface block">التصنيفات الأدبية (حتى ٣ تصنيفات)</span>
+                      <div class="flex flex-wrap gap-1.5">
+                        @for (g of genreOptions; track g) {
+                          <button
+                            type="button"
+                            (click)="toggleWriterGenre(g)"
+                            [class]="selectedWriterGenres().includes(g)
+                              ? 'px-3 py-1 rounded-full bg-secondary text-on-secondary text-xs font-bold cursor-pointer'
+                              : 'px-3 py-1 rounded-full bg-surface-container text-on-surface-variant hover:text-on-surface text-xs border border-surface-variant/40 cursor-pointer'"
+                          >
+                            {{ g }}
+                          </button>
+                        }
+                      </div>
+                    </div>
+
+                    <div class="space-y-1.5">
+                      <label for="writer-short-bio" class="text-xs font-semibold text-on-surface block">نبذة تعريفية عن أسلوبك وتجربتك</label>
+                      <textarea
+                        id="writer-short-bio"
+                        rows="2"
+                        formControlName="shortBio"
+                        placeholder="نبذة موجزة عن خلفيتك الأدبية واهتماماتك السردية..."
+                        class="w-full p-3 rounded-xl bg-surface-container border border-surface-variant/60 text-xs text-on-surface focus:outline-none focus:border-secondary"
+                      ></textarea>
+                    </div>
+
+                    <div class="space-y-1.5">
+                      <label for="writer-sample" class="text-xs font-semibold text-on-surface block">نموذج كتابي / مقتطف قصير</label>
+                      <textarea
+                        id="writer-sample"
+                        rows="4"
+                        formControlName="writingSample"
+                        placeholder="اكتب مقطعاً أدبياً قصيراً يعكس أسلوبك في السرد واللغة..."
+                        class="w-full p-3 rounded-xl bg-surface-container border border-surface-variant/60 text-xs text-on-surface focus:outline-none focus:border-secondary leading-relaxed"
+                      ></textarea>
+                    </div>
+
+                    <button
+                      type="submit"
+                      [disabled]="account.isSubmittingApplication()"
+                      class="btn-tactile w-full py-3 rounded-xl bg-secondary text-on-secondary font-bold text-xs flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-50"
+                    >
+                      @if (account.isSubmittingApplication()) {
+                        <span class="material-symbols-outlined animate-spin text-[16px]">progress_activity</span>
+                        <span>جارٍ إرسال الطلب...</span>
+                      } @else {
+                        <span class="material-symbols-outlined text-[16px]">send</span>
+                        <span>{{ account.ownApplicationStatus() === 'rejected' ? 'إعادة إرسال الطلب' : 'إرسال طلب التقديم ككاتب' }}</span>
+                      }
+                    </button>
+                  </form>
+                }
+              </div>
+            }
+
+            <!-- SECTION D: ACCOUNT & SECURITY -->
+            @if (account.activeSettingsSection() === 'security') {
+              <div class="space-y-5">
+                <div class="p-4 rounded-2xl bg-surface-container border border-surface-variant/40 space-y-2">
+                  <span class="text-xs font-bold text-on-surface block">الحساب المرتبط</span>
+                  <div class="flex items-center justify-between text-xs">
+                    <span class="text-outline">البريد الإلكتروني:</span>
+                    <span dir="ltr" class="font-mono text-on-surface font-semibold">{{ auth.displayEmail() || 'غير متوفر' }}</span>
+                  </div>
+                </div>
+
+                <!-- Logout -->
+                <div class="p-4 rounded-2xl bg-surface-container border border-surface-variant/40 space-y-3">
+                  <div class="flex items-center justify-between gap-3">
+                    <div>
+                      <span class="text-xs font-bold text-on-surface block">تسجيل الخروج</span>
+                      <span class="text-[11px] text-outline">إنهاء الجلسة الحالية بأمان</span>
+                    </div>
+                    @if (!confirmLogoutPrompt()) {
+                      <button
+                        type="button"
+                        (click)="confirmLogoutPrompt.set(true)"
+                        class="px-4 py-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-semibold cursor-pointer border border-surface-variant/40"
+                      >
+                        تسجيل الخروج
+                      </button>
+                    }
+                  </div>
+                  @if (confirmLogoutPrompt()) {
+                    <div class="flex items-center justify-end gap-2 pt-2 border-t border-surface-variant/30 text-xs">
+                      <span class="text-outline ml-auto">تأكيد الخروج؟</span>
+                      <button
+                        type="button"
+                        (click)="confirmLogoutPrompt.set(false)"
+                        class="px-3 py-1.5 rounded-lg bg-surface-container-high text-on-surface cursor-pointer"
+                      >
+                        تراجع
+                      </button>
+                      <button
+                        type="button"
+                        (click)="performLogout()"
+                        class="px-3 py-1.5 rounded-lg bg-primary text-on-primary font-bold cursor-pointer"
+                      >
+                        نعم، خروج
+                      </button>
+                    </div>
+                  }
+                </div>
+
+                <!-- Permanent Account Deletion -->
+                <div class="p-4 rounded-2xl bg-rose-500/8 border border-rose-500/35 space-y-3">
+                  <div class="space-y-1">
+                    <span class="text-xs font-bold text-rose-700 dark:text-rose-400 flex items-center gap-1.5">
+                      <span class="material-symbols-outlined text-[18px]">delete_forever</span>
+                      <span>حذف الحساب نهائياً</span>
+                    </span>
+                    <p class="text-[11px] text-on-surface-variant leading-relaxed">
+                      يؤدي هذا الإجراء إلى حذف ملفك الشخصي، واسم المستخدم المحجوز، والصور المرفوعة، وسجلات القراءة والمفضلات، وسجل دخولك من هذا التطبيق فقط (دون المساس بحسابك على Google).
+                    </p>
+                  </div>
+
+                  @if (!showDeleteConfirmModal()) {
+                    <button
+                      type="button"
+                      (click)="showDeleteConfirmModal.set(true)"
+                      class="px-4 py-2 rounded-xl bg-rose-700 hover:bg-rose-800 text-white text-xs font-bold cursor-pointer"
+                    >
+                      طلب الحذف النهائي للحساب
+                    </button>
+                  } @else {
+                    <div class="p-3.5 rounded-xl bg-surface-container-low border border-rose-500/40 space-y-3">
+                      <label for="delete-confirm-word" class="text-xs font-semibold text-on-surface block">
+                        اكتب كلمة <strong class="text-rose-700 dark:text-rose-400">حذف</strong> للتأكيد:
+                      </label>
+                      <input
+                        id="delete-confirm-word"
+                        type="text"
+                        [formControl]="deleteConfirmText"
+                        placeholder="حذف"
+                        class="w-full p-2.5 rounded-xl bg-surface-container border border-rose-500/40 text-xs text-on-surface focus:outline-none"
+                      />
+
+                      @if (usesEmailPasswordProvider()) {
+                        <label for="delete-reauth-pass" class="text-xs font-semibold text-on-surface block">
+                          كلمة المرور (لإعادة التحقق الأمني):
+                        </label>
+                        <input
+                          id="delete-reauth-pass"
+                          type="password"
+                          [formControl]="deleteReauthPassword"
+                          placeholder="••••••••"
+                          class="w-full p-2.5 rounded-xl bg-surface-container border border-surface-variant/60 text-xs text-on-surface focus:outline-none"
+                        />
+                      }
+
+                      <div class="flex items-center justify-end gap-2 pt-1">
+                        <button
+                          type="button"
+                          (click)="showDeleteConfirmModal.set(false)"
+                          class="px-3.5 py-2 rounded-xl bg-surface-container text-xs text-on-surface-variant cursor-pointer"
+                        >
+                          إلغاء
+                        </button>
+                        <button
+                          type="button"
+                          (click)="confirmPermanentAccountDeletion()"
+                          [disabled]="account.isDeletingAccount()"
+                          class="px-4 py-2 rounded-xl bg-rose-700 hover:bg-rose-800 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                        >
+                          @if (account.isDeletingAccount()) {
+                            <span class="material-symbols-outlined animate-spin text-[15px]">progress_activity</span>
+                            <span>جارٍ الحذف...</span>
+                          } @else {
+                            <span>تأكيد الحذف النهائي</span>
+                          }
+                        </button>
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
+
+            <!-- SECTION E: ADMIN APPLICATION REVIEW QUEUE -->
+            @if (account.activeSettingsSection() === 'admin' && account.ownWriterStatus().isAdmin) {
+              <div class="space-y-4">
+                <div class="space-y-1">
+                  <span class="text-xs font-bold text-on-surface block">طلبات الانضمام ككاتب قيد المراجعة</span>
+                  <p class="text-[11px] text-outline">الموافقة تمنح شارة الكاتب وصلاحية النشر مباشرة في قاعدة البيانات.</p>
+                </div>
+
+                <input
+                  type="text"
+                  [formControl]="adminNoteControl"
+                  aria-label="ملاحظة المراجع الاختيارية"
+                  placeholder="ملاحظة مراجعة اختيارية قبل القبول أو الرفض..."
+                  class="w-full p-2.5 rounded-xl bg-surface-container border border-surface-variant/50 text-xs text-on-surface focus:outline-none"
+                />
+
+                @if (account.pendingAdminApplications().length === 0) {
+                  <div class="p-6 rounded-2xl bg-surface-container text-center text-xs text-outline">
+                    لا توجد طلبات معلقة للمراجعة حالياً.
+                  </div>
+                } @else {
+                  @for (req of account.pendingAdminApplications(); track req.userId) {
+                    <div class="p-4 rounded-2xl bg-surface-container border border-surface-variant/40 space-y-2.5 text-xs">
+                      <div class="flex items-center justify-between">
+                        <strong class="text-sm text-on-surface">{{ req.penName }}</strong>
+                        <span class="text-[11px] text-secondary">{{ req.genres.join('، ') }}</span>
+                      </div>
+                      <p class="text-on-surface-variant leading-relaxed">{{ req.shortBio }}</p>
+                      <div class="p-2.5 rounded-xl bg-surface-container-low text-on-surface-variant/90 leading-relaxed max-h-28 overflow-y-auto">
+                        {{ req.writingSample }}
+                      </div>
+                      <div class="flex items-center justify-end gap-2 pt-1">
+                        <button
+                          type="button"
+                          (click)="handleAdminReview(req.userId, 'rejected')"
+                          class="px-3.5 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-700 dark:text-rose-300 font-bold cursor-pointer"
+                        >
+                          رفض
+                        </button>
+                        <button
+                          type="button"
+                          (click)="handleAdminReview(req.userId, 'approved')"
+                          class="px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold cursor-pointer"
+                        >
+                          موافقة ومنح الشارة
+                        </button>
+                      </div>
+                    </div>
+                  }
+                }
+              </div>
+            }
+          </div>
+        </aside>
       </div>
-    </div>
-  </div>
+    }
+  }
 </div>

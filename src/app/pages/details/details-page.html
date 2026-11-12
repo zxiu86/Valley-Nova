@@ -137,10 +137,19 @@
             {{ novel.title }}
           </h1>
 
-          <!-- Subtitle / Citation -->
-          <span [class]="'text-sm sm:text-base font-medium mb-6 block ' + theme.textColor">
+          <!-- Subtitle / Citation & Verified Author -->
+          <span [class]="'text-sm sm:text-base font-medium mb-2 block ' + theme.textColor">
             {{ novel.subGenre || 'SAMARKAND RESONANCES: In the Labyrinths of Astronomy & Gunpowder' }}
           </span>
+          @if (novel.author) {
+            <div class="flex items-center gap-2 flex-wrap mb-5 text-xs sm:text-sm text-on-surface-variant">
+              <span class="material-symbols-outlined text-[17px] text-secondary">ink_pen</span>
+              <span>بقلم: <strong class="text-on-surface">{{ novel.author }}</strong></span>
+              <app-writer-badge [authorId]="novel.authorId" [compact]="false" />
+            </div>
+          } @else {
+            <div class="mb-4"></div>
+          }
 
           <!-- Quick Metrics Bento Bar -->
           <div class="grid grid-cols-3 gap-3 p-4 sm:p-5 rounded-2xl bg-surface-container-low shadow-sm mb-6 border border-surface-variant/40 text-center sm:text-right">
@@ -740,9 +749,12 @@
             <span>اسم المصنف المحقق:</span>
             <span class="text-secondary font-serif">{{ novel.title }}</span>
           </div>
-          <div class="flex justify-between text-on-surface">
+          <div class="flex justify-between items-center text-on-surface gap-2">
             <span>المحقق المعتمد:</span>
-            <span>{{ novel.author || 'الشيخ جلال الدين الموصلي' }}</span>
+            <span class="inline-flex items-center gap-1.5">
+              <span>{{ novel.author || 'الشيخ جلال الدين الموصلي' }}</span>
+              <app-writer-badge [authorId]="novel.authorId" [compact]="true" />
+            </span>
           </div>
           <div class="flex justify-between text-on-surface">
             <span>الرواق المرجعي:</span>

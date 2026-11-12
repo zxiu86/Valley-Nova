@@ -2,6 +2,7 @@ export interface NovelCard {
   id: string;
   title: string;
   author?: string;
+  authorId?: string;
   genre: string;
   coverUrl: string;
   coverAlt: string;
@@ -79,6 +80,89 @@ export interface ReaderBookmarkItem {
   excerpt: string;
   percent: number;
   date: string;
+}
+
+export interface PrivacySettings {
+  isPublic: boolean;
+  showSavedNovels: boolean;
+  showReadingHistory: boolean;
+  showProfileInfo: boolean;
+}
+
+export interface PublicProfile {
+  uid: string;
+  displayName: string;
+  username: string;
+  photoURL: string;
+  coverURL: string;
+  isPublic: boolean;
+  showSavedNovels: boolean;
+  showReadingHistory: boolean;
+  showProfileInfo: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface FullAccountProfile extends PublicProfile {
+  email?: string;
+  bio: string;
+  savedNovelsCount: number | null;
+  readChaptersCount: number | null;
+}
+
+export interface UserRoleRecord {
+  userId: string;
+  role: 'reader' | 'author' | 'auditor' | 'translate' | 'founder';
+  roles?: string[];
+  status: 'active' | 'revoked';
+  canPublish?: boolean;
+  assignedBy?: string;
+  assignedAt?: string;
+}
+
+export interface VerifiedWriterStatus {
+  isWriterBadge: boolean;
+  canPublish: boolean;
+  isAdmin: boolean;
+  roleRecord: UserRoleRecord | null;
+}
+
+export type WriterApplicationStatus = 'none' | 'pending' | 'approved' | 'rejected';
+
+export interface WriterApplication {
+  userId: string;
+  penName: string;
+  shortBio: string;
+  genres: string[];
+  writingSample: string;
+  status: 'pending' | 'approved' | 'rejected';
+  reviewNote?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  submittedAt: string;
+  updatedAt: string;
+}
+
+export interface PublishedNovelRecord {
+  id: string;
+  title: string;
+  authorId: string;
+  authorName: string;
+  genre: string;
+  categoryGroup: CorridorId;
+  coverUrl: string;
+  description: string;
+  readingHours: number;
+  isPublished: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UsernameCheckResult {
+  status: 'idle' | 'invalid' | 'reserved' | 'checking' | 'available' | 'taken' | 'unchanged';
+  normalized: string;
+  message: string;
+  suggestions: string[];
 }
 
 export type AppView = 'novels' | 'details' | 'explore' | 'auth' | 'profile' | 'reader';

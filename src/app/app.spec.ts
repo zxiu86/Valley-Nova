@@ -122,4 +122,62 @@ describe('MTX Compression, Shell, Theme, Routes & Copy Protection Specs', () => 
     proseEl.remove();
     protection.destroy();
   });
+
+  it('should normalize and validate Latin/numeric/underscore usernames case-insensitively and block reserved names', async () => {
+    const { normalizeUsername, validateUsernameFormat } = await import('./core/mtx-firebase');
+
+    expect(normalizeUsername('  @Zaid_05  ')).toBe('zaid_05');
+    expect(validateUsernameFormat('Zaid').valid).toBe(true);
+    expect(validateUsernameFormat('Zaid').normalized).toBe('zaid');
+    expect(validateUsernameFormat('za_99').valid).toBe(true);
+    expect(validateUsernameFormat('ab').valid).toBe(false);
+    expect(validateUsernameFormat('زيد').valid).toBe(false);
+    expect(validateUsernameFormat('admin').reserved).toBe(true);
+    expect(validateUsernameFormat('Admin').valid).toBe(false);
+  });
+
+  it('should render ProfilePage private guard state without exposing personal details and enforce strict 2-stat limit', async () => {
+    const { AccountService } = await import('./core/services/account.service');
+    const accountService = TestBed.inject(AccountService);
+
+    accountService.viewedState.set('private');
+    accountService.viewedProfile.set(null);
+    const privateFixture = TestBed.createComponent(ProfilePage);
+    privateFixture.detectChanges();
+    const privateText = (privateFixture.nativeElement as HTMLElement).textContent || '';
+    expect(privateText).toContain('هذا الحساب خاص');
+
+    accountService.viewedIsOwner.set(true);
+    accountService.viewedWriterStatus.set({
+      isWriterBadge: false,
+      canPublish: false,
+      isAdmin: false,
+      roleRecord: null,
+    });
+    accountService.viewedProfile.set({
+      uid: 'u1',
+      displayName: 'زيد الأدبي',
+      username: 'zaid',
+      bio: 'قارئ شغوف',
+      photoURL: '',
+      coverURL: '',
+      isPublic: true,
+      showSavedNovels: true,
+      showReadingHistory: true,
+      showProfileInfo: true,
+      savedNovelsCount: 3,
+      readChaptersCount: 7,
+    });
+    accountService.viewedState.set('ok');
+
+    const okFixture = TestBed.createComponent(ProfilePage);
+    okFixture.detectChanges();
+    const okHtml = (okFixture.nativeElement as HTMLElement).textContent || '';
+    expect(okHtml).toContain('زيد الأدبي');
+    expect(okHtml).toContain('عدد الروايات المحفوظة');
+    expect(okHtml).toContain('عدد الفصول المقروءة');
+    expect(okHtml).not.toContain('أعمالي المنشورة');
+    expect(okHtml).not.toContain('ساعات القراءة');
+    expect(okHtml).not.toContain('المتابعين');
+  });
 });

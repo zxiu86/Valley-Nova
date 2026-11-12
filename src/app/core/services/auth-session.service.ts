@@ -4,6 +4,7 @@ import { FormControl, FormGroup } from '@angular/forms';
 import type { User, Unsubscribe } from 'firebase/auth';
 import {
   StoredUserProfile,
+  ensureUserDocumentsOnLogin,
   getUserBookmarksFromFirestore,
   getUserProfileFromFirestore,
   loginWithEmail,
@@ -16,6 +17,7 @@ import {
   verifyFirestoreConnection,
   waitForAuthSessionReady,
 } from '../mtx-firebase';
+import { AccountService } from './account.service';
 
 const AUTH_HINT_KEY = 'mtx_auth_display_hint';
 
@@ -29,6 +31,7 @@ export interface AuthDisplayHint {
 @Injectable({ providedIn: 'root' })
 export class AuthSessionService {
   private readonly platformId = inject(PLATFORM_ID);
+  private readonly accountService = inject(AccountService);
 
   readonly authReady = signal<boolean>(false);
   readonly currentUser = signal<User | null>(null);
@@ -42,19 +45,32 @@ export class AuthSessionService {
 
   readonly displayName = computed(() => {
     return (
+      this.accountService.ownProfile()?.displayName ||
       this.userProfile()?.displayName ||
       this.currentUser()?.displayName ||
       this.authHint()?.displayName ||
-      'سادن الكلمات الخالدة'
+      'قارئ أروقة الخلود'
     );
   });
 
   readonly displayEmail = computed(() => {
-    return this.userProfile()?.email || this.currentUser()?.email || this.authHint()?.email || '';
+    return (
+      this.accountService.ownProfile()?.email ||
+      this.userProfile()?.email ||
+      this.currentUser()?.email ||
+      this.authHint()?.email ||
+      ''
+    );
   });
 
   readonly photoUrl = computed(() => {
-    return this.userProfile()?.photoURL || this.currentUser()?.photoURL || this.authHint()?.photoURL || '';
+    return (
+      this.accountService.ownProfile()?.photoURL ||
+      this.userProfile()?.photoURL ||
+      this.currentUser()?.photoURL ||
+      this.authHint()?.photoURL ||
+      ''
+    );
   });
 
   readonly authLoginForm = new FormGroup({
@@ -87,8 +103,6 @@ export class AuthSessionService {
     this.initialized = true;
 
     this.restoreDisplayHint();
-
-    // Verify Firestore connectivity unobtrusively
     verifyFirestoreConnection().catch(() => false);
 
     try {
@@ -98,9 +112,11 @@ export class AuthSessionService {
       if (initialUser) {
         this.saveDisplayHint(initialUser);
         await refreshAuthTokenIfNeeded(initialUser);
+        await ensureUserDocumentsOnLogin(initialUser);
         await this.loadUserData(initialUser.uid);
       } else {
         this.clearDisplayHint();
+        this.accountService.clearOwnerState();
       }
       this.authReady.set(true);
       this.onAuthRestoredCallback?.(initialUser);
@@ -119,6 +135,7 @@ export class AuthSessionService {
         } else {
           this.userProfile.set(null);
           this.clearDisplayHint();
+          this.accountService.clearOwnerState();
         }
       });
 
@@ -149,6 +166,7 @@ export class AuthSessionService {
       const [profile, bookmarks] = await Promise.all([
         getUserProfileFromFirestore(userId),
         getUserBookmarksFromFirestore(userId),
+        this.accountService.loadOwnerAccount(userId),
       ]);
       if (profile) {
         this.userProfile.set(profile);
@@ -209,7 +227,7 @@ export class AuthSessionService {
     this.authLoading.set(true);
     this.authError.set(null);
     try {
-      const user = await registerWithEmail(email, pass, name || 'سادن الكلمات الخالدة');
+      const user = await registerWithEmail(email, pass, name || 'قارئ أروقة الخلود');
       this.currentUser.set(user);
       this.saveDisplayHint(user);
       await this.loadUserData(user.uid);
@@ -240,7 +258,7 @@ export class AuthSessionService {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       if (!msg.includes('popup-closed-by-user')) {
-        this.authError.set('تعذر تسجيل الدخول عبر جوجل، يرجى المحاولة لاحقاً أو استخدام البريد الإلكتروني');
+        this.authError.set('تعذر تسجيل الدخول عبر جوجل، يرجى المحاولة لاحقاً');
       }
       return null;
     } finally {
@@ -255,13 +273,14 @@ export class AuthSessionService {
       this.currentUser.set(null);
       this.userProfile.set(null);
       this.clearDisplayHint();
+      this.accountService.clearOwnerState();
     }
   }
 
   private saveDisplayHint(user: User): void {
     const hint: AuthDisplayHint = {
       uid: user.uid,
-      displayName: user.displayName || 'سادن الكلمات الخالدة',
+      displayName: user.displayName || 'قارئ أروقة الخلود',
       email: user.email || '',
       photoURL: user.photoURL || '',
     };

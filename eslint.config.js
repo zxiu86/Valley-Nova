@@ -1,10 +1,14 @@
 // @ts-check
 const eslint = require('@eslint/js');
-const {defineConfig} = require('eslint/config');
+const { defineConfig } = require('eslint/config');
 const tseslint = require('typescript-eslint');
 const angular = require('angular-eslint');
+const firebaseRulesPlugin = require('@firebase/eslint-plugin-security-rules');
 
 module.exports = defineConfig([
+  {
+    ignores: ['dist/**/*', 'docs/**/*'],
+  },
   {
     files: ['**/*.ts'],
     extends: [
@@ -40,5 +44,6 @@ module.exports = defineConfig([
       angular.configs.templateAccessibility,
     ],
     rules: {},
-  }
+  },
+  firebaseRulesPlugin.flatRecommended,
 ]);

@@ -420,9 +420,12 @@
                       <h3 class="text-xs sm:text-sm font-bold text-on-surface group-hover:text-primary transition-colors line-clamp-1">
                         {{ book.title }}
                       </h3>
-                      <p class="text-[11px] text-on-surface-variant line-clamp-1 mt-0.5">
-                        {{ book.author }}
-                      </p>
+                      <div class="flex items-center gap-1 mt-0.5 min-w-0">
+                        <p class="text-[11px] text-on-surface-variant truncate">
+                          {{ book.author }}
+                        </p>
+                        <app-writer-badge [authorId]="book.authorId" [compact]="true" />
+                      </div>
                     </div>
                     <div class="flex items-center justify-between pt-2 text-outline text-[10px] sm:text-xs border-t border-surface-variant/30 mt-1">
                       <span class="text-secondary font-medium truncate max-w-[90px]">
@@ -501,9 +504,12 @@
                         </h3>
                         <span class="text-xs text-outline shrink-0 font-medium tabular-nums">{{ book.metaSecondary }}</span>
                       </div>
-                      <p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">
-                        {{ book.author }}
-                      </p>
+                      <div class="flex items-center gap-1.5 mt-0.5 min-w-0">
+                        <p class="font-body-sm text-body-sm text-on-surface-variant truncate">
+                          {{ book.author }}
+                        </p>
+                        <app-writer-badge [authorId]="book.authorId" [compact]="true" />
+                      </div>
                       <p class="text-xs text-on-surface-variant/85 line-clamp-2 mt-2 leading-relaxed">
                         {{ book.quote || book.description }}
                       </p>
