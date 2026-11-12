@@ -1,12 +1,12 @@
 {
-  "projectId": "promising-victory-0c62s",
-  "appId": "1:71884844349:web:a1ef234a77fd08252d6954",
-  "apiKey": "AIzaSyD4cIu9On5Y0fo8B7fU-Uw-QG81U2HUNsY",
-  "authDomain": "promising-victory-0c62s.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-valleynova-c797fb3e-9cf5-4735-8442-6d3979b6f5cb",
-  "storageBucket": "promising-victory-0c62s.firebasestorage.app",
-  "messagingSenderId": "71884844349",
-  "measurementId": "",
-  "oAuthClientId": "71884844349-3sfshqiutp497tfq41886sh7phsiq0ro.apps.googleusercontent.com",
+  "projectId": "the-eternal-gallery",
+  "appId": "1:743314625975:web:2c1e466e4117fa49af0432",
+  "apiKey": "AIzaSyD_-Vn7NznHT6laiUekpeuFWUs9BXl1gCE",
+  "authDomain": "the-eternal-gallery.firebaseapp.com",
+  "firestoreDatabaseId": "(default)",
+  "storageBucket": "the-eternal-gallery.firebasestorage.app",
+  "messagingSenderId": "743314625975",
+  "measurementId": "G-6PQTKLTVKF",
+  "oAuthClientId": "",
   "recaptchaSiteKey": ""
 }

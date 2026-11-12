@@ -147,7 +147,8 @@ export function getFirebaseApp(): FirebaseApp {
 export function getDb(): Firestore {
   if (!dbInstance) {
     const app = getFirebaseApp();
-    dbInstance = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+    const dbId = (firebaseConfig as { firestoreDatabaseId?: string }).firestoreDatabaseId;
+    dbInstance = dbId && dbId !== '(default)' ? getFirestore(app, dbId) : getFirestore(app);
   }
   return dbInstance;
 }
@@ -1002,7 +1003,7 @@ export async function uploadProfileImageAsset(
     });
 
     const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('STORAGE_TIMEOUT')), 9000)
+      setTimeout(() => reject(new Error('STORAGE_TIMEOUT')), 2000)
     );
 
     const snap = await Promise.race([uploadTask, timeoutPromise]);
@@ -1016,17 +1017,12 @@ export async function uploadProfileImageAsset(
       }
     }
     return url;
-  } catch (storageErr) {
-    const msg = storageErr instanceof Error ? storageErr.message : String(storageErr);
-    // Fallback to compact WebP data URI ONLY if Storage bucket is unconfigured/unauthorized in this Firebase project
-    if (
-      fallbackDataUrl &&
-      fallbackDataUrl.length <= 360000 &&
-      (msg.includes('storage/') || msg.includes('STORAGE_TIMEOUT') || msg.includes('403') || msg.includes('404'))
-    ) {
+  } catch {
+    // Seamless fallback to compact WebP data URI when Cloud Storage is not enabled or requires Blaze plan
+    if (fallbackDataUrl && fallbackDataUrl.length <= 420000) {
       return fallbackDataUrl;
     }
-    throw new Error('تعذر رفع الصورة. تأكد من اتصالك بالإنترنت وحجم الصورة ثم أعد المحاولة.');
+    throw new Error('تعذر معالجة الصورة. يرجى تجربة ملف أصغر حجماً.');
   }
 }
 

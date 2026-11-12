@@ -568,8 +568,8 @@ export class AccountService {
   // ================= SIMPLE INTERACTIVE IMAGE CROP/PAN/ZOOM RENDERER ================= //
 
   async renderCroppedImage(draft: CroppedImageDraft): Promise<{ blob: Blob; dataUrl: string }> {
-    const targetWidth = draft.kind === 'banner' ? 1500 : 512;
-    const targetHeight = draft.kind === 'banner' ? 800 : 512;
+    const targetWidth = draft.kind === 'banner' ? 1200 : 384;
+    const targetHeight = draft.kind === 'banner' ? 640 : 384;
 
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
       const el = new Image();
@@ -605,7 +605,7 @@ export class AccountService {
     ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
 
     const mimeType = 'image/webp';
-    const quality = draft.kind === 'banner' ? 0.8 : 0.85;
+    const quality = draft.kind === 'banner' ? 0.76 : 0.82;
 
     const blob = await new Promise<Blob>((resolve, reject) => {
       canvas.toBlob(
