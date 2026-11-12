@@ -80,13 +80,18 @@ describe('MTX Compression, Shell, Theme, Routes & Copy Protection Specs', () => 
     expect((profileFixture.nativeElement as HTMLElement).textContent?.length).toBeGreaterThan(0);
   });
 
-  it('should persist light and dark theme preference via ThemeService', () => {
+  it('should persist light and dark theme preference and trigger strictly 12 mosaic tiles via ThemeService', () => {
     const themeService = TestBed.inject(ThemeService);
     themeService.init();
     themeService.setTheme('light');
     expect(themeService.theme()).toBe('light');
     expect(themeService.isDark()).toBe(false);
     expect(localStorage.getItem('mtx_site_theme')).toBe('light');
+
+    themeService.toggleThemeWithMosaic();
+    expect(themeService.isMosaicActive()).toBe(true);
+    expect(themeService.mosaicTiles().length).toBe(12);
+    expect(themeService.mosaicRows() * themeService.mosaicCols()).toBe(12);
 
     themeService.setTheme('dark');
     expect(themeService.theme()).toBe('dark');

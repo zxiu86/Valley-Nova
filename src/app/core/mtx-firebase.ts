@@ -238,10 +238,13 @@ export async function verifyFirestoreConnection(): Promise<boolean> {
     await getDocFromServer(doc(db, 'test', 'connection'));
     return true;
   } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.warn('Firebase client is offline or database uncontactable.');
+    const msg = error instanceof Error ? error.message : String(error);
+    if (msg.includes('the client is offline') || msg.includes('unavailable')) {
+      console.error('Please check your Firebase configuration (Firestore offline/unreachable):', msg);
+      return false;
     }
-    return false;
+    // A permission-denied or not-found response from getDocFromServer confirms the server is reachable
+    return true;
   }
 }
 
@@ -252,7 +255,9 @@ export async function loginWithEmail(email: string, pass: string): Promise<User>
   const auth = getFirebaseAuth();
   const credential = await signInWithEmailAndPassword(auth, email, pass);
   if (credential.user) {
-    await ensureUserDocumentsOnLogin(credential.user);
+    await ensureUserDocumentsOnLogin(credential.user).catch((err) => {
+      console.warn('Login Firestore doc sync warning:', err);
+    });
   }
   return credential.user;
 }
@@ -269,7 +274,9 @@ export async function registerWithEmail(
     await updateProfile(credential.user, { displayName });
   }
   if (credential.user) {
-    await ensureUserDocumentsOnLogin(credential.user, displayName);
+    await ensureUserDocumentsOnLogin(credential.user, displayName).catch((err) => {
+      console.warn('Register Firestore doc sync warning:', err);
+    });
   }
   return credential.user;
 }
@@ -281,7 +288,9 @@ export async function loginWithGoogle(): Promise<User> {
   provider.setCustomParameters({ prompt: 'select_account' });
   const credential = await signInWithPopup(auth, provider);
   if (credential.user) {
-    await ensureUserDocumentsOnLogin(credential.user);
+    await ensureUserDocumentsOnLogin(credential.user).catch((err) => {
+      console.warn('Google login Firestore doc sync warning:', err);
+    });
   }
   return credential.user;
 }
@@ -466,8 +475,11 @@ export async function resolveUsernameToUid(rawUsername: string): Promise<{
     }
     return { uid: null };
   } catch (err) {
+    if (isPermissionDeniedError(err)) {
+      handleFirestoreError(err, OperationType.GET, `usernames/${normalized}`);
+    }
     console.warn('Error resolving username:', err);
-    return { uid: null };
+    throw err;
   }
 }
 
@@ -543,20 +555,39 @@ export async function ensureUserDocumentsOnLogin(
       await batch.commit();
     }
   } catch (error) {
-    console.warn('Could not initialize user documents cleanly:', error);
+    if (isPermissionDeniedError(error)) {
+      handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}`);
+    }
+    throw error;
   }
 }
 
 export async function loadOwnerAccountProfile(uid: string): Promise<FullAccountProfile | null> {
   const db = getDb();
+  const auth = getFirebaseAuth();
   try {
-    const [userSnap, publicSnap, bioSnap, bookmarksSnap, historySnap] = await Promise.all([
-      getDoc(doc(db, 'users', uid)),
-      getDoc(doc(db, 'public_profiles', uid)),
-      getDoc(doc(db, 'public_profiles', uid, 'details', 'bio')).catch(() => null),
-      getDocs(query(collection(db, 'users', uid, 'bookmarks'), limit(200))).catch(() => null),
-      getDocs(query(collection(db, 'users', uid, 'history'), limit(500))).catch(() => null),
-    ]);
+    const [initialUserSnap, initialPublicSnap, initialBioSnap, bookmarksSnap, historySnap] =
+      await Promise.all([
+        getDoc(doc(db, 'users', uid)),
+        getDoc(doc(db, 'public_profiles', uid)),
+        getDoc(doc(db, 'public_profiles', uid, 'details', 'bio')).catch(() => null),
+        getDocs(query(collection(db, 'users', uid, 'bookmarks'), limit(200))).catch(() => null),
+        getDocs(query(collection(db, 'users', uid, 'history'), limit(500))).catch(() => null),
+      ]);
+
+    let userSnap = initialUserSnap;
+    let publicSnap = initialPublicSnap;
+    let bioSnap = initialBioSnap;
+
+    // Self-heal if authenticated user's initial Firestore docs were never created yet
+    if ((!userSnap.exists() || !publicSnap.exists()) && auth.currentUser?.uid === uid) {
+      await ensureUserDocumentsOnLogin(auth.currentUser);
+      [userSnap, publicSnap, bioSnap] = await Promise.all([
+        getDoc(doc(db, 'users', uid)),
+        getDoc(doc(db, 'public_profiles', uid)),
+        getDoc(doc(db, 'public_profiles', uid, 'details', 'bio')).catch(() => null),
+      ]);
+    }
 
     const priv = userSnap.exists() ? (userSnap.data() as StoredUserProfile) : null;
     const pub = publicSnap.exists() ? (publicSnap.data() as PublicProfile) : null;
@@ -569,7 +600,7 @@ export async function loadOwnerAccountProfile(uid: string): Promise<FullAccountP
 
     return {
       uid,
-      email: priv?.email || '',
+      email: priv?.email || auth.currentUser?.email || '',
       displayName: pub?.displayName || priv?.displayName || 'قارئ أروقة الخلود',
       username: pub?.username || priv?.username || '',
       bio: bioDoc?.bio ?? priv?.bio ?? '',
@@ -585,8 +616,10 @@ export async function loadOwnerAccountProfile(uid: string): Promise<FullAccountP
       updatedAt: pub?.updatedAt || priv?.updatedAt,
     };
   } catch (err) {
-    console.warn('Error loading owner account profile:', err);
-    return null;
+    if (isPermissionDeniedError(err)) {
+      handleFirestoreError(err, OperationType.GET, `users/${uid}`);
+    }
+    throw err;
   }
 }
 
@@ -731,6 +764,8 @@ export async function saveAccountProfileChanges(
       const bioRef = doc(db, 'public_profiles', uid, 'details', 'bio');
 
       const [userSnap, publicSnap] = await Promise.all([tx.get(userRef), tx.get(publicRef)]);
+      const sameUsernameRef = nextNorm && nextNorm === prevNorm ? doc(db, 'usernames', nextNorm) : null;
+      const sameUsernameSnap = sameUsernameRef ? await tx.get(sameUsernameRef) : null;
       const email = auth.currentUser?.email || (userSnap.data() as StoredUserProfile | undefined)?.email || '';
 
       if (nextNorm && nextNorm !== prevNorm) {
@@ -759,11 +794,20 @@ export async function saveAccountProfileChanges(
           isPublic: privacy.isPublic,
           updatedAt: now,
         });
-      } else if (nextNorm) {
-        tx.update(doc(db, 'usernames', nextNorm), {
-          isPublic: privacy.isPublic,
-          updatedAt: now,
-        });
+      } else if (sameUsernameRef) {
+        if (sameUsernameSnap && sameUsernameSnap.exists()) {
+          tx.update(sameUsernameRef, {
+            isPublic: privacy.isPublic,
+            updatedAt: now,
+          });
+        } else if (nextNorm) {
+          tx.set(sameUsernameRef, {
+            uid,
+            username: nextNorm,
+            isPublic: privacy.isPublic,
+            updatedAt: now,
+          });
+        }
       }
 
       if (!publicSnap.exists()) {
@@ -852,34 +896,79 @@ export async function savePrivacySettingsToFirestore(
   currentUsername?: string
 ): Promise<void> {
   const db = getDb();
+  const auth = getFirebaseAuth();
   const now = new Date().toISOString();
-  const batch = writeBatch(db);
-
-  batch.update(doc(db, 'public_profiles', uid), {
-    isPublic: privacy.isPublic,
-    showSavedNovels: privacy.showSavedNovels,
-    showReadingHistory: privacy.showReadingHistory,
-    showProfileInfo: privacy.showProfileInfo,
-    updatedAt: now,
-  });
-
-  batch.update(doc(db, 'users', uid), {
-    isPublic: privacy.isPublic,
-    showSavedNovels: privacy.showSavedNovels,
-    showReadingHistory: privacy.showReadingHistory,
-    showProfileInfo: privacy.showProfileInfo,
-    updatedAt: now,
-  });
-
   const normUsername = normalizeUsername(currentUsername || '');
-  if (normUsername) {
-    batch.update(doc(db, 'usernames', normUsername), {
-      isPublic: privacy.isPublic,
-      updatedAt: now,
-    });
-  }
 
   try {
+    const publicRef = doc(db, 'public_profiles', uid);
+    const userRef = doc(db, 'users', uid);
+    const usernameRef = normUsername ? doc(db, 'usernames', normUsername) : null;
+
+    const [publicSnap, userSnap, usernameSnap] = await Promise.all([
+      getDoc(publicRef),
+      getDoc(userRef),
+      usernameRef ? getDoc(usernameRef) : Promise.resolve(null),
+    ]);
+
+    const batch = writeBatch(db);
+    if (publicSnap.exists()) {
+      batch.update(publicRef, {
+        isPublic: privacy.isPublic,
+        showSavedNovels: privacy.showSavedNovels,
+        showReadingHistory: privacy.showReadingHistory,
+        showProfileInfo: privacy.showProfileInfo,
+        updatedAt: now,
+      });
+    } else {
+      batch.set(publicRef, {
+        uid,
+        displayName: auth.currentUser?.displayName || 'قارئ أروقة الخلود',
+        username: normUsername,
+        photoURL: auth.currentUser?.photoURL || '',
+        coverURL: '',
+        isPublic: privacy.isPublic,
+        showSavedNovels: privacy.showSavedNovels,
+        showReadingHistory: privacy.showReadingHistory,
+        showProfileInfo: privacy.showProfileInfo,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    if (userSnap.exists()) {
+      batch.update(userRef, {
+        isPublic: privacy.isPublic,
+        showSavedNovels: privacy.showSavedNovels,
+        showReadingHistory: privacy.showReadingHistory,
+        showProfileInfo: privacy.showProfileInfo,
+        updatedAt: now,
+      });
+    } else {
+      batch.set(userRef, {
+        id: uid,
+        email: auth.currentUser?.email || '',
+        displayName: auth.currentUser?.displayName || 'قارئ أروقة الخلود',
+        username: normUsername,
+        bio: '',
+        photoURL: auth.currentUser?.photoURL || '',
+        coverURL: '',
+        isPublic: privacy.isPublic,
+        showSavedNovels: privacy.showSavedNovels,
+        showReadingHistory: privacy.showReadingHistory,
+        showProfileInfo: privacy.showProfileInfo,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    if (usernameRef && usernameSnap && usernameSnap.exists()) {
+      batch.update(usernameRef, {
+        isPublic: privacy.isPublic,
+        updatedAt: now,
+      });
+    }
+
     await batch.commit();
   } catch (err) {
     if (isPermissionDeniedError(err)) {
@@ -973,6 +1062,9 @@ export async function saveBookmarkToFirestore(
     }
     await batch.commit();
   } catch (error) {
+    if (isPermissionDeniedError(error)) {
+      handleFirestoreError(error, OperationType.WRITE, `users/${userId}/bookmarks/${novel.id}`);
+    }
     console.warn('Could not save bookmark to Firestore:', error);
   }
 }
@@ -997,6 +1089,9 @@ export async function removeBookmarkFromFirestore(
     }
     await batch.commit();
   } catch (error) {
+    if (isPermissionDeniedError(error)) {
+      handleFirestoreError(error, OperationType.DELETE, `users/${userId}/bookmarks/${novelId}`);
+    }
     console.warn('Could not remove bookmark from Firestore:', error);
   }
 }
@@ -1013,6 +1108,9 @@ export async function syncSavedNovelsCountToFirestore(
       updatedAt: new Date().toISOString(),
     });
   } catch (err) {
+    if (isPermissionDeniedError(err)) {
+      handleFirestoreError(err, OperationType.WRITE, `public_profiles/${userId}/stats/saved`);
+    }
     console.warn('Could not sync saved count:', err);
   }
 }
@@ -1024,6 +1122,9 @@ export async function getUserBookmarksFromFirestore(userId: string): Promise<str
     const snap = await getDocs(q);
     return snap.docs.map((d) => d.id);
   } catch (error) {
+    if (isPermissionDeniedError(error)) {
+      handleFirestoreError(error, OperationType.LIST, `users/${userId}/bookmarks`);
+    }
     console.warn('Could not fetch bookmarks from Firestore:', error);
     return [];
   }
@@ -1059,6 +1160,9 @@ export async function recordChapterReadInFirestore(
     });
     return count;
   } catch (err) {
+    if (isPermissionDeniedError(err)) {
+      handleFirestoreError(err, OperationType.WRITE, `users/${userId}/history/${historyDocId}`);
+    }
     console.warn('Could not record reading history:', err);
     return 0;
   }
@@ -1069,7 +1173,10 @@ export async function getUserReadChaptersCount(userId: string): Promise<number> 
     const db = getDb();
     const historySnap = await getDocs(query(collection(db, 'users', userId, 'history'), limit(500)));
     return historySnap.size;
-  } catch {
+  } catch (err) {
+    if (isPermissionDeniedError(err)) {
+      handleFirestoreError(err, OperationType.LIST, `users/${userId}/history`);
+    }
     return 0;
   }
 }
@@ -1279,16 +1386,26 @@ export async function publishNovelToFirestore(
 
 export async function fetchAuthorPublishedNovels(authorId: string): Promise<PublishedNovelRecord[]> {
   const db = getDb();
+  const auth = getFirebaseAuth();
   try {
-    const q = query(
-      collection(db, 'novels'),
-      where('authorId', '==', authorId),
-      where('isPublished', '==', true),
-      limit(40)
-    );
+    // Use single-field queries so no manual Firestore composite index is required
+    if (auth.currentUser?.uid === authorId) {
+      const q = query(collection(db, 'novels'), where('authorId', '==', authorId), limit(50));
+      const snap = await getDocs(q);
+      return snap.docs
+        .map((d) => d.data() as PublishedNovelRecord)
+        .filter((n) => n.isPublished !== false);
+    }
+
+    const q = query(collection(db, 'novels'), where('isPublished', '==', true), limit(100));
     const snap = await getDocs(q);
-    return snap.docs.map((d) => d.data() as PublishedNovelRecord);
+    return snap.docs
+      .map((d) => d.data() as PublishedNovelRecord)
+      .filter((n) => n.authorId === authorId);
   } catch (err) {
+    if (isPermissionDeniedError(err)) {
+      handleFirestoreError(err, OperationType.LIST, 'novels');
+    }
     console.warn('Could not fetch author published novels:', err);
     return [];
   }
@@ -1300,7 +1417,10 @@ export async function fetchAllPublishedNovels(): Promise<PublishedNovelRecord[]>
     const q = query(collection(db, 'novels'), where('isPublished', '==', true), limit(50));
     const snap = await getDocs(q);
     return snap.docs.map((d) => d.data() as PublishedNovelRecord);
-  } catch {
+  } catch (err) {
+    if (isPermissionDeniedError(err)) {
+      handleFirestoreError(err, OperationType.LIST, 'novels');
+    }
     return [];
   }
 }
@@ -1386,11 +1506,26 @@ export async function deleteAppAccountAndData(
 
   const cleanUsername = normalizeUsername(options.username || '');
   if (cleanUsername) {
-    batch.delete(doc(db, 'usernames', cleanUsername));
-    batch.delete(doc(db, 'username_redirects', cleanUsername));
+    const [unameSnap, redirectSnap] = await Promise.all([
+      getDoc(doc(db, 'usernames', cleanUsername)).catch(() => null),
+      getDoc(doc(db, 'username_redirects', cleanUsername)).catch(() => null),
+    ]);
+    if (unameSnap?.exists() && (unameSnap.data() as { uid?: string })?.uid === uid) {
+      batch.delete(unameSnap.ref);
+    }
+    if (redirectSnap?.exists() && (redirectSnap.data() as { uid?: string })?.uid === uid) {
+      batch.delete(redirectSnap.ref);
+    }
   }
 
-  await batch.commit();
+  try {
+    await batch.commit();
+  } catch (err) {
+    if (isPermissionDeniedError(err)) {
+      handleFirestoreError(err, OperationType.DELETE, `users/${uid}`);
+    }
+    throw err;
+  }
 
   // Clean up Storage assets if present
   const storage = getFirebaseStorage();
@@ -1467,25 +1602,12 @@ export interface CloudMtxBook {
 const LOCAL_STORAGE_KEY = 'mtx_2_2_cloud_vault_cache';
 
 export async function fetchCloudVaultBooks(): Promise<CloudMtxBook[]> {
-  const cached: CloudMtxBook[] = (() => {
-    try {
-      const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  })();
-
-  const path = 'comments';
   try {
-    const db = getDb();
-    const q = query(collection(db, path), limit(10));
-    await getDocs(q);
-  } catch (err: unknown) {
-    console.info('Firestore public fetch note (using local cache):', err);
+    const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
   }
-
-  return cached;
 }
 
 export async function saveToCloudVault(book: CloudMtxBook): Promise<void> {

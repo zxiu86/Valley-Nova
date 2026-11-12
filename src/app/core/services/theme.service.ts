@@ -25,15 +25,16 @@ export class ThemeService {
   readonly theme = signal<SiteTheme>('dark');
   readonly isDark = computed(() => this.theme() === 'dark');
 
-  // Mosaic Transition Orchestration
+  // Mosaic Transition Orchestration (12 GPU-composited tiles)
   readonly isMosaicActive = signal<boolean>(false);
   readonly mosaicDispersing = signal<boolean>(false);
-  readonly mosaicRows = signal<number>(8);
-  readonly mosaicCols = signal<number>(14);
+  readonly mosaicRows = signal<number>(3);
+  readonly mosaicCols = signal<number>(4);
   readonly mosaicTiles = signal<MosaicTile[]>([]);
 
   private transitionTimer: ReturnType<typeof setTimeout> | null = null;
   private rafId: number | null = null;
+  private rafInnerId: number | null = null;
 
   init(): void {
     if (!isPlatformBrowser(this.platformId)) return;
@@ -76,32 +77,31 @@ export class ThemeService {
       return;
     }
 
-    // Preserve exact scroll position across transition
     const savedScrollY = window.scrollY;
-
     const width = window.innerWidth;
-    const cols = width < 640 ? 7 : width < 1024 ? 11 : 15;
-    const rows = width < 640 ? 11 : width < 1024 ? 8 : 9;
+    // Strictly 12 tiles across all viewports (3x4 on narrow mobile, 4x3 on tablet/desktop)
+    const cols = width < 640 ? 3 : 4;
+    const rows = width < 640 ? 4 : 3;
 
     const outgoingPalette =
       currentTheme === 'dark'
-        ? ['#131315', '#17161a', '#1c1b1d', '#19171c', '#201f22']
-        : ['#F7F7FA', '#FFFFFF', '#F0EFF5', '#F4F2F8', '#ECEAF2'];
+        ? ['#131315', '#17161a', '#1b1a1e', '#151418']
+        : ['#F7F7FA', '#FFFFFF', '#F0EFF5', '#ECEAF2'];
 
     const outgoingBorder =
-      currentTheme === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(33, 29, 43, 0.07)';
+      currentTheme === 'dark' ? 'rgba(255, 255, 255, 0.04)' : 'rgba(33, 29, 43, 0.05)';
 
     const tiles: MosaicTile[] = [];
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         const idx = r * cols + c;
-        // Smooth sequential diagonal wave across screen (right-to-left aware in RTL + top-to-bottom)
-        const waveStep = (cols - 1 - c) * 0.55 + r * 0.65;
-        const delayMs = Math.round(waveStep * 20);
+        // Smooth diagonal wave from top-right (RTL origin) to bottom-left
+        const waveStep = (cols - 1 - c) * 0.7 + r * 0.8;
+        const delayMs = Math.round(waveStep * 26);
         const shade = outgoingPalette[(r * 3 + c * 5) % outgoingPalette.length];
-        const rotateDeg = ((r + c) % 2 === 0 ? 1 : -1) * (4 + ((r * c) % 5));
-        const disperseX = (c / Math.max(1, cols - 1) - 0.5) * 28;
-        const disperseY = (r / Math.max(1, rows - 1) - 0.5) * 24 - 8;
+        const rotateDeg = ((r + c) % 2 === 0 ? 1 : -1) * (2.5 + ((r + c) % 3));
+        const disperseX = Math.round((c / Math.max(1, cols - 1) - 0.5) * 28);
+        const disperseY = Math.round((r / Math.max(1, rows - 1) - 0.5) * 22 - 8);
 
         tiles.push({
           id: idx,
@@ -117,24 +117,35 @@ export class ThemeService {
       }
     }
 
+    if (this.rafId !== null) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
+    if (this.rafInnerId !== null) {
+      cancelAnimationFrame(this.rafInnerId);
+      this.rafInnerId = null;
+    }
+
     this.mosaicRows.set(rows);
     this.mosaicCols.set(cols);
     this.mosaicTiles.set(tiles);
     this.mosaicDispersing.set(false);
     this.isMosaicActive.set(true);
 
-    // Wait 1 paint frame so the solid outgoing mosaic covers the viewport smoothly before DOM theme switches
+    // Paint the 12 solid tiles first, switch theme offscreen beneath them, then smoothly disperse
     this.rafId = requestAnimationFrame(() => {
       this.applyThemeToDom(nextTheme);
-      window.scrollTo({ top: savedScrollY, behavior: 'instant' as ScrollBehavior });
+      if (Math.abs(window.scrollY - savedScrollY) > 1) {
+        window.scrollTo({ top: savedScrollY, behavior: 'instant' as ScrollBehavior });
+      }
 
-      this.rafId = requestAnimationFrame(() => {
+      this.rafInnerId = requestAnimationFrame(() => {
         this.mosaicDispersing.set(true);
       });
     });
 
     const maxDelay = Math.max(...tiles.map((t) => t.delayMs), 0);
-    const totalDurationMs = maxDelay + 420;
+    const totalDurationMs = maxDelay + 360;
 
     if (this.transitionTimer) {
       clearTimeout(this.transitionTimer);

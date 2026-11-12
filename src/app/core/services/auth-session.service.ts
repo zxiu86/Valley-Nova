@@ -112,7 +112,9 @@ export class AuthSessionService {
       if (initialUser) {
         this.saveDisplayHint(initialUser);
         await refreshAuthTokenIfNeeded(initialUser);
-        await ensureUserDocumentsOnLogin(initialUser);
+        await ensureUserDocumentsOnLogin(initialUser).catch((err) => {
+          console.warn('Initial user Firestore doc sync warning:', err);
+        });
         await this.loadUserData(initialUser.uid);
       } else {
         this.clearDisplayHint();
@@ -164,9 +166,9 @@ export class AuthSessionService {
   async loadUserData(userId: string): Promise<void> {
     try {
       const [profile, bookmarks] = await Promise.all([
-        getUserProfileFromFirestore(userId),
-        getUserBookmarksFromFirestore(userId),
-        this.accountService.loadOwnerAccount(userId),
+        getUserProfileFromFirestore(userId).catch(() => null),
+        getUserBookmarksFromFirestore(userId).catch(() => []),
+        this.accountService.loadOwnerAccount(userId).catch(() => false),
       ]);
       if (profile) {
         this.userProfile.set(profile);

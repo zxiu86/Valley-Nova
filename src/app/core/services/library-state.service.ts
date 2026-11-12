@@ -1777,9 +1777,9 @@ export class LibraryStateService {
     const user = this.authSession.currentUser();
     if (user) {
       previous.forEach((id) => {
-        void removeBookmarkFromFirestore(user.uid, id, 0);
+        void removeBookmarkFromFirestore(user.uid, id, 0).catch(() => undefined);
       });
-      void syncSavedNovelsCountToFirestore(user.uid, 0);
+      void syncSavedNovelsCountToFirestore(user.uid, 0).catch(() => undefined);
       this.accountService.ownProfile.update((prof) =>
         prof ? { ...prof, savedNovelsCount: 0 } : prof
       );
@@ -1860,19 +1860,21 @@ export class LibraryStateService {
         novel.title,
         chapter.id,
         chapter.title
-      ).then((count) => {
-        if (count > 0) {
-          this.accountService.ownReadChaptersCount.set(count);
-          this.accountService.ownProfile.update((prof) =>
-            prof ? { ...prof, readChaptersCount: count } : prof
-          );
-          if (this.accountService.viewedIsOwner()) {
-            this.accountService.viewedProfile.update((prof) =>
+      )
+        .then((count) => {
+          if (count > 0) {
+            this.accountService.ownReadChaptersCount.set(count);
+            this.accountService.ownProfile.update((prof) =>
               prof ? { ...prof, readChaptersCount: count } : prof
             );
+            if (this.accountService.viewedIsOwner()) {
+              this.accountService.viewedProfile.update((prof) =>
+                prof ? { ...prof, readChaptersCount: count } : prof
+              );
+            }
           }
-        }
-      });
+        })
+        .catch(() => undefined);
     }
 
     this.showToast(`قراءة: ${chapter.title}`);

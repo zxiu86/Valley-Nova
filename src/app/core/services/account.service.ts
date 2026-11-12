@@ -137,15 +137,15 @@ export class AccountService {
     return false;
   }
 
-  async loadOwnerAccount(uid: string): Promise<void> {
-    if (!uid || !isPlatformBrowser(this.platformId)) return;
+  async loadOwnerAccount(uid: string): Promise<boolean> {
+    if (!uid || !isPlatformBrowser(this.platformId)) return false;
 
     try {
       const [profile, writerStatus, readCount, appDoc] = await Promise.all([
         loadOwnerAccountProfile(uid),
-        getVerifiedWriterStatus(uid),
-        getUserReadChaptersCount(uid),
-        getWriterApplicationFromFirestore(uid),
+        getVerifiedWriterStatus(uid).catch(() => DEFAULT_WRITER_STATUS),
+        getUserReadChaptersCount(uid).catch(() => 0),
+        getWriterApplicationFromFirestore(uid).catch(() => null),
       ]);
 
       if (profile) {
@@ -160,20 +160,23 @@ export class AccountService {
       this.ownApplication.set(appDoc);
 
       if (writerStatus.canPublish) {
-        const works = await fetchAuthorPublishedNovels(uid);
+        const works = await fetchAuthorPublishedNovels(uid).catch(() => []);
         this.ownPublishedNovels.set(works);
       } else {
         this.ownPublishedNovels.set([]);
       }
 
       if (writerStatus.isAdmin) {
-        const pending = await fetchPendingWriterApplicationsForAdmin();
+        const pending = await fetchPendingWriterApplicationsForAdmin().catch(() => []);
         this.pendingAdminApplications.set(pending);
       } else {
         this.pendingAdminApplications.set([]);
       }
+
+      return Boolean(profile);
     } catch (err) {
       console.warn('Error hydrating owner account:', err);
+      return false;
     }
   }
 
@@ -208,9 +211,9 @@ export class AccountService {
         this.viewedState.set('not_found');
         return;
       }
-      await this.loadOwnerAccount(currentUid);
+      const ok = await this.loadOwnerAccount(currentUid);
       const prof = this.ownProfile();
-      if (!prof) {
+      if (!ok || !prof) {
         this.viewedState.set('error');
         return;
       }
@@ -224,7 +227,16 @@ export class AccountService {
 
     // 2. /profile/:username route -> resolve username (with legacy redirect support)
     const normalized = normalizeUsername(usernameParam);
-    const resolved = await resolveUsernameToUid(normalized);
+    let resolved: { uid: string | null; redirectedTo?: string };
+    try {
+      resolved = await resolveUsernameToUid(normalized);
+    } catch {
+      this.viewedIsOwner.set(false);
+      this.viewedProfile.set(null);
+      this.viewedState.set('error');
+      return;
+    }
+
     if (!resolved.uid) {
       this.viewedIsOwner.set(false);
       this.viewedProfile.set(null);
@@ -242,9 +254,9 @@ export class AccountService {
     this.viewedIsOwner.set(isOwner);
 
     if (isOwner) {
-      await this.loadOwnerAccount(targetUid);
+      const ok = await this.loadOwnerAccount(targetUid);
       const prof = this.ownProfile();
-      if (!prof) {
+      if (!ok || !prof) {
         this.viewedState.set('error');
         return;
       }
@@ -258,7 +270,7 @@ export class AccountService {
     // 3. Visitor viewing another user's public/private profile
     const [visitorRes, writerStatus] = await Promise.all([
       loadVisitorAccountProfile(targetUid),
-      getVerifiedWriterStatus(targetUid),
+      getVerifiedWriterStatus(targetUid).catch(() => DEFAULT_WRITER_STATUS),
     ]);
 
     this.viewedWriterStatus.set(writerStatus);
@@ -277,7 +289,7 @@ export class AccountService {
     this.viewedVisitorSavedNovels.set(visitorRes.savedNovels || []);
 
     if (writerStatus.canPublish) {
-      const works = await fetchAuthorPublishedNovels(targetUid);
+      const works = await fetchAuthorPublishedNovels(targetUid).catch(() => []);
       this.viewedPublishedNovels.set(works);
     }
 
