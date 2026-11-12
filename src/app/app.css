@@ -1,7 +1,7 @@
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
@@ -12,11 +12,22 @@
 @keyframes scaleIn {
   from {
     opacity: 0;
-    transform: scale(0.96);
+    transform: scale(0.97);
   }
   to {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
   }
 }
 
@@ -30,11 +41,15 @@
 }
 
 .animate-fadeIn {
-  animation: fadeIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: fadeIn 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .animate-scaleIn {
-  animation: scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: scaleIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-slideInRight {
+  animation: slideInRight 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .animate-pulseGlow {
@@ -43,7 +58,7 @@
 
 /* Glassmorphism floating bar */
 .glass-toolbar {
-  background: rgba(19, 19, 21, 0.85);
+  background: rgba(19, 19, 21, 0.88);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -65,8 +80,96 @@ img {
   -webkit-user-drag: none;
 }
 
-/* Better typography reading line-height */
-.reading-content p {
-  margin-bottom: 1.75em;
-  text-align: justify;
+/* Interactive Button Micro-interactions (Tactile Feedback) */
+.btn-tactile {
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.18s ease,
+              background-color 0.18s ease,
+              border-color 0.18s ease,
+              color 0.18s ease,
+              filter 0.18s ease;
 }
+.btn-tactile:hover {
+  transform: translateY(-1.5px);
+}
+.btn-tactile:active {
+  transform: translateY(0.5px) scale(0.98);
+}
+
+/* Novel Card Micro-interactions */
+.novel-card-interactive {
+  transition: transform 0.26s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.26s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.22s ease,
+              background-color 0.22s ease;
+}
+.novel-card-interactive:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(233, 195, 73, 0.2);
+}
+.novel-card-interactive:active {
+  transform: translateY(0) scale(0.99);
+}
+
+/* Curated Book Cover Zoom on Hover */
+.cover-zoom-container {
+  overflow: hidden;
+  position: relative;
+}
+.cover-zoom-img {
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+              filter 0.45s ease;
+}
+.group:hover .cover-zoom-img {
+  transform: scale(1.045);
+}
+
+/* Pill & Filter Interactive States */
+.filter-pill-tactile {
+  transition: transform 0.18s ease,
+              background-color 0.18s ease,
+              color 0.18s ease,
+              border-color 0.18s ease,
+              box-shadow 0.18s ease;
+}
+.filter-pill-tactile:hover {
+  transform: translateY(-1px);
+}
+.filter-pill-tactile:active {
+  transform: translateY(0.5px) scale(0.97);
+}
+
+/* Refined Reading Sanctum Prose */
+.reading-prose {
+  text-align: justify;
+  text-justify: inter-word;
+  word-spacing: 0.05em;
+}
+.reading-prose p {
+  text-wrap: pretty;
+}
+
+/* Smooth Horizontal Rail */
+.smooth-horizontal-rail {
+  scroll-behavior: smooth;
+  scroll-padding-inline-start: 1rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  .btn-tactile:hover,
+  .btn-tactile:active,
+  .novel-card-interactive:hover,
+  .novel-card-interactive:active,
+  .filter-pill-tactile:hover,
+  .filter-pill-tactile:active,
+  .group:hover .cover-zoom-img {
+    transform: none !important;
+  }
+}
+

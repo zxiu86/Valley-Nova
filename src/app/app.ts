@@ -2326,8 +2326,9 @@ export class App implements OnInit, OnDestroy {
   scrollContainer(containerId: string, direction: 'prev' | 'next'): void {
     const el = document.getElementById(containerId);
     if (!el) return;
+    const distance = Math.max(260, Math.round(el.clientWidth * 0.75));
     // In RTL, moving to 'next' (leftward) uses negative offset; 'prev' (rightward) uses positive offset
-    const amount = direction === 'next' ? -260 : 260;
+    const amount = direction === 'next' ? -distance : distance;
     el.scrollBy({ left: amount, behavior: 'smooth' });
   }
 
