@@ -1,0 +1,75 @@
+<footer class="w-full bg-surface-container-lowest border-t border-surface-variant/50 pt-space-xl pb-space-lg transition-colors duration-200">
+  <div class="w-full px-margin-mobile lg:px-margin max-w-7xl mx-auto flex flex-col gap-space-xl">
+
+    <!-- Top Quote & Brand Row -->
+    <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-space-lg pb-space-lg border-b border-surface-variant/40">
+      <div class="flex flex-col gap-space-xs">
+        <div class="flex items-center gap-space-xs">
+          <span class="font-title-lg text-title-lg text-on-surface font-bold">أروقة الخلود</span>
+          <span class="w-1.5 h-1.5 rounded-full bg-secondary inline-block"></span>
+        </div>
+        <p class="font-body-sm text-body-sm text-on-surface-variant max-w-md">
+          معبد بصري وسينمائي تلتقي فيه أزمنة الأدب العربي والإنساني بتجربة جمالية نقية.
+        </p>
+      </div>
+
+      <blockquote class="font-headline-sm text-headline-sm text-outline italic text-right max-w-lg border-r-2 border-secondary/60 pr-space-md">
+        “والحرفُ يبقى بعد موتِ رواتهِ دهراً، وتفنى في الترابِ العظامُ”
+      </blockquote>
+    </div>
+
+    <!-- 4 Footer Navigation Columns -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-space-lg">
+      <div class="flex flex-col gap-space-sm">
+        <h4 class="font-label-md text-label-md text-secondary font-semibold">الأروقة الأربعة</h4>
+        <nav class="flex flex-col gap-space-xs">
+          <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="lib.returnToNovels()">رواق الروايات (Crimson Noir)</button>
+          <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="lib.switchCorridor('epics')">رواق الملاحم (Mythic Bronze)</button>
+          <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="lib.switchCorridor('wisdom')">رواق الحكمة (Ivory Sanctuary)</button>
+          <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="lib.switchCorridor('heritage')">رواق التراث (Manuscript Emerald)</button>
+        </nav>
+      </div>
+
+      <div class="flex flex-col gap-space-sm">
+        <h4 class="font-label-md text-label-md text-secondary font-semibold">المصنفات الأدبية</h4>
+        <nav class="flex flex-col gap-space-xs">
+          <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="lib.goToExploreWithTag('كلاسيكيات الأدب')">كلاسيكيات الأدب العالمي</button>
+          <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="lib.goToExploreWithTag('ديوان العرب')">ديوان العرب والشعر الحر</button>
+          <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="lib.goToExploreWithTag('مخطوطات نادرة')">المخطوطات النادرة</button>
+          <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="lib.goToExploreWithTag('فلسفة وحكمة')">سجالات الفكر وفلسفة الكلمة</button>
+        </nav>
+      </div>
+
+      <div class="flex flex-col gap-space-sm">
+        <h4 class="font-label-md text-label-md text-secondary font-semibold">أدلة القراءة والتأمل</h4>
+        <nav class="flex flex-col gap-space-xs">
+          <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="lib.goToExploreWithSort('pages')">مسارات القراءة المنظمة</button>
+          <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="lib.goToExploreWithTag('تحقيق ناصع')">مقالات تحريرية نقدية</button>
+          <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="lib.openExplore()">فهارس ومعاجم الأروقة</button>
+          <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="lib.toggleSoundscape()">السكينة الصوتية والتأمل</button>
+        </nav>
+      </div>
+
+      <div class="flex flex-col gap-space-sm">
+        <h4 class="font-label-md text-label-md text-secondary font-semibold">عن المعبد السردي</h4>
+        <nav class="flex flex-col gap-space-xs">
+          <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="lib.openIntegrityDoc()">فلسفة العمارة الرقمية</button>
+          <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="lib.openIntegrityDoc()">ميثاق النقاء التحريري</button>
+          <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="lib.openPublishModal()">رعاة الكلمة الخالدة</button>
+          <button type="button" class="text-right font-body-sm text-body-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer" (click)="lib.openPublishModal()">ديوان المراسلات والنشر</button>
+        </nav>
+      </div>
+    </div>
+
+    <!-- Bottom Note & Version -->
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-space-md pt-space-md border-t border-surface-variant/30 text-on-surface-variant font-label-sm text-label-sm">
+      <p>© 2025 أروقة الخلود. جميع الحقوق الفكرية والتصميمية محفوظة للصرح الأدبي.</p>
+      <div class="flex items-center gap-space-md">
+        <span class="text-outline">عمارة سردية سينمائية</span>
+        <span class="inline-block w-1 h-1 rounded-full bg-outline-variant"></span>
+        <span class="text-outline">نسخة البهو المضيء</span>
+      </div>
+    </div>
+
+  </div>
+</footer>

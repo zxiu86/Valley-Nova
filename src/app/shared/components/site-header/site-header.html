@@ -1,0 +1,405 @@
+<header class="fixed top-3 inset-x-0 z-50 px-3 sm:px-6 pointer-events-none">
+  <div class="pointer-events-auto max-w-[1400px] mx-auto liquid-glass-header rounded-2xl sm:rounded-[22px] px-4 lg:px-6 h-16 sm:h-[70px] flex items-center justify-between gap-3 transition-all duration-300">
+
+    <!-- Right Section: Hamburger Menu Trigger + Brand & Corridor Badge -->
+    <div class="flex items-center gap-2.5 sm:gap-3.5 shrink-0">
+      <!-- Liquid Glass Hamburger Button -->
+      <button
+        type="button"
+        aria-label="فتح قائمة التنقل"
+        [attr.aria-expanded]="lib.isMobileNavOpen()"
+        (click)="lib.toggleMobileNav()"
+        class="md:hidden w-10 h-10 rounded-xl liquid-glass-pill flex items-center justify-center text-on-surface hover:text-primary transition-all cursor-pointer active:scale-95"
+      >
+        <span class="material-symbols-outlined text-[22px]">
+          {{ lib.isMobileNavOpen() ? 'close' : 'menu' }}
+        </span>
+      </button>
+
+      <a
+        href="#/"
+        (click)="lib.returnToNovels(); $event.preventDefault()"
+        class="flex items-center gap-2.5 sm:gap-3 shrink-0 group"
+      >
+        <div class="flex items-center gap-1.5">
+          <span class="font-title-lg text-base sm:text-lg text-on-surface tracking-wide select-none font-bold">
+            أروقة الخلود
+          </span>
+          <span class="w-1.5 h-1.5 rounded-full bg-secondary inline-block shadow-[0_0_8px_rgba(233,195,73,0.7)]"></span>
+        </div>
+        <span class="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full bg-primary-container/90 text-on-primary-container font-label-sm text-[11px] tracking-wider border border-primary/20">
+          رواق الروايات
+        </span>
+      </a>
+    </div>
+
+    <!-- Center: Corridor Navigation Links -->
+    <nav class="hidden md:flex items-center gap-5 lg:gap-7">
+      <button
+        type="button"
+        (click)="lib.returnToNovels()"
+        [class]="
+          lib.currentView() === 'novels'
+            ? 'text-primary font-semibold relative after:content-[\'\'] after:absolute after:bottom-[-6px] after:left-0 after:right-0 after:h-[2px] after:bg-primary after:rounded-full transition-colors cursor-pointer'
+            : 'text-on-surface-variant hover:text-on-surface font-label-md text-label-md transition-colors cursor-pointer'
+        "
+      >
+        الرئيسية
+      </button>
+      <button
+        type="button"
+        (click)="lib.openExplore()"
+        [class]="
+          lib.currentView() === 'explore'
+            ? 'text-secondary font-semibold relative after:content-[\'\'] after:absolute after:bottom-[-6px] after:left-0 after:right-0 after:h-[2px] after:bg-secondary after:rounded-full transition-colors cursor-pointer flex items-center gap-1.5'
+            : 'text-on-surface-variant hover:text-on-surface font-label-md text-label-md transition-colors cursor-pointer flex items-center gap-1.5'
+        "
+      >
+        <span class="material-symbols-outlined text-[17px]">explore</span>
+        <span>الاستكشاف</span>
+      </button>
+      <button
+        type="button"
+        (click)="lib.switchCorridor('novels')"
+        [class]="
+          lib.activeCorridor() === 'novels' && lib.currentView() === 'novels'
+            ? 'text-primary font-semibold transition-colors cursor-pointer'
+            : 'text-on-surface-variant hover:text-on-surface font-label-md text-label-md transition-colors cursor-pointer'
+        "
+      >
+        الروايات
+      </button>
+      <button
+        type="button"
+        (click)="lib.switchCorridor('epics')"
+        [class]="
+          lib.activeCorridor() === 'epics'
+            ? 'text-secondary font-semibold transition-colors cursor-pointer'
+            : 'text-on-surface-variant hover:text-on-surface font-label-md text-label-md transition-colors cursor-pointer'
+        "
+      >
+        الملاحم
+      </button>
+      <button
+        type="button"
+        (click)="lib.switchCorridor('wisdom')"
+        [class]="
+          lib.activeCorridor() === 'wisdom'
+            ? 'text-tertiary font-semibold transition-colors cursor-pointer'
+            : 'text-on-surface-variant hover:text-on-surface font-label-md text-label-md transition-colors cursor-pointer'
+        "
+      >
+        الحكمة
+      </button>
+      <button
+        type="button"
+        (click)="lib.switchCorridor('heritage')"
+        [class]="
+          lib.activeCorridor() === 'heritage'
+            ? 'text-secondary font-semibold transition-colors cursor-pointer'
+            : 'text-on-surface-variant hover:text-on-surface font-label-md text-label-md transition-colors cursor-pointer'
+        "
+      >
+        التراث
+      </button>
+    </nav>
+
+    <!-- Left Section: Action Controls -->
+    <div class="flex items-center gap-2 lg:gap-2.5 shrink-0">
+      <!-- Desktop Search Bar -->
+      <div class="hidden xl:flex items-center liquid-glass-pill rounded-full px-3.5 py-1.5 gap-2 focus-within:border-primary/60 transition-colors">
+        <button
+          type="button"
+          (click)="lib.goToExploreWithSearch(lib.searchControl.value)"
+          class="text-outline hover:text-primary transition-colors cursor-pointer flex items-center justify-center p-0 border-none bg-transparent"
+          aria-label="بحث في الخزانة"
+        >
+          <span class="material-symbols-outlined text-[18px]">search</span>
+        </button>
+        <input
+          [formControl]="lib.searchControl"
+          (keydown.enter)="lib.goToExploreWithSearch(lib.searchControl.value)"
+          class="bg-transparent text-on-surface placeholder:text-outline/80 font-body-sm text-xs focus:outline-none w-40 2xl:w-52"
+          placeholder="استكشف كنوز الأدب..."
+          type="text"
+        />
+        <button
+          type="button"
+          (click)="lib.goToExploreWithSearch(lib.searchControl.value)"
+          class="font-label-sm text-[11px] text-outline bg-surface-container/80 px-2 py-0.5 rounded-md border border-outline-variant/30 select-none hover:text-primary hover:border-primary/40 transition-colors cursor-pointer"
+          title="انتقال مباشر لصفحة الاستكشاف"
+        >
+          بحث ↵
+        </button>
+      </div>
+
+      <!-- Mobile/Tablet Search Button -->
+      <button
+        type="button"
+        aria-label="البحث في الرواق"
+        (click)="lib.onMobileSearchClick()"
+        [class.bg-primary/20]="lib.isSearchOpen()"
+        [class.text-primary]="lib.isSearchOpen()"
+        class="xl:hidden w-9 h-9 rounded-xl liquid-glass-pill flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-all cursor-pointer"
+      >
+        <span class="material-symbols-outlined text-[19px]">search</span>
+      </button>
+
+      <!-- Category Tune Button -->
+      <button
+        type="button"
+        aria-label="التصنيفات وتصفية الخزانة"
+        (click)="lib.onHeaderFilterClick()"
+        [class.bg-secondary/20]="lib.isFilterOpen()"
+        [class.text-secondary]="lib.isFilterOpen()"
+        class="hidden sm:flex w-9 h-9 rounded-xl liquid-glass-pill items-center justify-center text-on-surface-variant hover:text-on-surface transition-all cursor-pointer"
+        title="تصفية واستكشاف الخزانة"
+      >
+        <span class="material-symbols-outlined text-[19px]">tune</span>
+      </button>
+
+      <!-- Mosaic Light / Dark Theme Toggle -->
+      <button
+        type="button"
+        [attr.aria-label]="themeService.isDark() ? 'التبديل إلى الوضع الفاتح' : 'التبديل إلى الوضع الداكن'"
+        [title]="themeService.isDark() ? 'الوضع الفاتح (انتقال موزاييك)' : 'الوضع الداكن (انتقال موزاييك)'"
+        (click)="themeService.toggleThemeWithMosaic()"
+        [disabled]="themeService.isMosaicActive()"
+        class="w-9 h-9 rounded-xl liquid-glass-pill flex items-center justify-center text-on-surface hover:text-secondary transition-all cursor-pointer active:scale-95 disabled:opacity-60"
+      >
+        <span class="material-symbols-outlined text-[19px] transition-transform duration-300">
+          {{ themeService.isDark() ? 'light_mode' : 'dark_mode' }}
+        </span>
+      </button>
+
+      <!-- Bookmarks Library Button -->
+      <button
+        type="button"
+        aria-label="المكتبة المحفوظة"
+        (click)="lib.onHeaderBookmarkClick()"
+        [class.bg-secondary/20]="lib.isBookmarksOpen()"
+        [class.text-secondary]="lib.isBookmarksOpen()"
+        class="relative w-9 h-9 rounded-xl liquid-glass-pill flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-all cursor-pointer"
+        title="الألواح السردية المحفوظة"
+      >
+        <span class="material-symbols-outlined text-[19px]">bookmark</span>
+        @if (lib.bookmarkedIds().size > 0) {
+          <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-primary text-[10px] text-on-primary font-bold flex items-center justify-center shadow-sm tabular-nums">
+            {{ lib.bookmarkedIds().size }}
+          </span>
+        }
+      </button>
+
+      <!-- User Profile Avatar -->
+      <button
+        type="button"
+        aria-label="حساب القارئ"
+        (click)="lib.onHeaderProfileClick()"
+        [class.ring-2]="lib.currentView() === 'profile' || lib.currentView() === 'auth'"
+        [class.ring-primary]="lib.currentView() === 'profile' || lib.currentView() === 'auth'"
+        class="w-9 h-9 rounded-full bg-primary flex items-center justify-center cursor-pointer hover:opacity-90 transition-all shadow-md overflow-hidden border border-white/20"
+        title="ديوان القارئ وسادن الرواق"
+      >
+        @if (auth.photoUrl()) {
+          <img [src]="auth.photoUrl()" [alt]="auth.displayName()" class="w-full h-full object-cover" referrerpolicy="no-referrer" />
+        } @else if (auth.currentUser()?.displayName || auth.authHint()?.displayName) {
+          <span class="text-on-primary text-xs font-bold">{{ auth.displayName().slice(0, 1) }}</span>
+        } @else {
+          <span class="material-symbols-outlined text-on-primary text-[18px]">person</span>
+        }
+      </button>
+
+      <!-- Desktop/Tablet Quick Menu Hamburger Trigger -->
+      <button
+        type="button"
+        aria-label="القائمة السريعة"
+        [attr.aria-expanded]="lib.isMobileNavOpen()"
+        (click)="lib.toggleMobileNav()"
+        class="hidden md:flex w-9 h-9 rounded-xl liquid-glass-pill items-center justify-center text-on-surface-variant hover:text-on-surface transition-all cursor-pointer"
+        title="القائمة والاختصارات"
+      >
+        <span class="material-symbols-outlined text-[19px]">
+          {{ lib.isMobileNavOpen() ? 'close' : 'widgets' }}
+        </span>
+      </button>
+    </div>
+
+  </div>
+</header>
+
+<!-- ================= LIQUID GLASS HAMBURGER / QUICK DRAWER ================= -->
+@if (lib.isMobileNavOpen()) {
+  <div class="fixed inset-0 z-40 flex items-start justify-start pt-24 px-3 sm:px-6 animate-fadeIn">
+    <!-- Translucent Backdrop -->
+    <button
+      type="button"
+      class="fixed inset-0 w-full h-full bg-black/35 dark:bg-black/60 backdrop-blur-sm border-none cursor-default"
+      aria-label="إغلاق القائمة"
+      (click)="lib.isMobileNavOpen.set(false)"
+    ></button>
+
+    <!-- Floating Liquid Glass Drawer Panel -->
+    <aside
+      aria-label="قائمة التنقل الزجاجية"
+      class="relative z-10 w-full max-w-sm liquid-glass-drawer rounded-3xl p-5 sm:p-6 space-y-5 shadow-2xl max-h-[calc(100vh-7.5rem)] overflow-y-auto scrollbar-none"
+    >
+      <!-- Header row -->
+      <div class="flex items-center justify-between border-b border-surface-variant/40 pb-3.5">
+        <div class="flex items-center gap-2.5">
+          <span class="w-2.5 h-2.5 rounded-full bg-primary shadow-sm"></span>
+          <span class="font-bold text-base text-on-surface">بوابة الأروقة والاختصارات</span>
+        </div>
+        <button
+          type="button"
+          (click)="lib.isMobileNavOpen.set(false)"
+          aria-label="إغلاق"
+          class="w-8 h-8 rounded-xl liquid-glass-pill flex items-center justify-center text-outline hover:text-on-surface cursor-pointer"
+        >
+          <span class="material-symbols-outlined text-[18px]">close</span>
+        </button>
+      </div>
+
+      <!-- Auth Status Glass Card -->
+      <button
+        type="button"
+        (click)="lib.onHeaderProfileClick()"
+        class="w-full p-3.5 rounded-2xl liquid-glass-pill flex items-center justify-between gap-3 text-right hover:border-primary/40 transition-all cursor-pointer"
+      >
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold shrink-0 overflow-hidden">
+            @if (auth.photoUrl()) {
+              <img [src]="auth.photoUrl()" [alt]="auth.displayName()" class="w-full h-full object-cover" referrerpolicy="no-referrer" />
+            } @else {
+              <span>{{ auth.currentUser() ? auth.displayName().slice(0, 1) : 'س' }}</span>
+            }
+          </div>
+          <div class="flex flex-col min-w-0">
+            <span class="text-sm font-bold text-on-surface truncate">
+              {{ auth.currentUser() ? auth.displayName() : 'تسجيل الدخول إلى ديوانك' }}
+            </span>
+            <span class="text-[11px] text-outline truncate">
+              {{ auth.currentUser() ? (auth.displayEmail() || 'عضوية سادن الرواق النشطة') : 'مزامنة القراءات والألواح المحفوظة' }}
+            </span>
+          </div>
+        </div>
+        <span class="material-symbols-outlined text-[18px] text-outline shrink-0">arrow_back</span>
+      </button>
+
+      <!-- Primary Pages Navigation -->
+      <div class="space-y-1.5">
+        <span class="text-[11px] font-bold text-outline px-1 block">الصفحات الرئيسية</span>
+        <div class="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            (click)="lib.returnToNovels()"
+            [class]="lib.currentView() === 'novels' ? 'bg-primary text-on-primary font-bold shadow-sm' : 'liquid-glass-pill text-on-surface hover:border-primary/40'"
+            class="px-3.5 py-2.5 rounded-2xl text-xs flex items-center gap-2 transition-all cursor-pointer"
+          >
+            <span class="material-symbols-outlined text-[18px]">home</span>
+            <span>الرئيسية</span>
+          </button>
+
+          <button
+            type="button"
+            (click)="lib.openExplore()"
+            [class]="lib.currentView() === 'explore' ? 'bg-secondary text-on-secondary font-bold shadow-sm' : 'liquid-glass-pill text-on-surface hover:border-secondary/40'"
+            class="px-3.5 py-2.5 rounded-2xl text-xs flex items-center gap-2 transition-all cursor-pointer"
+          >
+            <span class="material-symbols-outlined text-[18px]">explore</span>
+            <span>الاستكشاف</span>
+          </button>
+
+          <button
+            type="button"
+            (click)="lib.openNovelDetails(lib.selectedNovel() || lib.defaultEchoesSamarkand)"
+            [class]="lib.currentView() === 'details' ? 'bg-primary text-on-primary font-bold shadow-sm' : 'liquid-glass-pill text-on-surface hover:border-primary/40'"
+            class="px-3.5 py-2.5 rounded-2xl text-xs flex items-center gap-2 transition-all cursor-pointer"
+          >
+            <span class="material-symbols-outlined text-[18px]">menu_book</span>
+            <span>تفاصيل السفر</span>
+          </button>
+
+          <button
+            type="button"
+            (click)="lib.startPureReading()"
+            class="px-3.5 py-2.5 rounded-2xl liquid-glass-pill text-on-surface hover:border-tertiary/50 text-xs flex items-center gap-2 transition-all cursor-pointer"
+          >
+            <span class="material-symbols-outlined text-[18px] text-tertiary">auto_stories</span>
+            <span>صفحة القراءة</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Corridors List -->
+      <div class="space-y-1.5">
+        <span class="text-[11px] font-bold text-outline px-1 block">الأروقة الأدبية الأربعة</span>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <button
+            type="button"
+            (click)="lib.switchCorridor('novels')"
+            class="p-2.5 rounded-2xl liquid-glass-pill text-right hover:border-primary/40 transition-all cursor-pointer flex items-center gap-2"
+          >
+            <span class="w-2 h-2 rounded-full bg-primary shrink-0"></span>
+            <span class="text-on-surface font-medium">رواق الروايات</span>
+          </button>
+          <button
+            type="button"
+            (click)="lib.switchCorridor('epics')"
+            class="p-2.5 rounded-2xl liquid-glass-pill text-right hover:border-secondary/40 transition-all cursor-pointer flex items-center gap-2"
+          >
+            <span class="w-2 h-2 rounded-full bg-secondary shrink-0"></span>
+            <span class="text-on-surface font-medium">رواق الملاحم</span>
+          </button>
+          <button
+            type="button"
+            (click)="lib.switchCorridor('wisdom')"
+            class="p-2.5 rounded-2xl liquid-glass-pill text-right hover:border-on-surface/40 transition-all cursor-pointer flex items-center gap-2"
+          >
+            <span class="w-2 h-2 rounded-full bg-on-surface shrink-0"></span>
+            <span class="text-on-surface font-medium">رواق الحكمة</span>
+          </button>
+          <button
+            type="button"
+            (click)="lib.switchCorridor('heritage')"
+            class="p-2.5 rounded-2xl liquid-glass-pill text-right hover:border-tertiary/40 transition-all cursor-pointer flex items-center gap-2"
+          >
+            <span class="w-2 h-2 rounded-full bg-tertiary shrink-0"></span>
+            <span class="text-on-surface font-medium">رواق التراث</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Theme Switch & Tools Row -->
+      <div class="pt-3 border-t border-surface-variant/40 flex items-center justify-between gap-2">
+        <button
+          type="button"
+          (click)="themeService.toggleThemeWithMosaic(); lib.isMobileNavOpen.set(false)"
+          class="flex-1 py-2.5 px-3.5 rounded-2xl liquid-glass-pill text-xs font-semibold text-on-surface flex items-center justify-center gap-2 hover:border-secondary/50 transition-all cursor-pointer"
+        >
+          <span class="material-symbols-outlined text-[18px] text-secondary">
+            {{ themeService.isDark() ? 'light_mode' : 'dark_mode' }}
+          </span>
+          <span>{{ themeService.isDark() ? 'الوضع الفاتح' : 'الوضع الداكن' }}</span>
+        </button>
+
+        <button
+          type="button"
+          (click)="lib.toggleSearch()"
+          class="py-2.5 px-3.5 rounded-2xl liquid-glass-pill text-xs font-semibold text-on-surface flex items-center justify-center gap-1.5 hover:border-primary/50 transition-all cursor-pointer"
+        >
+          <span class="material-symbols-outlined text-[18px] text-primary">search</span>
+          <span>بحث</span>
+        </button>
+
+        <button
+          type="button"
+          (click)="lib.goToExploreWithFilter()"
+          class="py-2.5 px-3.5 rounded-2xl liquid-glass-pill text-xs font-semibold text-on-surface flex items-center justify-center gap-1.5 hover:border-secondary/50 transition-all cursor-pointer"
+        >
+          <span class="material-symbols-outlined text-[18px] text-secondary">tune</span>
+          <span>تصفية</span>
+        </button>
+      </div>
+    </aside>
+  </div>
+}

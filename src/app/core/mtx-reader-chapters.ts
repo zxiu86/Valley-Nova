@@ -1,4 +1,4 @@
-import { ChapterItem } from '../app';
+import { ChapterItem } from './models/library.models';
 
 export interface ChapterTextContent {
   chapterId: number;

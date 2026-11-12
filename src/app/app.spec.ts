@@ -1,8 +1,26 @@
-import { describe, it, expect } from 'vitest';
+import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { compressToMtx, decompressFromMtx } from './core/mtx-codec';
 import { App } from './app';
+import { ThemeService } from './core/services/theme.service';
+import { CopyProtectionService } from './core/copy-protection/copy-protection.service';
+import { HomePage } from './pages/home/home-page';
+import { DetailsPage } from './pages/details/details-page';
+import { ExplorePage } from './pages/explore/explore-page';
+import { ReadingPage } from './pages/reading/reading-page';
+import { AuthPage } from './pages/auth/auth-page';
+import { ProfilePage } from './pages/profile/profile-page';
+import { LibraryStateService } from './core/services/library-state.service';
 
-describe('MTX Compression & Codec Specs', () => {
+describe('MTX Compression, Shell, Theme, Routes & Copy Protection Specs', () => {
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [App, HomePage, DetailsPage, ExplorePage, ReadingPage, AuthPage, ProfilePage],
+      providers: [provideRouter([])],
+    });
+  });
+
   it('should compress and decompress Arabic text with full diacritics losslessly', async () => {
     const sampleText = 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ - مَحَطَّةُ التَّرْمِيزِ وَالضَّغْطِ الثُّنَائِيِّ لِلنُّصُوصِ العَرَبِيَّةِ المُشَكَّلَةِ';
     const metadata = {
@@ -23,9 +41,85 @@ describe('MTX Compression & Codec Specs', () => {
     expect(decompressed.metadata.title).toBe(metadata.title);
   });
 
-  it('should instantiate App component cleanly', () => {
-    const app = new App();
+  it('should instantiate App shell and all 6 modular page components cleanly', () => {
+    const appFixture = TestBed.createComponent(App);
+    const app = appFixture.componentInstance;
     expect(app).toBeDefined();
     expect(app.compressForm).toBeDefined();
+    expect(app.lib).toBeDefined();
+
+    const homeFixture = TestBed.createComponent(HomePage);
+    homeFixture.detectChanges();
+    const featuredRail = (homeFixture.nativeElement as HTMLElement).querySelector('#featuredRail');
+    expect(featuredRail).toBeTruthy();
+    expect(featuredRail?.className).toContain('flex-row');
+    expect(featuredRail?.className).toContain('overflow-x-auto');
+
+    const detailsFixture = TestBed.createComponent(DetailsPage);
+    detailsFixture.detectChanges();
+    expect((detailsFixture.nativeElement as HTMLElement).textContent?.length).toBeGreaterThan(0);
+
+    const exploreFixture = TestBed.createComponent(ExplorePage);
+    exploreFixture.detectChanges();
+    expect((exploreFixture.nativeElement as HTMLElement).textContent?.length).toBeGreaterThan(0);
+
+    const lib = TestBed.inject(LibraryStateService);
+    lib.openChapter(lib.chapters[0]);
+    const readingFixture = TestBed.createComponent(ReadingPage);
+    readingFixture.detectChanges();
+    const readingHtml = (readingFixture.nativeElement as HTMLElement).innerHTML;
+    expect(readingHtml).toContain('mtx-copy-protected');
+    expect(readingHtml).not.toContain('h-[2px] z-50');
+
+    const authFixture = TestBed.createComponent(AuthPage);
+    authFixture.detectChanges();
+    expect((authFixture.nativeElement as HTMLElement).textContent?.length).toBeGreaterThan(0);
+
+    const profileFixture = TestBed.createComponent(ProfilePage);
+    profileFixture.detectChanges();
+    expect((profileFixture.nativeElement as HTMLElement).textContent?.length).toBeGreaterThan(0);
+  });
+
+  it('should persist light and dark theme preference via ThemeService', () => {
+    const themeService = TestBed.inject(ThemeService);
+    themeService.init();
+    themeService.setTheme('light');
+    expect(themeService.theme()).toBe('light');
+    expect(themeService.isDark()).toBe(false);
+    expect(localStorage.getItem('mtx_site_theme')).toBe('light');
+
+    themeService.setTheme('dark');
+    expect(themeService.theme()).toBe('dark');
+    expect(themeService.isDark()).toBe(true);
+    expect(localStorage.getItem('mtx_site_theme')).toBe('dark');
+  });
+
+  it('should exempt form inputs from copy protection while preventing casual copy on protected prose', () => {
+    const protection = TestBed.inject(CopyProtectionService);
+    protection.init();
+
+    const inputEl = document.createElement('input');
+    const textareaEl = document.createElement('textarea');
+    const proseEl = document.createElement('p');
+    document.body.appendChild(inputEl);
+    document.body.appendChild(textareaEl);
+    document.body.appendChild(proseEl);
+
+    const inputCopyEvent = new Event('copy', { bubbles: true, cancelable: true });
+    inputEl.dispatchEvent(inputCopyEvent);
+    expect(inputCopyEvent.defaultPrevented).toBe(false);
+
+    const textareaCopyEvent = new Event('copy', { bubbles: true, cancelable: true });
+    textareaEl.dispatchEvent(textareaCopyEvent);
+    expect(textareaCopyEvent.defaultPrevented).toBe(false);
+
+    const proseCopyEvent = new Event('copy', { bubbles: true, cancelable: true });
+    proseEl.dispatchEvent(proseCopyEvent);
+    expect(proseCopyEvent.defaultPrevented).toBe(true);
+
+    inputEl.remove();
+    textareaEl.remove();
+    proseEl.remove();
+    protection.destroy();
   });
 });

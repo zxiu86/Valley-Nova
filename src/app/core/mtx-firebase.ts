@@ -3,6 +3,9 @@ import {
   getAuth,
   Auth,
   User,
+  setPersistence,
+  indexedDBLocalPersistence,
+  browserLocalPersistence,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithPopup,
@@ -10,6 +13,7 @@ import {
   signOut,
   updateProfile,
   onAuthStateChanged,
+  onIdTokenChanged,
   Unsubscribe,
 } from 'firebase/auth';
 import {
@@ -56,6 +60,7 @@ export interface FirestoreErrorInfo {
 let appInstance: FirebaseApp | null = null;
 let dbInstance: Firestore | null = null;
 let authInstance: Auth | null = null;
+let persistencePromise: Promise<void> | null = null;
 
 export function getFirebaseApp(): FirebaseApp {
   if (!appInstance) {
@@ -75,13 +80,56 @@ export function getDb(): Firestore {
 
 export function getFirebaseAuth(): Auth {
   if (!authInstance) {
-    getFirebaseApp();
-    authInstance = getAuth();
+    const app = getFirebaseApp();
+    authInstance = getAuth(app);
   }
   return authInstance;
 }
 
-export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null): never {
+/**
+ * Ensures Firebase Auth uses persistent storage (IndexedDB primary, localStorage fallback)
+ * so authenticated sessions survive page reloads, restarts, and deployments.
+ */
+export async function ensureAuthPersistence(): Promise<void> {
+  if (typeof window === 'undefined') return;
+  if (!persistencePromise) {
+    const auth = getFirebaseAuth();
+    persistencePromise = setPersistence(auth, indexedDBLocalPersistence)
+      .catch(() => setPersistence(auth, browserLocalPersistence))
+      .catch((err) => {
+        console.warn('Auth persistence setup fallback warning:', err);
+      });
+  }
+  return persistencePromise;
+}
+
+/**
+ * Waits until Firebase Auth finishes resolving the stored session on page boot.
+ */
+export async function waitForAuthSessionReady(): Promise<User | null> {
+  if (typeof window === 'undefined') return null;
+  await ensureAuthPersistence();
+  const auth = getFirebaseAuth();
+  if (typeof auth.authStateReady === 'function') {
+    await auth.authStateReady();
+  }
+  return auth.currentUser;
+}
+
+export async function refreshAuthTokenIfNeeded(user: User | null): Promise<void> {
+  if (!user) return;
+  try {
+    await user.getIdToken(false);
+  } catch (err) {
+    console.warn('Session token check warning:', err);
+  }
+}
+
+export function handleFirestoreError(
+  error: unknown,
+  operationType: OperationType,
+  path: string | null
+): never {
   const auth = getFirebaseAuth();
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
@@ -120,18 +168,23 @@ export async function verifyFirestoreConnection(): Promise<boolean> {
 // ================= AUTHENTICATION SERVICES ================= //
 
 export async function loginWithEmail(email: string, pass: string): Promise<User> {
+  await ensureAuthPersistence();
   const auth = getFirebaseAuth();
   const credential = await signInWithEmailAndPassword(auth, email, pass);
   return credential.user;
 }
 
-export async function registerWithEmail(email: string, pass: string, displayName?: string): Promise<User> {
+export async function registerWithEmail(
+  email: string,
+  pass: string,
+  displayName?: string
+): Promise<User> {
+  await ensureAuthPersistence();
   const auth = getFirebaseAuth();
   const credential = await createUserWithEmailAndPassword(auth, email, pass);
   if (displayName && credential.user) {
     await updateProfile(credential.user, { displayName });
   }
-  // Initialize user profile in Firestore
   if (credential.user) {
     await saveUserProfileToFirestore(credential.user.uid, {
       id: credential.user.uid,
@@ -145,6 +198,7 @@ export async function registerWithEmail(email: string, pass: string, displayName
 }
 
 export async function loginWithGoogle(): Promise<User> {
+  await ensureAuthPersistence();
   const auth = getFirebaseAuth();
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
@@ -172,6 +226,11 @@ export function subscribeToAuthState(callback: (user: User | null) => void): Uns
   return onAuthStateChanged(auth, callback);
 }
 
+export function subscribeToTokenState(callback: (user: User | null) => void): Unsubscribe {
+  const auth = getFirebaseAuth();
+  return onIdTokenChanged(auth, callback);
+}
+
 // ================= USER PROFILE & BOOKMARK FIRESTORE SERVICES ================= //
 
 export interface StoredUserProfile {
@@ -184,7 +243,10 @@ export interface StoredUserProfile {
   updatedAt?: string;
 }
 
-export async function saveUserProfileToFirestore(userId: string, data: Partial<StoredUserProfile>): Promise<void> {
+export async function saveUserProfileToFirestore(
+  userId: string,
+  data: Partial<StoredUserProfile>
+): Promise<void> {
   try {
     const db = getDb();
     const userRef = doc(db, 'users', userId);
@@ -209,7 +271,11 @@ export async function getUserProfileFromFirestore(userId: string): Promise<Store
   }
 }
 
-export async function saveBookmarkToFirestore(userId: string, novelId: string, novelTitle: string): Promise<void> {
+export async function saveBookmarkToFirestore(
+  userId: string,
+  novelId: string,
+  novelTitle: string
+): Promise<void> {
   try {
     const db = getDb();
     const bookmarkRef = doc(db, 'users', userId, 'bookmarks', novelId);

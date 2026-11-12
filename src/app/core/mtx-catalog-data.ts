@@ -1,4 +1,4 @@
-import { NovelCard } from '../app';
+import { NovelCard } from './models/library.models';
 
 export const INITIAL_EXPLORE_CATALOG: NovelCard[] = [
   // ==========================================
