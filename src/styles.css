@@ -59,9 +59,6 @@
   --mtx-glass-shadow: 0 10px 32px -10px rgba(33, 29, 43, 0.12), 0 2px 8px -2px rgba(33, 29, 43, 0.06);
   --mtx-card-shadow: 0 8px 24px -8px rgba(33, 29, 43, 0.08);
   --mtx-card-hover-shadow: 0 16px 34px -10px rgba(33, 29, 43, 0.14), 0 0 0 1px rgba(154, 114, 9, 0.22);
-  --mtx-scrollbar-track: rgba(230, 227, 236, 0.65);
-  --mtx-scrollbar-thumb: rgba(154, 114, 9, 0.32);
-  --mtx-scrollbar-thumb-hover: rgba(154, 114, 9, 0.55);
 }
 
 .dark {
@@ -114,9 +111,6 @@
   --mtx-glass-shadow: 0 12px 36px -8px rgba(0, 0, 0, 0.65), 0 0 1px rgba(255, 255, 255, 0.08);
   --mtx-card-shadow: 0 10px 28px -8px rgba(0, 0, 0, 0.45);
   --mtx-card-hover-shadow: 0 16px 36px -8px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(233, 195, 73, 0.22);
-  --mtx-scrollbar-track: rgba(14, 14, 16, 0.7);
-  --mtx-scrollbar-thumb: rgba(233, 195, 73, 0.25);
-  --mtx-scrollbar-thumb-hover: rgba(233, 195, 73, 0.5);
 }
 
 @theme inline {
@@ -203,18 +197,21 @@
     box-shadow: var(--mtx-glass-specular), var(--mtx-glass-shadow);
   }
 
-  .liquid-glass-header {
-    background: var(--mtx-glass-header-bg);
-    backdrop-filter: blur(26px) saturate(190%);
-    -webkit-backdrop-filter: blur(26px) saturate(190%);
-    border: 1px solid var(--mtx-glass-border);
-    box-shadow: var(--mtx-glass-specular), var(--mtx-glass-shadow);
-  }
-
   .liquid-glass-drawer {
     background: var(--mtx-glass-drawer-bg);
     backdrop-filter: blur(30px) saturate(195%);
     -webkit-backdrop-filter: blur(30px) saturate(195%);
+    border: 1px solid var(--mtx-glass-border);
+    box-shadow: var(--mtx-glass-specular), var(--mtx-glass-shadow);
+  }
+
+  /* Shared Header Liquid Glass System (exact visual parity with site header) */
+  .liquid-glass-header,
+  .liquid-glass-header-match,
+  .liquid-glass-drawer.liquid-glass-header-match {
+    background: var(--mtx-glass-header-bg);
+    backdrop-filter: blur(26px) saturate(190%);
+    -webkit-backdrop-filter: blur(26px) saturate(190%);
     border: 1px solid var(--mtx-glass-border);
     box-shadow: var(--mtx-glass-specular), var(--mtx-glass-shadow);
   }
@@ -336,20 +333,66 @@ button, input, textarea, select {
   font-family: inherit;
 }
 
-/* Custom modern scrollbars */
-::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+/* Hide all vertical and horizontal scrollbars globally while preserving natural scrolling */
+html,
+body,
+*,
+*::before,
+*::after {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
 }
-::-webkit-scrollbar-track {
-  background: var(--mtx-scrollbar-track);
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+*::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
 }
-::-webkit-scrollbar-thumb {
-  background: var(--mtx-scrollbar-thumb);
-  border-radius: 9999px;
+
+/* ================= SMOOTH DARK / LIGHT THEME TRANSITION SYSTEM ================= */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
 }
-::-webkit-scrollbar-thumb:hover {
-  background: var(--mtx-scrollbar-thumb-hover);
+
+::view-transition-old(root) {
+  z-index: 1;
+}
+
+::view-transition-new(root) {
+  z-index: 9999;
+}
+
+/* Prevents mid-transition color states during the single-frame View Transition capture */
+html.theme-instant-swap,
+html.theme-instant-swap *,
+html.theme-instant-swap *::before,
+html.theme-instant-swap *::after {
+  transition: none !important;
+}
+
+/* Synchronized cross-fade fallback when View Transitions API is unavailable */
+html.theme-transitioning,
+html.theme-transitioning body,
+html.theme-transitioning header,
+html.theme-transitioning aside,
+html.theme-transitioning main,
+html.theme-transitioning section,
+html.theme-transitioning footer,
+html.theme-transitioning .liquid-glass,
+html.theme-transitioning .liquid-glass-header,
+html.theme-transitioning .liquid-glass-header-match,
+html.theme-transitioning .liquid-glass-drawer,
+html.theme-transitioning .liquid-glass-pill {
+  transition:
+    background-color 380ms cubic-bezier(0.22, 1, 0.36, 1),
+    color 380ms cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 380ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 380ms cubic-bezier(0.22, 1, 0.36, 1) !important;
 }
 
 /* ================= 6x6 Matrix Card Grid Specification (.parent & .div1 - .div6) for Details Bento Specs ================= */
@@ -572,6 +615,9 @@ img {
 .novel-card-interactive:hover {
   transform: translateY(-3px);
   box-shadow: var(--mtx-card-hover-shadow);
+}
+.liquid-glass-header-match.novel-card-interactive:hover {
+  box-shadow: var(--mtx-glass-specular), var(--mtx-card-hover-shadow);
 }
 .novel-card-interactive:active {
   transform: translateY(0) scale(0.99);

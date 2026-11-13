@@ -8,27 +8,22 @@ import { ThemeService } from '../../../core/services/theme.service';
     @if (themeService.isPaperRevealActive()) {
       <div
         aria-hidden="true"
-        class="fixed inset-0 z-[9999] pointer-events-none overflow-hidden"
+        class="fixed inset-0 z-[9998] pointer-events-none overflow-hidden"
         [style.contain]="'strict'"
       >
         <div
-          class="absolute inset-0 will-change-[transform,opacity]"
-          [style.background-color]="themeService.paperRevealOutgoingBg()"
-          [style.box-shadow]="paperShadow()"
-          [style.backface-visibility]="'hidden'"
+          class="absolute -translate-x-1/2 -translate-y-1/2 rounded-full will-change-[transform,opacity]"
+          [style.left.px]="themeService.revealOriginX()"
+          [style.top.px]="themeService.revealOriginY()"
+          [style.width.px]="haloDiameter()"
+          [style.height.px]="haloDiameter()"
+          [style.background]="haloGradient()"
           [style.transition-property]="'transform, opacity'"
-          [style.transition-duration]="'440ms'"
+          [style.transition-duration]="'520ms'"
           [style.transition-timing-function]="'cubic-bezier(0.22, 1, 0.36, 1)'"
-          [style.opacity]="themeService.paperRevealPeeling() ? '0' : '1'"
-          [style.transform]="paperTransform()"
-        >
-          <div
-            class="absolute inset-y-0 w-10 pointer-events-none"
-            [class.left-0]="themeService.paperRevealDirection() === 'to-light'"
-            [class.right-0]="themeService.paperRevealDirection() === 'to-dark'"
-            [style.background]="'linear-gradient(to right, transparent, ' + themeService.paperRevealEdgeColor() + ', transparent)'"
-          ></div>
-        </div>
+          [style.transform]="haloTransform()"
+          [style.opacity]="haloOpacity()"
+        ></div>
       </div>
     }
   `,
@@ -36,18 +31,21 @@ import { ThemeService } from '../../../core/services/theme.service';
 export class MosaicTransitionOverlay {
   readonly themeService = inject(ThemeService);
 
-  readonly paperTransform = computed(() => {
-    if (!this.themeService.paperRevealPeeling()) {
-      return 'translate3d(0, 0, 0)';
-    }
-    return this.themeService.paperRevealDirection() === 'to-light'
-      ? 'translate3d(104%, 0, 0)'
-      : 'translate3d(-104%, 0, 0)';
+  readonly haloDiameter = computed(() => Math.max(this.themeService.revealEndRadius() * 1.4, 720));
+
+  readonly haloGradient = computed(() => {
+    const edge = this.themeService.paperRevealEdgeColor();
+    return `radial-gradient(circle, ${edge} 0%, transparent 62%)`;
   });
 
-  readonly paperShadow = computed(() => {
-    return this.themeService.paperRevealDirection() === 'to-light'
-      ? '-24px 0 48px rgba(0, 0, 0, 0.26)'
-      : '24px 0 48px rgba(0, 0, 0, 0.22)';
+  readonly haloTransform = computed(() => {
+    return this.themeService.paperRevealPeeling() ? 'scale(1.15)' : 'scale(0.08)';
+  });
+
+  readonly haloOpacity = computed(() => {
+    if (this.themeService.usingViewTransition()) {
+      return this.themeService.paperRevealPeeling() ? '0' : '0.45';
+    }
+    return this.themeService.paperRevealPeeling() ? '0' : '0.6';
   });
 }

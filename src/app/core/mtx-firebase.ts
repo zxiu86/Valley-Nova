@@ -44,7 +44,7 @@ import {
   getDownloadURL,
   deleteObject,
 } from 'firebase/storage';
-import firebaseConfig from '../../../firebase-applet-config.json';
+import firebaseConfig from '../../../firebase-applet-config.example.json';
 import {
   FullAccountProfile,
   NovelCard,
@@ -138,6 +138,11 @@ let authInstance: Auth | null = null;
 let storageInstance: FirebaseStorage | null = null;
 let persistencePromise: Promise<void> | null = null;
 
+export function isFirebaseConfigured(): boolean {
+  const cfg = firebaseConfig as { apiKey?: string; projectId?: string; appId?: string };
+  return Boolean(cfg?.apiKey?.trim() && cfg?.projectId?.trim() && cfg?.appId?.trim());
+}
+
 export function getFirebaseApp(): FirebaseApp {
   if (!appInstance) {
     const existing = getApps();
@@ -179,7 +184,7 @@ export function getFirebaseStorage(): FirebaseStorage {
 }
 
 export async function ensureAuthPersistence(): Promise<void> {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || !isFirebaseConfigured()) return;
   if (!persistencePromise) {
     const auth = getFirebaseAuth();
     persistencePromise = setPersistence(auth, indexedDBLocalPersistence)
@@ -192,7 +197,7 @@ export async function ensureAuthPersistence(): Promise<void> {
 }
 
 export async function waitForAuthSessionReady(): Promise<User | null> {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === 'undefined' || !isFirebaseConfigured()) return null;
   await ensureAuthPersistence();
   const auth = getFirebaseAuth();
   if (typeof auth.authStateReady === 'function') {
@@ -243,6 +248,7 @@ function isPermissionDeniedError(err: unknown): boolean {
 }
 
 export async function verifyFirestoreConnection(): Promise<boolean> {
+  if (!isFirebaseConfigured()) return false;
   try {
     const db = getDb();
     await getDocFromServer(doc(db, 'test', 'connection'));
@@ -261,6 +267,9 @@ export async function verifyFirestoreConnection(): Promise<boolean> {
 // ================= AUTHENTICATION SERVICES ================= //
 
 export async function loginWithEmail(email: string, pass: string): Promise<User> {
+  if (!isFirebaseConfigured()) {
+    throw Object.assign(new Error('Firebase is not configured.'), { code: 'auth/invalid-api-key' });
+  }
   await ensureAuthPersistence();
   const auth = getFirebaseAuth();
   const credential = await signInWithEmailAndPassword(auth, email, pass);
@@ -277,6 +286,9 @@ export async function registerWithEmail(
   pass: string,
   displayName?: string
 ): Promise<User> {
+  if (!isFirebaseConfigured()) {
+    throw Object.assign(new Error('Firebase is not configured.'), { code: 'auth/invalid-api-key' });
+  }
   await ensureAuthPersistence();
   const auth = getFirebaseAuth();
   const credential = await createUserWithEmailAndPassword(auth, email, pass);
@@ -292,6 +304,9 @@ export async function registerWithEmail(
 }
 
 export async function loginWithGoogle(): Promise<User> {
+  if (!isFirebaseConfigured()) {
+    throw Object.assign(new Error('Firebase is not configured.'), { code: 'auth/invalid-api-key' });
+  }
   await ensureAuthPersistence();
   const auth = getFirebaseAuth();
   const provider = new GoogleAuthProvider();
@@ -308,16 +323,19 @@ export async function loginWithGoogle(): Promise<User> {
 }
 
 export async function logoutFirebaseUser(): Promise<void> {
+  if (!isFirebaseConfigured()) return;
   const auth = getFirebaseAuth();
   await signOut(auth);
 }
 
 export function subscribeToAuthState(callback: (user: User | null) => void): Unsubscribe {
+  if (!isFirebaseConfigured()) return () => undefined;
   const auth = getFirebaseAuth();
   return onAuthStateChanged(auth, callback);
 }
 
 export function subscribeToTokenState(callback: (user: User | null) => void): Unsubscribe {
+  if (!isFirebaseConfigured()) return () => undefined;
   const auth = getFirebaseAuth();
   return onIdTokenChanged(auth, callback);
 }
@@ -420,6 +438,15 @@ export async function checkUsernameAvailability(
     };
   }
 
+  if (!isFirebaseConfigured()) {
+    return {
+      status: 'invalid',
+      normalized: validation.normalized,
+      message: 'خدمة التحقق السحابية غير مهيأة في هذه البيئة.',
+      suggestions: [],
+    };
+  }
+
   try {
     const db = getDb();
     const snap = await getDoc(doc(db, 'usernames', validation.normalized));
@@ -482,6 +509,7 @@ export async function resolveUsernameToUid(rawUsername: string): Promise<{
 }> {
   const normalized = normalizeUsername(rawUsername);
   if (
+    !isFirebaseConfigured() ||
     !normalized ||
     (normalized !== ADMIN_EXCLUSIVE_USERNAME && !/^[a-z0-9_]{4,24}$/.test(normalized))
   ) {
@@ -519,6 +547,7 @@ export async function ensureUserDocumentsOnLogin(
   user: User,
   overrideDisplayName?: string
 ): Promise<void> {
+  if (!isFirebaseConfigured()) return;
   const db = getDb();
   const now = new Date().toISOString();
   const userRef = doc(db, 'users', user.uid);
@@ -593,6 +622,7 @@ export async function ensureUserDocumentsOnLogin(
 }
 
 export async function loadOwnerAccountProfile(uid: string): Promise<FullAccountProfile | null> {
+  if (!isFirebaseConfigured()) return null;
   const db = getDb();
   const auth = getFirebaseAuth();
   try {
@@ -658,6 +688,7 @@ export async function loadVisitorAccountProfile(targetUid: string): Promise<{
   profile?: FullAccountProfile;
   savedNovels?: NovelCard[];
 }> {
+  if (!isFirebaseConfigured()) return { state: 'not_found' };
   const db = getDb();
   let pubSnap;
   try {
@@ -1074,6 +1105,7 @@ export async function saveBookmarkToFirestore(
   novel: Pick<NovelCard, 'id' | 'title' | 'author' | 'genre' | 'coverUrl'>,
   totalSavedCount?: number
 ): Promise<void> {
+  if (!isFirebaseConfigured()) return;
   try {
     const db = getDb();
     const now = new Date().toISOString();
@@ -1111,6 +1143,7 @@ export async function removeBookmarkFromFirestore(
   novelId: string,
   totalSavedCount?: number
 ): Promise<void> {
+  if (!isFirebaseConfigured()) return;
   try {
     const db = getDb();
     const now = new Date().toISOString();
@@ -1137,6 +1170,7 @@ export async function syncSavedNovelsCountToFirestore(
   userId: string,
   count: number
 ): Promise<void> {
+  if (!isFirebaseConfigured()) return;
   try {
     const db = getDb();
     await setDoc(doc(db, 'public_profiles', userId, 'stats', 'saved'), {
@@ -1153,6 +1187,7 @@ export async function syncSavedNovelsCountToFirestore(
 }
 
 export async function getUserBookmarksFromFirestore(userId: string): Promise<string[]> {
+  if (!isFirebaseConfigured()) return [];
   try {
     const db = getDb();
     const q = query(collection(db, 'users', userId, 'bookmarks'), limit(100));
@@ -1174,6 +1209,7 @@ export async function recordChapterReadInFirestore(
   chapterId: number,
   chapterTitle: string
 ): Promise<number> {
+  if (!isFirebaseConfigured()) return 0;
   const db = getDb();
   const safeNovel = novelId.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80);
   const historyDocId = `${safeNovel}__ch_${chapterId}`;
@@ -1206,6 +1242,7 @@ export async function recordChapterReadInFirestore(
 }
 
 export async function getUserReadChaptersCount(userId: string): Promise<number> {
+  if (!isFirebaseConfigured()) return 0;
   try {
     const db = getDb();
     const historySnap = await getDocs(query(collection(db, 'users', userId, 'history'), limit(500)));
@@ -1221,6 +1258,14 @@ export async function getUserReadChaptersCount(userId: string): Promise<number> 
 // ================= WRITER ROLE VERIFICATION & APPLICATIONS ================= //
 
 export async function getVerifiedWriterStatus(userId: string): Promise<VerifiedWriterStatus> {
+  if (!isFirebaseConfigured()) {
+    return {
+      isWriterBadge: false,
+      canPublish: false,
+      isAdmin: false,
+      roleRecord: null,
+    };
+  }
   const auth = getFirebaseAuth();
   const currentUser = auth.currentUser;
   const isCurrentDesignatedAdmin =
@@ -1268,6 +1313,7 @@ export async function getVerifiedWriterStatus(userId: string): Promise<VerifiedW
 export async function getWriterApplicationFromFirestore(
   userId: string
 ): Promise<WriterApplication | null> {
+  if (!isFirebaseConfigured()) return null;
   try {
     const db = getDb();
     const snap = await getDoc(doc(db, 'writer_applications', userId));
@@ -1349,6 +1395,7 @@ export async function submitWriterApplicationToFirestore(
 }
 
 export async function fetchPendingWriterApplicationsForAdmin(): Promise<WriterApplication[]> {
+  if (!isFirebaseConfigured()) return [];
   const db = getDb();
   try {
     const q = query(
@@ -1430,6 +1477,7 @@ export async function publishNovelToFirestore(
 }
 
 export async function fetchAuthorPublishedNovels(authorId: string): Promise<PublishedNovelRecord[]> {
+  if (!isFirebaseConfigured()) return [];
   const db = getDb();
   const auth = getFirebaseAuth();
   try {
@@ -1457,6 +1505,7 @@ export async function fetchAuthorPublishedNovels(authorId: string): Promise<Publ
 }
 
 export async function fetchAllPublishedNovels(): Promise<PublishedNovelRecord[]> {
+  if (!isFirebaseConfigured()) return [];
   const db = getDb();
   try {
     const q = query(collection(db, 'novels'), where('isPublished', '==', true), limit(50));
@@ -1608,6 +1657,7 @@ export async function saveUserProfileToFirestore(
   userId: string,
   data: Partial<StoredUserProfile>
 ): Promise<void> {
+  if (!isFirebaseConfigured()) return;
   try {
     const db = getDb();
     await setDoc(
@@ -1623,6 +1673,7 @@ export async function saveUserProfileToFirestore(
 export async function getUserProfileFromFirestore(
   userId: string
 ): Promise<StoredUserProfile | null> {
+  if (!isFirebaseConfigured()) return null;
   try {
     const db = getDb();
     const snap = await getDoc(doc(db, 'users', userId));

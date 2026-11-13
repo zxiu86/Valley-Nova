@@ -140,10 +140,14 @@
         [attr.aria-label]="themeService.isDark() ? t.nav.toggleThemeLight : t.nav.toggleThemeDark"
         [title]="themeService.isDark() ? t.nav.toggleThemeLight : t.nav.toggleThemeDark"
         (click)="themeService.toggleThemeWithPaperReveal()"
-        [disabled]="themeService.isPaperRevealActive()"
-        class="w-10 h-10 rounded-xl liquid-glass-pill flex items-center justify-center text-on-surface hover:text-secondary transition-colors cursor-pointer active:scale-95 disabled:opacity-60 shrink-0"
+        [attr.aria-busy]="themeService.isPaperRevealActive()"
+        [class.pointer-events-none]="themeService.isPaperRevealActive()"
+        class="w-10 h-10 rounded-xl liquid-glass-pill flex items-center justify-center text-on-surface hover:text-secondary transition-colors cursor-pointer active:scale-95 shrink-0"
       >
-        <span class="material-symbols-outlined text-[20px] transition-transform duration-300">
+        <span
+          class="material-symbols-outlined text-[20px] transition-transform duration-500 ease-out"
+          [class.rotate-180]="themeService.isDark()"
+        >
           {{ themeService.isDark() ? 'light_mode' : 'dark_mode' }}
         </span>
       </button>
@@ -209,22 +213,22 @@
     <!-- Scrim Backdrop -->
     <button
       type="button"
-      class="fixed inset-0 w-full h-full bg-black/45 dark:bg-black/65 backdrop-blur-sm border-none cursor-default"
+      class="fixed inset-0 w-full h-full bg-black/25 dark:bg-black/45 backdrop-blur-[2px] border-none cursor-default"
       [attr.aria-label]="t.drawer.closeQuickNav"
       (click)="lib.isMobileNavOpen.set(false)"
     ></button>
 
-    <!-- Slide-Over Sanctuary Drawer Panel -->
+    <!-- Slide-Over Sanctuary Drawer Panel (Exact Header Liquid Glass Extension) -->
     <aside
       role="dialog"
       aria-modal="true"
       [attr.aria-label]="t.drawer.quickNav"
-      class="relative z-10 w-[min(92vw,390px)] h-full liquid-glass-drawer border-e border-outline-variant/40 sm:rounded-e-3xl shadow-2xl flex flex-col overflow-hidden animate-drawer-start"
+      class="relative z-10 w-[min(92vw,390px)] h-full liquid-glass-drawer liquid-glass-header-match sm:rounded-e-3xl flex flex-col overflow-hidden animate-drawer-start"
     >
       <!-- Sticky Drawer Header -->
-      <div class="flex items-center justify-between gap-3 px-5 py-4 border-b border-outline-variant/30 bg-surface-container-low/55 backdrop-blur-xl shrink-0">
+      <div class="flex items-center justify-between gap-3 px-5 py-4 border-b border-[var(--mtx-glass-border)] bg-transparent shrink-0">
         <div class="flex items-center gap-3 min-w-0">
-          <div class="w-10 h-10 rounded-xl bg-surface-container border border-surface-variant/60 flex items-center justify-center shrink-0 shadow-xs">
+          <div class="w-10 h-10 rounded-xl bg-surface-container-low/75 border border-[var(--mtx-glass-border)] flex items-center justify-center shrink-0 shadow-xs">
             <img src="/logo.png" [alt]="t.site.brand" class="w-6 h-6 object-contain" referrerpolicy="no-referrer" />
           </div>
           <div class="flex flex-col min-w-0">
@@ -249,7 +253,7 @@
         <button
           type="button"
           (click)="lib.onHeaderProfileClick()"
-          class="w-full p-3.5 rounded-2xl bg-surface-container/75 hover:bg-surface-container border border-outline-variant/35 hover:border-primary/40 flex items-center justify-between gap-3 text-start transition-all cursor-pointer min-h-[64px] group"
+          class="w-full p-3.5 rounded-2xl bg-surface-container-low/45 dark:bg-white/[0.04] hover:bg-surface-container-low/75 dark:hover:bg-white/[0.08] border border-[var(--mtx-glass-border)] hover:border-primary/40 flex items-center justify-between gap-3 text-start transition-all cursor-pointer min-h-[64px] group"
         >
           <div class="flex items-center gap-3 min-w-0">
             <div class="w-11 h-11 rounded-xl bg-primary text-on-primary flex items-center justify-center font-bold shrink-0 overflow-hidden shadow-xs">
@@ -280,7 +284,7 @@
             <button
               type="button"
               (click)="lib.returnToNovels()"
-              [class]="lib.currentView() === 'novels' ? 'bg-primary text-on-primary border-primary font-bold shadow-sm' : 'bg-surface-container/65 hover:bg-surface-container border-outline-variant/35 text-on-surface'"
+              [class]="lib.currentView() === 'novels' ? 'bg-primary text-on-primary border-primary font-bold shadow-sm' : 'bg-surface-container-low/40 dark:bg-white/[0.04] hover:bg-surface-container-low/70 dark:hover:bg-white/[0.08] border-[var(--mtx-glass-border)] text-on-surface'"
               class="min-h-[44px] px-3.5 py-2.5 rounded-xl border text-xs flex items-center gap-2 transition-all cursor-pointer"
             >
               <span class="material-symbols-outlined text-[18px]">home</span>
@@ -290,7 +294,7 @@
             <button
               type="button"
               (click)="lib.openExplore()"
-              [class]="lib.currentView() === 'explore' ? 'bg-secondary text-on-secondary border-secondary font-bold shadow-sm' : 'bg-surface-container/65 hover:bg-surface-container border-outline-variant/35 text-on-surface'"
+              [class]="lib.currentView() === 'explore' ? 'bg-secondary text-on-secondary border-secondary font-bold shadow-sm' : 'bg-surface-container-low/40 dark:bg-white/[0.04] hover:bg-surface-container-low/70 dark:hover:bg-white/[0.08] border-[var(--mtx-glass-border)] text-on-surface'"
               class="min-h-[44px] px-3.5 py-2.5 rounded-xl border text-xs flex items-center gap-2 transition-all cursor-pointer"
             >
               <span class="material-symbols-outlined text-[18px]">explore</span>
@@ -300,7 +304,7 @@
             <button
               type="button"
               (click)="lib.toggleSearch()"
-              class="min-h-[44px] px-3.5 py-2.5 rounded-xl bg-surface-container/65 hover:bg-surface-container border border-outline-variant/35 text-on-surface text-xs flex items-center gap-2 transition-all cursor-pointer"
+              class="min-h-[44px] px-3.5 py-2.5 rounded-xl bg-surface-container-low/40 dark:bg-white/[0.04] hover:bg-surface-container-low/70 dark:hover:bg-white/[0.08] border border-[var(--mtx-glass-border)] text-on-surface text-xs flex items-center gap-2 transition-all cursor-pointer"
             >
               <span class="material-symbols-outlined text-[18px] text-primary">search</span>
               <span class="truncate">{{ t.drawer.searchBooks }}</span>
@@ -309,7 +313,7 @@
             <button
               type="button"
               (click)="lib.goToExploreWithFilter()"
-              class="min-h-[44px] px-3.5 py-2.5 rounded-xl bg-surface-container/65 hover:bg-surface-container border border-outline-variant/35 text-on-surface text-xs flex items-center gap-2 transition-all cursor-pointer"
+              class="min-h-[44px] px-3.5 py-2.5 rounded-xl bg-surface-container-low/40 dark:bg-white/[0.04] hover:bg-surface-container-low/70 dark:hover:bg-white/[0.08] border border-[var(--mtx-glass-border)] text-on-surface text-xs flex items-center gap-2 transition-all cursor-pointer"
             >
               <span class="material-symbols-outlined text-[18px] text-secondary">tune</span>
               <span class="truncate">{{ t.drawer.filterWorks }}</span>
@@ -318,13 +322,13 @@
             <button
               type="button"
               (click)="lib.isMobileNavOpen.set(false); lib.onHeaderBookmarkClick()"
-              class="col-span-2 min-h-[44px] px-3.5 py-2.5 rounded-xl bg-surface-container/65 hover:bg-surface-container border border-outline-variant/35 text-on-surface text-xs flex items-center justify-between gap-2 transition-all cursor-pointer"
+              class="col-span-2 min-h-[44px] px-3.5 py-2.5 rounded-xl bg-surface-container-low/40 dark:bg-white/[0.04] hover:bg-surface-container-low/70 dark:hover:bg-white/[0.08] border border-[var(--mtx-glass-border)] text-on-surface text-xs flex items-center justify-between gap-2 transition-all cursor-pointer"
             >
               <span class="flex items-center gap-2 truncate">
                 <span class="material-symbols-outlined text-[18px] text-secondary">bookmark</span>
                 <span class="truncate">{{ t.drawer.bookmarks }}</span>
               </span>
-              <span class="px-2 py-0.5 rounded-full bg-surface-container-high text-[11px] font-mono font-bold tabular-nums text-on-surface-variant">
+              <span class="px-2 py-0.5 rounded-full bg-surface-container-low/70 dark:bg-white/10 text-[11px] font-mono font-bold tabular-nums text-on-surface-variant">
                 {{ lib.i18n.formatNumber(lib.bookmarkedIds().size) }}
               </span>
             </button>
@@ -338,7 +342,7 @@
             <button
               type="button"
               (click)="lib.switchCorridor('novels')"
-              [class]="lib.activeCorridor() === 'novels' && lib.currentView() === 'novels' ? 'border-primary/45 bg-primary/8' : 'border-outline-variant/35 bg-surface-container/60 hover:bg-surface-container'"
+              [class]="lib.activeCorridor() === 'novels' && lib.currentView() === 'novels' ? 'border-primary/45 bg-primary/10' : 'border-[var(--mtx-glass-border)] bg-surface-container-low/35 dark:bg-white/[0.04] hover:bg-surface-container-low/65 dark:hover:bg-white/[0.08]'"
               class="w-full min-h-[52px] px-3.5 py-2.5 rounded-xl border text-start transition-all cursor-pointer flex items-center justify-between gap-3"
             >
               <div class="flex items-center gap-3 min-w-0">
@@ -356,7 +360,7 @@
             <button
               type="button"
               (click)="lib.switchCorridor('epics')"
-              [class]="lib.activeCorridor() === 'epics' ? 'border-secondary/45 bg-secondary/10' : 'border-outline-variant/35 bg-surface-container/60 hover:bg-surface-container'"
+              [class]="lib.activeCorridor() === 'epics' ? 'border-secondary/45 bg-secondary/12' : 'border-[var(--mtx-glass-border)] bg-surface-container-low/35 dark:bg-white/[0.04] hover:bg-surface-container-low/65 dark:hover:bg-white/[0.08]'"
               class="w-full min-h-[52px] px-3.5 py-2.5 rounded-xl border text-start transition-all cursor-pointer flex items-center justify-between gap-3"
             >
               <div class="flex items-center gap-3 min-w-0">
@@ -374,7 +378,7 @@
             <button
               type="button"
               (click)="lib.switchCorridor('wisdom')"
-              [class]="lib.activeCorridor() === 'wisdom' ? 'border-on-surface/35 bg-surface-container-high' : 'border-outline-variant/35 bg-surface-container/60 hover:bg-surface-container'"
+              [class]="lib.activeCorridor() === 'wisdom' ? 'border-on-surface/30 bg-surface-container-low/70 dark:bg-white/[0.1]' : 'border-[var(--mtx-glass-border)] bg-surface-container-low/35 dark:bg-white/[0.04] hover:bg-surface-container-low/65 dark:hover:bg-white/[0.08]'"
               class="w-full min-h-[52px] px-3.5 py-2.5 rounded-xl border text-start transition-all cursor-pointer flex items-center justify-between gap-3"
             >
               <div class="flex items-center gap-3 min-w-0">
@@ -392,7 +396,7 @@
             <button
               type="button"
               (click)="lib.switchCorridor('heritage')"
-              [class]="lib.activeCorridor() === 'heritage' ? 'border-tertiary/45 bg-tertiary/10' : 'border-outline-variant/35 bg-surface-container/60 hover:bg-surface-container'"
+              [class]="lib.activeCorridor() === 'heritage' ? 'border-tertiary/45 bg-tertiary/12' : 'border-[var(--mtx-glass-border)] bg-surface-container-low/35 dark:bg-white/[0.04] hover:bg-surface-container-low/65 dark:hover:bg-white/[0.08]'"
               class="w-full min-h-[52px] px-3.5 py-2.5 rounded-xl border text-start transition-all cursor-pointer flex items-center justify-between gap-3"
             >
               <div class="flex items-center gap-3 min-w-0">
@@ -410,7 +414,7 @@
         </section>
 
         <!-- Preferences: Site Language & Theme Mode -->
-        <section class="space-y-3 p-3.5 rounded-2xl bg-surface-container/65 border border-outline-variant/35">
+        <section class="space-y-3 p-3.5 rounded-2xl bg-surface-container-low/35 dark:bg-white/[0.04] border border-[var(--mtx-glass-border)]">
           <div class="flex items-center justify-between gap-2">
             <span class="text-[11px] font-bold text-outline flex items-center gap-1.5">
               <span class="material-symbols-outlined text-[16px] text-secondary">translate</span>
@@ -425,7 +429,7 @@
             <button
               type="button"
               (click)="lib.setSiteLanguage('ar')"
-              [class]="lib.i18n.lang() === 'ar' ? 'bg-primary text-on-primary border-primary font-bold shadow-xs' : 'bg-surface-container-low/80 text-on-surface border-outline-variant/40 hover:border-primary/40'"
+              [class]="lib.i18n.lang() === 'ar' ? 'bg-primary text-on-primary border-primary font-bold shadow-xs' : 'bg-surface-container-low/55 dark:bg-white/[0.05] text-on-surface border-[var(--mtx-glass-border)] hover:border-primary/40'"
               class="min-h-[42px] px-3 rounded-xl border text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
             >
               <span>العربية</span>
@@ -433,22 +437,26 @@
             <button
               type="button"
               (click)="lib.setSiteLanguage('en')"
-              [class]="lib.i18n.lang() === 'en' ? 'bg-primary text-on-primary border-primary font-bold shadow-xs' : 'bg-surface-container-low/80 text-on-surface border-outline-variant/40 hover:border-primary/40'"
+              [class]="lib.i18n.lang() === 'en' ? 'bg-primary text-on-primary border-primary font-bold shadow-xs' : 'bg-surface-container-low/55 dark:bg-white/[0.05] text-on-surface border-[var(--mtx-glass-border)] hover:border-primary/40'"
               class="min-h-[42px] px-3 rounded-xl border text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
             >
               <span>English</span>
             </button>
           </div>
 
-          <div class="pt-2 border-t border-outline-variant/25 flex items-center justify-between gap-2">
+          <div class="pt-2 border-t border-[var(--mtx-glass-border)] flex items-center justify-between gap-2">
             <span class="text-[11px] font-bold text-outline">{{ t.drawer.appearance }}</span>
             <button
               type="button"
               (click)="themeService.toggleThemeWithPaperReveal()"
-              [disabled]="themeService.isPaperRevealActive()"
-              class="min-h-[40px] px-3.5 rounded-xl bg-surface-container-low/90 hover:bg-surface-container-high border border-outline-variant/40 text-xs font-semibold text-on-surface flex items-center gap-2 transition-colors cursor-pointer disabled:opacity-60"
+              [attr.aria-busy]="themeService.isPaperRevealActive()"
+              [class.pointer-events-none]="themeService.isPaperRevealActive()"
+              class="min-h-[40px] px-3.5 rounded-xl liquid-glass-pill text-xs font-semibold text-on-surface flex items-center gap-2 transition-colors cursor-pointer"
             >
-              <span class="material-symbols-outlined text-[17px] text-secondary">
+              <span
+                class="material-symbols-outlined text-[17px] text-secondary transition-transform duration-500 ease-out"
+                [class.rotate-180]="themeService.isDark()"
+              >
                 {{ themeService.isDark() ? 'light_mode' : 'dark_mode' }}
               </span>
               <span>{{ themeService.isDark() ? t.drawer.lightMode : t.drawer.darkMode }}</span>
@@ -458,11 +466,11 @@
       </div>
 
       <!-- Sticky Drawer Footer -->
-      <div class="px-4 sm:px-5 py-3.5 border-t border-outline-variant/30 bg-surface-container-low/65 backdrop-blur-xl flex items-center gap-2.5 shrink-0">
+      <div class="px-4 sm:px-5 py-3.5 border-t border-[var(--mtx-glass-border)] bg-transparent flex items-center gap-2.5 shrink-0">
         <button
           type="button"
           (click)="lib.openSiteSettings()"
-          class="flex-1 min-h-[44px] px-4 rounded-xl bg-surface-container hover:bg-surface-container-high border border-outline-variant/40 text-xs font-bold text-on-surface flex items-center justify-center gap-2 transition-colors cursor-pointer"
+          class="flex-1 min-h-[44px] px-4 rounded-xl liquid-glass-pill text-xs font-bold text-on-surface flex items-center justify-center gap-2 transition-colors cursor-pointer"
         >
           <span class="material-symbols-outlined text-[18px] text-tertiary">settings</span>
           <span>{{ t.drawer.siteSettingsBtn }}</span>
