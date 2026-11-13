@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { ReactiveFormsModule } from '@angular/forms';
 import { LibraryStateService } from '../../../core/services/library-state.service';
 import { ThemeService } from '../../../core/services/theme.service';
 import { AuthSessionService } from '../../../core/services/auth-session.service';
@@ -7,7 +6,7 @@ import { AuthSessionService } from '../../../core/services/auth-session.service'
 @Component({
   selector: 'app-site-header',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [ReactiveFormsModule],
+  imports: [],
   templateUrl: './site-header.html',
   host: {
     '(document:keydown.escape)': 'onEscapePress()',

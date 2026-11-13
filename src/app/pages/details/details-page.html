@@ -770,9 +770,9 @@
             tabindex="0"
             (click)="lib.openNovelDetails(related)"
             (keydown.enter)="lib.openNovelDetails(related)"
-            class="group flex flex-col items-start focus:outline-none shrink-0 snap-start w-[80px] sm:w-auto cursor-pointer"
+            class="group flex flex-col items-center text-center focus:outline-none shrink-0 snap-start w-[88px] sm:w-auto cursor-pointer"
           >
-            <div class="relative w-[80px] h-[110px] min-w-[80px] max-w-[80px] sm:w-full sm:h-auto sm:aspect-[1/1.55] rounded-xl overflow-hidden bg-surface-container-high shadow-lg transition-all duration-500 group-hover:-translate-y-2 group-hover:shadow-[0_15px_30px_rgba(0,0,0,0.35)] border border-surface-variant/30">
+            <div class="relative w-[88px] h-[126px] min-w-[88px] max-w-[88px] sm:w-full sm:h-auto sm:aspect-[1/1.55] rounded-xl overflow-hidden bg-surface-container-high shadow-lg transition-all duration-500 group-hover:-translate-y-2 group-hover:shadow-[0_15px_30px_rgba(0,0,0,0.35)] border border-surface-variant/30">
               <img
                 class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 [src]="related.coverUrl"
@@ -781,7 +781,7 @@
               />
               <div class="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent opacity-50 group-hover:opacity-25 transition-opacity pointer-events-none"></div>
             </div>
-            <h3 class="text-xs sm:text-base font-bold text-on-surface group-hover:text-primary transition-colors truncate sm:whitespace-normal w-full mt-1.5 sm:mt-2">
+            <h3 class="text-xs sm:text-base font-bold text-on-surface group-hover:text-primary transition-colors line-clamp-2 w-full mt-2 px-0.5 text-center leading-snug">
               {{ related.title }}
             </h3>
           </div>
@@ -793,7 +793,7 @@
 
 <!-- ================= 6. EDITORIAL INTEGRITY & ARCHIVE CERTIFICATE MODAL ================= -->
 @if (lib.isIntegrityDocOpen()) {
-  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fadeIn">
+  <div class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fadeIn">
     <button
       type="button"
       class="fixed inset-0 w-full h-full cursor-default border-none bg-transparent"
@@ -801,7 +801,7 @@
       (click)="lib.closeIntegrityDoc()"
     ></button>
 
-    <div class="relative z-10 w-full max-w-2xl bg-surface-container-low border border-secondary/40 rounded-2xl shadow-2xl p-6 sm:p-8 space-y-5">
+    <div class="relative z-10 w-full max-w-2xl liquid-glass-drawer border border-secondary/40 rounded-2xl shadow-2xl p-6 sm:p-8 space-y-5">
       <div class="flex items-center justify-between border-b border-surface-variant/40 pb-4">
         <div class="flex items-center gap-3">
           <span class="material-symbols-outlined text-secondary text-[28px]">verified</span>
@@ -814,9 +814,9 @@
           type="button"
           (click)="lib.closeIntegrityDoc()"
           [attr.aria-label]="t.details.close"
-          class="w-9 h-9 rounded-xl bg-surface-container flex items-center justify-center text-outline hover:text-on-surface transition-colors cursor-pointer"
+          class="w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center text-outline hover:text-on-surface transition-colors cursor-pointer"
         >
-          <span class="material-symbols-outlined text-[18px]">close</span>
+          <span class="material-symbols-outlined text-[20px]">close</span>
         </button>
       </div>
 
@@ -857,7 +857,7 @@
 
 <!-- ================= 8. MANUSCRIPT SPECIMEN PREVIEW MODAL ================= -->
 @if (lib.isManuscriptPreviewOpen()) {
-  <div class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fadeIn">
+  <div class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fadeIn">
     <button
       type="button"
       class="fixed inset-0 w-full h-full cursor-default border-none bg-transparent"
@@ -865,7 +865,7 @@
       (click)="lib.closeManuscriptPreview()"
     ></button>
 
-    <div class="relative z-10 w-full max-w-3xl bg-surface-container-low border border-surface-variant/60 rounded-2xl shadow-2xl p-6 sm:p-8 space-y-5">
+    <div class="relative z-10 w-full max-w-3xl liquid-glass-drawer border border-surface-variant/60 rounded-2xl shadow-2xl p-6 sm:p-8 space-y-5">
       <div class="flex items-center justify-between border-b border-surface-variant/40 pb-4">
         <div class="flex items-center gap-3">
           <span class="material-symbols-outlined text-secondary text-[26px]">menu_book</span>
@@ -878,9 +878,9 @@
           type="button"
           (click)="lib.closeManuscriptPreview()"
           [attr.aria-label]="t.details.close"
-          class="w-9 h-9 rounded-xl bg-surface-container flex items-center justify-center text-outline hover:text-on-surface transition-colors cursor-pointer"
+          class="w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center text-outline hover:text-on-surface transition-colors cursor-pointer"
         >
-          <span class="material-symbols-outlined text-[18px]">close</span>
+          <span class="material-symbols-outlined text-[20px]">close</span>
         </button>
       </div>
 

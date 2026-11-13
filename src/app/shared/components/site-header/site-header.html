@@ -1,18 +1,17 @@
 @let t = lib.i18n.copy();
-<header class="fixed top-3 inset-x-0 z-50 px-3 sm:px-6 pointer-events-none">
-  <div class="pointer-events-auto max-w-[1400px] mx-auto liquid-glass-header rounded-2xl sm:rounded-[22px] px-4 lg:px-6 h-16 sm:h-[70px] flex items-center justify-between gap-3 transition-all duration-300">
+<header class="fixed top-2.5 sm:top-3 inset-x-0 z-50 px-2.5 sm:px-5 lg:px-6 pointer-events-none">
+  <div class="pointer-events-auto max-w-[1400px] mx-auto liquid-glass-header rounded-2xl px-2.5 sm:px-4 lg:px-5 h-[60px] sm:h-[68px] flex items-center justify-between gap-2 sm:gap-4 transition-all duration-300">
 
-    <!-- Start Section: Hamburger Menu Trigger + Brand & Corridor Badge -->
-    <div class="flex items-center gap-2.5 sm:gap-3.5 shrink-0">
-      <!-- Liquid Glass Hamburger Button -->
+    <!-- Start Zone: Mobile/Tablet Drawer Trigger + Clean Brand Wordmark -->
+    <div class="flex items-center gap-2 sm:gap-3 min-w-0 shrink-0">
       <button
         type="button"
         [attr.aria-label]="lib.isMobileNavOpen() ? t.nav.closeMenu : t.nav.openMenu"
         [attr.aria-expanded]="lib.isMobileNavOpen()"
         (click)="lib.toggleMobileNav()"
-        class="md:hidden w-10 h-10 rounded-xl liquid-glass-pill flex items-center justify-center text-on-surface hover:text-primary transition-all cursor-pointer active:scale-95"
+        class="lg:hidden w-10 h-10 rounded-xl liquid-glass-pill flex items-center justify-center text-on-surface hover:text-primary transition-colors cursor-pointer active:scale-95 shrink-0"
       >
-        <span class="material-symbols-outlined text-[22px]">
+        <span class="material-symbols-outlined text-[21px]">
           {{ lib.isMobileNavOpen() ? 'close' : 'menu' }}
         </span>
       </button>
@@ -20,143 +19,119 @@
       <a
         href="#/"
         (click)="lib.returnToNovels(); $event.preventDefault()"
-        class="flex items-center gap-2.5 sm:gap-3 shrink-0 group"
+        class="flex items-center gap-2.5 min-w-0 shrink-0 group focus:outline-none"
       >
-        <div class="flex items-center gap-1.5">
-          <span class="font-title-lg text-base sm:text-lg text-on-surface tracking-wide select-none font-bold">
-            {{ t.site.brand }}
-          </span>
-          <span class="w-1.5 h-1.5 rounded-full bg-secondary inline-block shadow-[0_0_8px_rgba(233,195,73,0.7)]"></span>
-        </div>
-        <span class="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full bg-primary-container/90 text-on-primary-container font-label-sm text-[11px] tracking-wider border border-primary/20">
-          {{ t.nav.corridorNovels }}
+        <span class="hidden sm:flex w-8 h-8 rounded-xl bg-surface-container-low/90 border border-surface-variant/60 items-center justify-center shadow-xs shrink-0 overflow-hidden group-hover:border-primary/40 transition-colors">
+          <img
+            src="/logo.png"
+            [alt]="t.site.brand"
+            class="w-5 h-5 object-contain"
+            referrerpolicy="no-referrer"
+          />
+        </span>
+        <span class="font-display-hero text-[15px] sm:text-[17px] lg:text-lg font-bold text-on-surface tracking-tight whitespace-nowrap truncate select-none group-hover:text-primary transition-colors">
+          {{ t.site.brand }}
         </span>
       </a>
     </div>
 
-    <!-- Center: Corridor Navigation Links -->
-    <nav class="hidden md:flex items-center gap-5 lg:gap-7">
+    <!-- Center Zone: Editorial Single-Line Navigation (Desktop lg+) -->
+    <nav class="hidden lg:flex items-center justify-center gap-1 xl:gap-1.5 min-w-0" [attr.aria-label]="t.drawer.quickNav">
       <button
         type="button"
         (click)="lib.returnToNovels()"
         [class]="
           lib.currentView() === 'novels'
-            ? 'text-primary font-semibold relative after:content-[\'\'] after:absolute after:bottom-[-6px] after:left-0 after:right-0 after:h-[2px] after:bg-primary after:rounded-full transition-colors cursor-pointer'
-            : 'text-on-surface-variant hover:text-on-surface font-label-md text-label-md transition-colors cursor-pointer'
+            ? 'bg-primary/12 text-primary font-bold border-primary/25'
+            : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low/70 border-transparent'
         "
+        class="px-3 xl:px-3.5 py-2 rounded-xl border text-[13px] xl:text-sm font-medium whitespace-nowrap shrink-0 transition-all cursor-pointer"
       >
         {{ t.nav.home }}
       </button>
+
       <button
         type="button"
         (click)="lib.openExplore()"
         [class]="
           lib.currentView() === 'explore'
-            ? 'text-secondary font-semibold relative after:content-[\'\'] after:absolute after:bottom-[-6px] after:left-0 after:right-0 after:h-[2px] after:bg-secondary after:rounded-full transition-colors cursor-pointer flex items-center gap-1.5'
-            : 'text-on-surface-variant hover:text-on-surface font-label-md text-label-md transition-colors cursor-pointer flex items-center gap-1.5'
+            ? 'bg-secondary/14 text-secondary font-bold border-secondary/30'
+            : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low/70 border-transparent'
         "
+        class="px-3 xl:px-3.5 py-2 rounded-xl border text-[13px] xl:text-sm font-medium whitespace-nowrap shrink-0 transition-all cursor-pointer flex items-center gap-1.5"
       >
         <span class="material-symbols-outlined text-[17px]">explore</span>
         <span>{{ t.nav.explore }}</span>
       </button>
+
+      <span class="w-px h-4 bg-outline-variant/40 mx-1 shrink-0" aria-hidden="true"></span>
+
       <button
         type="button"
         (click)="lib.switchCorridor('novels')"
         [class]="
           lib.activeCorridor() === 'novels' && lib.currentView() === 'novels'
-            ? 'text-primary font-semibold transition-colors cursor-pointer'
-            : 'text-on-surface-variant hover:text-on-surface font-label-md text-label-md transition-colors cursor-pointer'
+            ? 'text-primary font-semibold'
+            : 'text-on-surface-variant hover:text-on-surface'
         "
+        class="px-2.5 xl:px-3 py-2 rounded-xl hover:bg-surface-container-low/60 text-[13px] xl:text-sm font-medium whitespace-nowrap shrink-0 transition-colors cursor-pointer"
       >
         {{ t.nav.corridorNovels }}
       </button>
+
       <button
         type="button"
         (click)="lib.switchCorridor('epics')"
         [class]="
           lib.activeCorridor() === 'epics'
-            ? 'text-secondary font-semibold transition-colors cursor-pointer'
-            : 'text-on-surface-variant hover:text-on-surface font-label-md text-label-md transition-colors cursor-pointer'
+            ? 'text-secondary font-semibold bg-secondary/10'
+            : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low/60'
         "
+        class="px-2.5 xl:px-3 py-2 rounded-xl text-[13px] xl:text-sm font-medium whitespace-nowrap shrink-0 transition-colors cursor-pointer"
       >
         {{ t.nav.corridorEpics }}
       </button>
+
       <button
         type="button"
         (click)="lib.switchCorridor('wisdom')"
         [class]="
           lib.activeCorridor() === 'wisdom'
-            ? 'text-tertiary font-semibold transition-colors cursor-pointer'
-            : 'text-on-surface-variant hover:text-on-surface font-label-md text-label-md transition-colors cursor-pointer'
+            ? 'text-on-surface font-semibold bg-surface-container-high/80'
+            : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low/60'
         "
+        class="px-2.5 xl:px-3 py-2 rounded-xl text-[13px] xl:text-sm font-medium whitespace-nowrap shrink-0 transition-colors cursor-pointer"
       >
         {{ t.nav.corridorWisdom }}
       </button>
+
       <button
         type="button"
         (click)="lib.switchCorridor('heritage')"
         [class]="
           lib.activeCorridor() === 'heritage'
-            ? 'text-secondary font-semibold transition-colors cursor-pointer'
-            : 'text-on-surface-variant hover:text-on-surface font-label-md text-label-md transition-colors cursor-pointer'
+            ? 'text-tertiary font-semibold bg-tertiary/10'
+            : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low/60'
         "
+        class="px-2.5 xl:px-3 py-2 rounded-xl text-[13px] xl:text-sm font-medium whitespace-nowrap shrink-0 transition-colors cursor-pointer"
       >
         {{ t.nav.corridorHeritage }}
       </button>
     </nav>
 
-    <!-- End Section: Action Controls -->
-    <div class="flex items-center gap-2 lg:gap-2.5 shrink-0">
-      <!-- Desktop Search Bar -->
-      <div class="hidden xl:flex items-center liquid-glass-pill rounded-full px-3.5 py-1.5 gap-2 focus-within:border-primary/60 transition-colors">
-        <button
-          type="button"
-          (click)="lib.goToExploreWithSearch(lib.searchControl.value)"
-          class="text-outline hover:text-primary transition-colors cursor-pointer flex items-center justify-center p-0 border-none bg-transparent"
-          [attr.aria-label]="t.nav.openSearch"
-        >
-          <span class="material-symbols-outlined text-[18px]">search</span>
-        </button>
-        <input
-          [formControl]="lib.searchControl"
-          (keydown.enter)="lib.goToExploreWithSearch(lib.searchControl.value)"
-          class="bg-transparent text-on-surface placeholder:text-outline/80 font-body-sm text-xs focus:outline-none w-40 2xl:w-52"
-          [placeholder]="t.nav.searchPlaceholder"
-          type="text"
-        />
-        <button
-          type="button"
-          (click)="lib.goToExploreWithSearch(lib.searchControl.value)"
-          class="font-label-sm text-[11px] text-outline bg-surface-container/80 px-2 py-0.5 rounded-md border border-outline-variant/30 select-none hover:text-primary hover:border-primary/40 transition-colors cursor-pointer"
-          [title]="t.nav.openSearch"
-        >
-          {{ lib.i18n.isRtl() ? 'بحث ↵' : 'Go ↵' }}
-        </button>
-      </div>
-
-      <!-- Mobile/Tablet Search Button -->
+    <!-- End Zone: Equal-Height Compact Actions (40px touch targets) -->
+    <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+      <!-- Global Search Modal Trigger -->
       <button
         type="button"
         [attr.aria-label]="t.nav.openSearch"
-        (click)="lib.onMobileSearchClick()"
-        [class.bg-primary/20]="lib.isSearchOpen()"
+        [title]="t.nav.openSearch"
+        (click)="lib.toggleSearch()"
+        [class.bg-primary/18]="lib.isSearchOpen()"
         [class.text-primary]="lib.isSearchOpen()"
-        class="xl:hidden w-9 h-9 rounded-xl liquid-glass-pill flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-all cursor-pointer"
+        class="w-10 h-10 rounded-xl liquid-glass-pill flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:scale-95 shrink-0"
       >
-        <span class="material-symbols-outlined text-[19px]">search</span>
-      </button>
-
-      <!-- Category Tune Button -->
-      <button
-        type="button"
-        [attr.aria-label]="t.nav.openFilter"
-        (click)="lib.onHeaderFilterClick()"
-        [class.bg-secondary/20]="lib.isFilterOpen()"
-        [class.text-secondary]="lib.isFilterOpen()"
-        class="hidden sm:flex w-9 h-9 rounded-xl liquid-glass-pill items-center justify-center text-on-surface-variant hover:text-on-surface transition-all cursor-pointer"
-        [title]="t.nav.openFilter"
-      >
-        <span class="material-symbols-outlined text-[19px]">tune</span>
+        <span class="material-symbols-outlined text-[20px]">search</span>
       </button>
 
       <!-- Paper Reveal Light / Dark Theme Toggle -->
@@ -166,60 +141,60 @@
         [title]="themeService.isDark() ? t.nav.toggleThemeLight : t.nav.toggleThemeDark"
         (click)="themeService.toggleThemeWithPaperReveal()"
         [disabled]="themeService.isPaperRevealActive()"
-        class="w-9 h-9 rounded-xl liquid-glass-pill flex items-center justify-center text-on-surface hover:text-secondary transition-all cursor-pointer active:scale-95 disabled:opacity-60"
+        class="w-10 h-10 rounded-xl liquid-glass-pill flex items-center justify-center text-on-surface hover:text-secondary transition-colors cursor-pointer active:scale-95 disabled:opacity-60 shrink-0"
       >
-        <span class="material-symbols-outlined text-[19px] transition-transform duration-300">
+        <span class="material-symbols-outlined text-[20px] transition-transform duration-300">
           {{ themeService.isDark() ? 'light_mode' : 'dark_mode' }}
         </span>
       </button>
 
-      <!-- Bookmarks Library Button -->
+      <!-- Bookmarks Library Button (hidden on ultra-small phones, always in Drawer) -->
       <button
         type="button"
         [attr.aria-label]="t.nav.openBookmarks"
-        (click)="lib.onHeaderBookmarkClick()"
-        [class.bg-secondary/20]="lib.isBookmarksOpen()"
-        [class.text-secondary]="lib.isBookmarksOpen()"
-        class="relative w-9 h-9 rounded-xl liquid-glass-pill flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-all cursor-pointer"
         [title]="t.nav.openBookmarks"
+        (click)="lib.onHeaderBookmarkClick()"
+        [class.bg-secondary/18]="lib.isBookmarksOpen()"
+        [class.text-secondary]="lib.isBookmarksOpen()"
+        class="hidden sm:flex relative w-10 h-10 rounded-xl liquid-glass-pill items-center justify-center text-on-surface-variant hover:text-secondary transition-colors cursor-pointer active:scale-95 shrink-0"
       >
-        <span class="material-symbols-outlined text-[19px]">bookmark</span>
+        <span class="material-symbols-outlined text-[20px]">bookmark</span>
         @if (lib.bookmarkedIds().size > 0) {
-          <span class="absolute -top-1 -end-1 w-4 h-4 rounded-full bg-primary text-[10px] text-on-primary font-bold flex items-center justify-center shadow-sm tabular-nums">
+          <span class="absolute -top-1 -end-1 min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-[10px] text-on-primary font-bold flex items-center justify-center shadow-sm tabular-nums">
             {{ lib.bookmarkedIds().size }}
           </span>
         }
       </button>
 
-      <!-- User Profile Avatar -->
+      <!-- Account / Profile Avatar -->
       <button
         type="button"
         [attr.aria-label]="auth.currentUser() ? t.nav.profileTooltip : t.nav.loginTooltip"
+        [title]="auth.currentUser() ? t.nav.profileTooltip : t.nav.loginTooltip"
         (click)="lib.onHeaderProfileClick()"
         [class.ring-2]="lib.currentView() === 'profile' || lib.currentView() === 'auth'"
         [class.ring-primary]="lib.currentView() === 'profile' || lib.currentView() === 'auth'"
-        class="w-9 h-9 rounded-full bg-primary flex items-center justify-center cursor-pointer hover:opacity-90 transition-all shadow-md overflow-hidden border border-white/20"
-        [title]="auth.currentUser() ? t.nav.profileTooltip : t.nav.loginTooltip"
+        class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center cursor-pointer hover:opacity-95 transition-all shadow-sm overflow-hidden border border-white/20 shrink-0 active:scale-95"
       >
         @if (auth.photoUrl()) {
           <img [src]="auth.photoUrl()" [alt]="auth.displayName()" class="w-full h-full object-cover" referrerpolicy="no-referrer" />
         } @else if (auth.currentUser()?.displayName || auth.authHint()?.displayName) {
           <span class="text-on-primary text-xs font-bold">{{ auth.displayName().slice(0, 1) }}</span>
         } @else {
-          <span class="material-symbols-outlined text-on-primary text-[18px]">person</span>
+          <span class="material-symbols-outlined text-on-primary text-[19px]">person</span>
         }
       </button>
 
-      <!-- Desktop/Tablet Quick Menu Hamburger Trigger -->
+      <!-- Desktop Menu / Preferences Drawer Trigger -->
       <button
         type="button"
         [attr.aria-label]="lib.isMobileNavOpen() ? t.nav.closeMenu : t.nav.openMenu"
         [attr.aria-expanded]="lib.isMobileNavOpen()"
-        (click)="lib.toggleMobileNav()"
-        class="hidden md:flex w-9 h-9 rounded-xl liquid-glass-pill items-center justify-center text-on-surface-variant hover:text-on-surface transition-all cursor-pointer"
         [title]="t.nav.openMenu"
+        (click)="lib.toggleMobileNav()"
+        class="hidden lg:flex w-10 h-10 rounded-xl liquid-glass-pill items-center justify-center text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:scale-95 shrink-0"
       >
-        <span class="material-symbols-outlined text-[19px]">
+        <span class="material-symbols-outlined text-[20px]">
           {{ lib.isMobileNavOpen() ? 'close' : 'widgets' }}
         </span>
       </button>
@@ -228,209 +203,276 @@
   </div>
 </header>
 
-<!-- ================= LIQUID GLASS HAMBURGER / QUICK DRAWER ================= -->
+<!-- ================= UNIFIED SANCTUARY NAVIGATION DRAWER ================= -->
 @if (lib.isMobileNavOpen()) {
-  <div class="fixed inset-0 z-40 flex items-start justify-start pt-24 px-3 sm:px-6 animate-fadeIn">
-    <!-- Translucent Backdrop -->
+  <div class="fixed inset-0 z-[60] flex justify-start animate-fadeIn">
+    <!-- Scrim Backdrop -->
     <button
       type="button"
-      class="fixed inset-0 w-full h-full bg-black/35 dark:bg-black/60 backdrop-blur-sm border-none cursor-default"
+      class="fixed inset-0 w-full h-full bg-black/45 dark:bg-black/65 backdrop-blur-sm border-none cursor-default"
       [attr.aria-label]="t.drawer.closeQuickNav"
       (click)="lib.isMobileNavOpen.set(false)"
     ></button>
 
-    <!-- Floating Liquid Glass Drawer Panel -->
+    <!-- Slide-Over Sanctuary Drawer Panel -->
     <aside
+      role="dialog"
+      aria-modal="true"
       [attr.aria-label]="t.drawer.quickNav"
-      class="relative z-10 w-full max-w-sm liquid-glass-drawer rounded-3xl p-5 sm:p-6 space-y-5 shadow-2xl max-h-[calc(100vh-7.5rem)] overflow-y-auto scrollbar-none"
+      class="relative z-10 w-[min(92vw,390px)] h-full liquid-glass-drawer border-e border-outline-variant/40 sm:rounded-e-3xl shadow-2xl flex flex-col overflow-hidden animate-drawer-start"
     >
-      <!-- Header row -->
-      <div class="flex items-center justify-between border-b border-surface-variant/40 pb-3.5">
-        <div class="flex items-center gap-2.5">
-          <span class="w-2.5 h-2.5 rounded-full bg-primary shadow-sm"></span>
-          <span class="font-bold text-base text-on-surface">{{ t.drawer.quickNav }}</span>
+      <!-- Sticky Drawer Header -->
+      <div class="flex items-center justify-between gap-3 px-5 py-4 border-b border-outline-variant/30 bg-surface-container-low/55 backdrop-blur-xl shrink-0">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-10 h-10 rounded-xl bg-surface-container border border-surface-variant/60 flex items-center justify-center shrink-0 shadow-xs">
+            <img src="/logo.png" [alt]="t.site.brand" class="w-6 h-6 object-contain" referrerpolicy="no-referrer" />
+          </div>
+          <div class="flex flex-col min-w-0">
+            <span class="font-display-hero font-bold text-base text-on-surface truncate">{{ t.site.brand }}</span>
+            <span class="text-[11px] text-outline truncate">{{ t.drawer.quickNav }}</span>
+          </div>
         </div>
+
         <button
           type="button"
           (click)="lib.isMobileNavOpen.set(false)"
           [attr.aria-label]="t.drawer.closeQuickNav"
-          class="w-8 h-8 rounded-xl liquid-glass-pill flex items-center justify-center text-outline hover:text-on-surface cursor-pointer"
+          class="w-10 h-10 rounded-xl liquid-glass-pill flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer shrink-0 active:scale-95"
         >
-          <span class="material-symbols-outlined text-[18px]">close</span>
+          <span class="material-symbols-outlined text-[20px]">close</span>
         </button>
       </div>
 
-      <!-- Auth Status Glass Card -->
-      <button
-        type="button"
-        (click)="lib.onHeaderProfileClick()"
-        class="w-full p-3.5 rounded-2xl liquid-glass-pill flex items-center justify-between gap-3 text-start hover:border-primary/40 transition-all cursor-pointer"
-      >
-        <div class="flex items-center gap-3 min-w-0">
-          <div class="w-10 h-10 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold shrink-0 overflow-hidden">
-            @if (auth.photoUrl()) {
-              <img [src]="auth.photoUrl()" [alt]="auth.displayName()" class="w-full h-full object-cover" referrerpolicy="no-referrer" />
-            } @else {
-              <span>{{ auth.currentUser() ? auth.displayName().slice(0, 1) : (lib.i18n.isRtl() ? 'أ' : 'E') }}</span>
-            }
+      <!-- Scrollable Body -->
+      <div class="flex-1 min-h-0 overflow-y-auto px-4 sm:px-5 py-5 space-y-6">
+        <!-- Account Card -->
+        <button
+          type="button"
+          (click)="lib.onHeaderProfileClick()"
+          class="w-full p-3.5 rounded-2xl bg-surface-container/75 hover:bg-surface-container border border-outline-variant/35 hover:border-primary/40 flex items-center justify-between gap-3 text-start transition-all cursor-pointer min-h-[64px] group"
+        >
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-11 h-11 rounded-xl bg-primary text-on-primary flex items-center justify-center font-bold shrink-0 overflow-hidden shadow-xs">
+              @if (auth.photoUrl()) {
+                <img [src]="auth.photoUrl()" [alt]="auth.displayName()" class="w-full h-full object-cover" referrerpolicy="no-referrer" />
+              } @else {
+                <span>{{ auth.currentUser() ? auth.displayName().slice(0, 1) : (lib.i18n.isRtl() ? 'أ' : 'E') }}</span>
+              }
+            </div>
+            <div class="flex flex-col min-w-0">
+              <span class="text-sm font-bold text-on-surface truncate group-hover:text-primary transition-colors">
+                {{ auth.currentUser() ? auth.displayName() : t.drawer.login }}
+              </span>
+              <span class="text-xs text-outline truncate">
+                {{ auth.currentUser() ? (auth.displayEmail() || t.drawer.account) : t.site.tagline }}
+              </span>
+            </div>
           </div>
-          <div class="flex flex-col min-w-0">
-            <span class="text-sm font-bold text-on-surface truncate">
-              {{ auth.currentUser() ? auth.displayName() : t.drawer.login }}
+          <span class="material-symbols-outlined text-[19px] text-outline group-hover:text-primary transition-colors shrink-0">
+            {{ lib.i18n.isRtl() ? 'arrow_back' : 'arrow_forward' }}
+          </span>
+        </button>
+
+        <!-- Primary Destinations & Quick Tools -->
+        <section class="space-y-2.5">
+          <h3 class="text-[11px] font-bold text-outline uppercase tracking-wider px-1">{{ t.drawer.quickNav }}</h3>
+          <div class="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              (click)="lib.returnToNovels()"
+              [class]="lib.currentView() === 'novels' ? 'bg-primary text-on-primary border-primary font-bold shadow-sm' : 'bg-surface-container/65 hover:bg-surface-container border-outline-variant/35 text-on-surface'"
+              class="min-h-[44px] px-3.5 py-2.5 rounded-xl border text-xs flex items-center gap-2 transition-all cursor-pointer"
+            >
+              <span class="material-symbols-outlined text-[18px]">home</span>
+              <span class="truncate">{{ t.nav.home }}</span>
+            </button>
+
+            <button
+              type="button"
+              (click)="lib.openExplore()"
+              [class]="lib.currentView() === 'explore' ? 'bg-secondary text-on-secondary border-secondary font-bold shadow-sm' : 'bg-surface-container/65 hover:bg-surface-container border-outline-variant/35 text-on-surface'"
+              class="min-h-[44px] px-3.5 py-2.5 rounded-xl border text-xs flex items-center gap-2 transition-all cursor-pointer"
+            >
+              <span class="material-symbols-outlined text-[18px]">explore</span>
+              <span class="truncate">{{ t.nav.explore }}</span>
+            </button>
+
+            <button
+              type="button"
+              (click)="lib.toggleSearch()"
+              class="min-h-[44px] px-3.5 py-2.5 rounded-xl bg-surface-container/65 hover:bg-surface-container border border-outline-variant/35 text-on-surface text-xs flex items-center gap-2 transition-all cursor-pointer"
+            >
+              <span class="material-symbols-outlined text-[18px] text-primary">search</span>
+              <span class="truncate">{{ t.drawer.searchBooks }}</span>
+            </button>
+
+            <button
+              type="button"
+              (click)="lib.goToExploreWithFilter()"
+              class="min-h-[44px] px-3.5 py-2.5 rounded-xl bg-surface-container/65 hover:bg-surface-container border border-outline-variant/35 text-on-surface text-xs flex items-center gap-2 transition-all cursor-pointer"
+            >
+              <span class="material-symbols-outlined text-[18px] text-secondary">tune</span>
+              <span class="truncate">{{ t.drawer.filterWorks }}</span>
+            </button>
+
+            <button
+              type="button"
+              (click)="lib.isMobileNavOpen.set(false); lib.onHeaderBookmarkClick()"
+              class="col-span-2 min-h-[44px] px-3.5 py-2.5 rounded-xl bg-surface-container/65 hover:bg-surface-container border border-outline-variant/35 text-on-surface text-xs flex items-center justify-between gap-2 transition-all cursor-pointer"
+            >
+              <span class="flex items-center gap-2 truncate">
+                <span class="material-symbols-outlined text-[18px] text-secondary">bookmark</span>
+                <span class="truncate">{{ t.drawer.bookmarks }}</span>
+              </span>
+              <span class="px-2 py-0.5 rounded-full bg-surface-container-high text-[11px] font-mono font-bold tabular-nums text-on-surface-variant">
+                {{ lib.i18n.formatNumber(lib.bookmarkedIds().size) }}
+              </span>
+            </button>
+          </div>
+        </section>
+
+        <!-- Sanctuary Corridors with Subtitles -->
+        <section class="space-y-2.5">
+          <h3 class="text-[11px] font-bold text-outline uppercase tracking-wider px-1">{{ t.drawer.corridors }}</h3>
+          <div class="grid grid-cols-1 gap-2">
+            <button
+              type="button"
+              (click)="lib.switchCorridor('novels')"
+              [class]="lib.activeCorridor() === 'novels' && lib.currentView() === 'novels' ? 'border-primary/45 bg-primary/8' : 'border-outline-variant/35 bg-surface-container/60 hover:bg-surface-container'"
+              class="w-full min-h-[52px] px-3.5 py-2.5 rounded-xl border text-start transition-all cursor-pointer flex items-center justify-between gap-3"
+            >
+              <div class="flex items-center gap-3 min-w-0">
+                <span class="w-2.5 h-2.5 rounded-full bg-primary shrink-0"></span>
+                <div class="flex flex-col min-w-0">
+                  <span class="text-xs font-bold text-on-surface truncate">{{ t.nav.corridorNovels }}</span>
+                  <span class="text-[11px] text-outline truncate">{{ t.drawer.corridorNovelsSub }}</span>
+                </div>
+              </div>
+              <span class="material-symbols-outlined text-[16px] text-outline shrink-0">
+                {{ lib.i18n.isRtl() ? 'chevron_left' : 'chevron_right' }}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              (click)="lib.switchCorridor('epics')"
+              [class]="lib.activeCorridor() === 'epics' ? 'border-secondary/45 bg-secondary/10' : 'border-outline-variant/35 bg-surface-container/60 hover:bg-surface-container'"
+              class="w-full min-h-[52px] px-3.5 py-2.5 rounded-xl border text-start transition-all cursor-pointer flex items-center justify-between gap-3"
+            >
+              <div class="flex items-center gap-3 min-w-0">
+                <span class="w-2.5 h-2.5 rounded-full bg-secondary shrink-0"></span>
+                <div class="flex flex-col min-w-0">
+                  <span class="text-xs font-bold text-on-surface truncate">{{ t.nav.corridorEpics }}</span>
+                  <span class="text-[11px] text-outline truncate">{{ t.drawer.corridorEpicsSub }}</span>
+                </div>
+              </div>
+              <span class="material-symbols-outlined text-[16px] text-outline shrink-0">
+                {{ lib.i18n.isRtl() ? 'chevron_left' : 'chevron_right' }}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              (click)="lib.switchCorridor('wisdom')"
+              [class]="lib.activeCorridor() === 'wisdom' ? 'border-on-surface/35 bg-surface-container-high' : 'border-outline-variant/35 bg-surface-container/60 hover:bg-surface-container'"
+              class="w-full min-h-[52px] px-3.5 py-2.5 rounded-xl border text-start transition-all cursor-pointer flex items-center justify-between gap-3"
+            >
+              <div class="flex items-center gap-3 min-w-0">
+                <span class="w-2.5 h-2.5 rounded-full bg-on-surface shrink-0"></span>
+                <div class="flex flex-col min-w-0">
+                  <span class="text-xs font-bold text-on-surface truncate">{{ t.nav.corridorWisdom }}</span>
+                  <span class="text-[11px] text-outline truncate">{{ t.drawer.corridorWisdomSub }}</span>
+                </div>
+              </div>
+              <span class="material-symbols-outlined text-[16px] text-outline shrink-0">
+                {{ lib.i18n.isRtl() ? 'chevron_left' : 'chevron_right' }}
+              </span>
+            </button>
+
+            <button
+              type="button"
+              (click)="lib.switchCorridor('heritage')"
+              [class]="lib.activeCorridor() === 'heritage' ? 'border-tertiary/45 bg-tertiary/10' : 'border-outline-variant/35 bg-surface-container/60 hover:bg-surface-container'"
+              class="w-full min-h-[52px] px-3.5 py-2.5 rounded-xl border text-start transition-all cursor-pointer flex items-center justify-between gap-3"
+            >
+              <div class="flex items-center gap-3 min-w-0">
+                <span class="w-2.5 h-2.5 rounded-full bg-tertiary shrink-0"></span>
+                <div class="flex flex-col min-w-0">
+                  <span class="text-xs font-bold text-on-surface truncate">{{ t.nav.corridorHeritage }}</span>
+                  <span class="text-[11px] text-outline truncate">{{ t.drawer.corridorHeritageSub }}</span>
+                </div>
+              </div>
+              <span class="material-symbols-outlined text-[16px] text-outline shrink-0">
+                {{ lib.i18n.isRtl() ? 'chevron_left' : 'chevron_right' }}
+              </span>
+            </button>
+          </div>
+        </section>
+
+        <!-- Preferences: Site Language & Theme Mode -->
+        <section class="space-y-3 p-3.5 rounded-2xl bg-surface-container/65 border border-outline-variant/35">
+          <div class="flex items-center justify-between gap-2">
+            <span class="text-[11px] font-bold text-outline flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[16px] text-secondary">translate</span>
+              <span>{{ t.drawer.siteLanguage }}</span>
             </span>
-            <span class="text-[11px] text-outline truncate">
-              {{ auth.currentUser() ? (auth.displayEmail() || t.drawer.account) : t.site.tagline }}
+            <span class="text-[10px] font-mono text-outline uppercase">
+              {{ lib.i18n.lang() === 'ar' ? 'RTL' : 'LTR' }}
             </span>
           </div>
-        </div>
-        <span class="material-symbols-outlined text-[18px] text-outline shrink-0">
-          {{ lib.i18n.isRtl() ? 'arrow_back' : 'arrow_forward' }}
-        </span>
-      </button>
 
-      <!-- Site Language Switcher inside Hamburger Menu -->
-      <div class="space-y-2 p-3.5 rounded-2xl bg-surface-container/60 border border-surface-variant/45">
-        <div class="flex items-center justify-between gap-2">
-          <span class="text-[11px] font-bold text-outline flex items-center gap-1.5">
-            <span class="material-symbols-outlined text-[16px] text-secondary">translate</span>
-            <span>{{ t.drawer.siteLanguage }}</span>
-          </span>
-          <span class="text-[10px] font-mono text-outline uppercase">
-            {{ lib.i18n.lang() === 'ar' ? 'RTL' : 'LTR' }}
-          </span>
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            (click)="lib.setSiteLanguage('ar')"
-            [class]="lib.i18n.lang() === 'ar' ? 'bg-primary text-on-primary font-bold shadow-sm border border-primary/40' : 'liquid-glass-pill text-on-surface hover:border-primary/40'"
-            class="py-2 px-3 rounded-xl text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
-          >
-            <span>العربية</span>
-          </button>
-          <button
-            type="button"
-            (click)="lib.setSiteLanguage('en')"
-            [class]="lib.i18n.lang() === 'en' ? 'bg-primary text-on-primary font-bold shadow-sm border border-primary/40' : 'liquid-glass-pill text-on-surface hover:border-primary/40'"
-            class="py-2 px-3 rounded-xl text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
-          >
-            <span>English</span>
-          </button>
-        </div>
+          <div class="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              (click)="lib.setSiteLanguage('ar')"
+              [class]="lib.i18n.lang() === 'ar' ? 'bg-primary text-on-primary border-primary font-bold shadow-xs' : 'bg-surface-container-low/80 text-on-surface border-outline-variant/40 hover:border-primary/40'"
+              class="min-h-[42px] px-3 rounded-xl border text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <span>العربية</span>
+            </button>
+            <button
+              type="button"
+              (click)="lib.setSiteLanguage('en')"
+              [class]="lib.i18n.lang() === 'en' ? 'bg-primary text-on-primary border-primary font-bold shadow-xs' : 'bg-surface-container-low/80 text-on-surface border-outline-variant/40 hover:border-primary/40'"
+              class="min-h-[42px] px-3 rounded-xl border text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <span>English</span>
+            </button>
+          </div>
+
+          <div class="pt-2 border-t border-outline-variant/25 flex items-center justify-between gap-2">
+            <span class="text-[11px] font-bold text-outline">{{ t.drawer.appearance }}</span>
+            <button
+              type="button"
+              (click)="themeService.toggleThemeWithPaperReveal()"
+              [disabled]="themeService.isPaperRevealActive()"
+              class="min-h-[40px] px-3.5 rounded-xl bg-surface-container-low/90 hover:bg-surface-container-high border border-outline-variant/40 text-xs font-semibold text-on-surface flex items-center gap-2 transition-colors cursor-pointer disabled:opacity-60"
+            >
+              <span class="material-symbols-outlined text-[17px] text-secondary">
+                {{ themeService.isDark() ? 'light_mode' : 'dark_mode' }}
+              </span>
+              <span>{{ themeService.isDark() ? t.drawer.lightMode : t.drawer.darkMode }}</span>
+            </button>
+          </div>
+        </section>
       </div>
 
-      <!-- Primary Pages Navigation -->
-      <div class="space-y-1.5">
-        <span class="text-[11px] font-bold text-outline px-1 block">{{ t.drawer.quickNav }}</span>
-        <div class="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            (click)="lib.returnToNovels()"
-            [class]="lib.currentView() === 'novels' ? 'bg-primary text-on-primary font-bold shadow-sm' : 'liquid-glass-pill text-on-surface hover:border-primary/40'"
-            class="px-3.5 py-2.5 rounded-2xl text-xs flex items-center gap-2 transition-all cursor-pointer"
-          >
-            <span class="material-symbols-outlined text-[18px]">home</span>
-            <span>{{ t.nav.home }}</span>
-          </button>
-
-          <button
-            type="button"
-            (click)="lib.openExplore()"
-            [class]="lib.currentView() === 'explore' ? 'bg-secondary text-on-secondary font-bold shadow-sm' : 'liquid-glass-pill text-on-surface hover:border-secondary/40'"
-            class="px-3.5 py-2.5 rounded-2xl text-xs flex items-center gap-2 transition-all cursor-pointer"
-          >
-            <span class="material-symbols-outlined text-[18px]">explore</span>
-            <span>{{ t.nav.explore }}</span>
-          </button>
-
-          <button
-            type="button"
-            (click)="lib.isMobileNavOpen.set(false); lib.onHeaderBookmarkClick()"
-            class="px-3.5 py-2.5 rounded-2xl liquid-glass-pill text-on-surface hover:border-primary/40 text-xs flex items-center gap-2 transition-all cursor-pointer"
-          >
-            <span class="material-symbols-outlined text-[18px] text-secondary">bookmark</span>
-            <span>{{ t.drawer.bookmarks }}</span>
-          </button>
-
-          <button
-            type="button"
-            (click)="lib.openSiteSettings()"
-            class="px-3.5 py-2.5 rounded-2xl liquid-glass-pill text-on-surface hover:border-tertiary/50 text-xs flex items-center gap-2 transition-all cursor-pointer"
-          >
-            <span class="material-symbols-outlined text-[18px] text-tertiary">settings</span>
-            <span>{{ t.nav.openSettings }}</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Corridors List -->
-      <div class="space-y-1.5">
-        <span class="text-[11px] font-bold text-outline px-1 block">{{ t.drawer.corridors }}</span>
-        <div class="grid grid-cols-2 gap-2 text-xs">
-          <button
-            type="button"
-            (click)="lib.switchCorridor('novels')"
-            class="p-2.5 rounded-2xl liquid-glass-pill text-start hover:border-primary/40 transition-all cursor-pointer flex items-center gap-2"
-          >
-            <span class="w-2 h-2 rounded-full bg-primary shrink-0"></span>
-            <span class="text-on-surface font-medium truncate">{{ t.nav.corridorNovels }}</span>
-          </button>
-          <button
-            type="button"
-            (click)="lib.switchCorridor('epics')"
-            class="p-2.5 rounded-2xl liquid-glass-pill text-start hover:border-secondary/40 transition-all cursor-pointer flex items-center gap-2"
-          >
-            <span class="w-2 h-2 rounded-full bg-secondary shrink-0"></span>
-            <span class="text-on-surface font-medium truncate">{{ t.nav.corridorEpics }}</span>
-          </button>
-          <button
-            type="button"
-            (click)="lib.switchCorridor('wisdom')"
-            class="p-2.5 rounded-2xl liquid-glass-pill text-start hover:border-on-surface/40 transition-all cursor-pointer flex items-center gap-2"
-          >
-            <span class="w-2 h-2 rounded-full bg-on-surface shrink-0"></span>
-            <span class="text-on-surface font-medium truncate">{{ t.nav.corridorWisdom }}</span>
-          </button>
-          <button
-            type="button"
-            (click)="lib.switchCorridor('heritage')"
-            class="p-2.5 rounded-2xl liquid-glass-pill text-start hover:border-tertiary/40 transition-all cursor-pointer flex items-center gap-2"
-          >
-            <span class="w-2 h-2 rounded-full bg-tertiary shrink-0"></span>
-            <span class="text-on-surface font-medium truncate">{{ t.nav.corridorHeritage }}</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Theme Switch & Tools Row -->
-      <div class="pt-3 border-t border-surface-variant/40 flex items-center justify-between gap-2">
+      <!-- Sticky Drawer Footer -->
+      <div class="px-4 sm:px-5 py-3.5 border-t border-outline-variant/30 bg-surface-container-low/65 backdrop-blur-xl flex items-center gap-2.5 shrink-0">
         <button
           type="button"
-          (click)="themeService.toggleThemeWithPaperReveal(); lib.isMobileNavOpen.set(false)"
-          class="flex-1 py-2.5 px-3.5 rounded-2xl liquid-glass-pill text-xs font-semibold text-on-surface flex items-center justify-center gap-2 hover:border-secondary/50 transition-all cursor-pointer"
+          (click)="lib.openSiteSettings()"
+          class="flex-1 min-h-[44px] px-4 rounded-xl bg-surface-container hover:bg-surface-container-high border border-outline-variant/40 text-xs font-bold text-on-surface flex items-center justify-center gap-2 transition-colors cursor-pointer"
         >
-          <span class="material-symbols-outlined text-[18px] text-secondary">
-            {{ themeService.isDark() ? 'light_mode' : 'dark_mode' }}
-          </span>
-          <span>{{ themeService.isDark() ? t.drawer.lightMode : t.drawer.darkMode }}</span>
+          <span class="material-symbols-outlined text-[18px] text-tertiary">settings</span>
+          <span>{{ t.drawer.siteSettingsBtn }}</span>
         </button>
-
         <button
           type="button"
-          (click)="lib.toggleSearch()"
-          class="py-2.5 px-3.5 rounded-2xl liquid-glass-pill text-xs font-semibold text-on-surface flex items-center justify-center gap-1.5 hover:border-primary/50 transition-all cursor-pointer"
+          (click)="lib.isMobileNavOpen.set(false)"
+          class="min-h-[44px] px-4 rounded-xl bg-primary text-on-primary text-xs font-bold hover:opacity-95 transition-opacity cursor-pointer"
         >
-          <span class="material-symbols-outlined text-[18px] text-primary">search</span>
-          <span>{{ t.drawer.searchBooks }}</span>
-        </button>
-
-        <button
-          type="button"
-          (click)="lib.goToExploreWithFilter()"
-          class="py-2.5 px-3.5 rounded-2xl liquid-glass-pill text-xs font-semibold text-on-surface flex items-center justify-center gap-1.5 hover:border-secondary/50 transition-all cursor-pointer"
-        >
-          <span class="material-symbols-outlined text-[18px] text-secondary">tune</span>
-          <span>{{ t.drawer.filterWorks }}</span>
+          {{ t.reader.done }}
         </button>
       </div>
     </aside>

@@ -7,7 +7,7 @@
 
   <app-global-modals />
 
-  <main id="main-content" class="flex-1 w-full">
+  <main id="main-content" class="flex-1 w-full" [class.pt-[76px]]="lib.currentView() !== 'reader'" [class.sm:pt-[84px]]="lib.currentView() !== 'reader'">
     <router-outlet />
   </main>
 

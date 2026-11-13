@@ -1,22 +1,22 @@
 @let t = lib.i18n.copy();
 <!-- ================= 1. SEARCH MODAL / DRAWER ================= -->
 @if (lib.isSearchOpen()) {
-  <div class="fixed inset-0 z-50 flex items-start justify-center pt-24 px-4 animate-fadeIn">
+  <div class="fixed inset-0 z-[60] flex items-start justify-center pt-20 sm:pt-24 px-4 animate-fadeIn">
     <button
       type="button"
       class="fixed inset-0 w-full h-full bg-black/50 dark:bg-black/70 backdrop-blur-md cursor-default border-none"
       [attr.aria-label]="t.modals.close"
       (click)="lib.isSearchOpen.set(false)"
     ></button>
-    <div class="w-full max-w-2xl bg-surface-container-low border border-surface-variant rounded-2xl shadow-2xl p-6 space-y-5 relative z-10">
+    <div class="w-full max-w-2xl liquid-glass-drawer border border-outline-variant/45 rounded-3xl shadow-2xl p-6 space-y-5 relative z-10">
 
-      <div class="flex items-center justify-between border-b border-surface-variant/50 pb-3">
+      <div class="flex items-center justify-between border-b border-surface-variant/50 pb-3.5">
         <div class="flex items-center gap-2 text-primary font-bold text-lg">
           <span class="material-symbols-outlined text-[22px]">search</span>
           <span>{{ t.modals.searchTitle }}</span>
         </div>
-        <button type="button" (click)="lib.isSearchOpen.set(false)" class="w-9 h-9 rounded-xl bg-surface-container flex items-center justify-center text-outline hover:text-on-surface transition-colors cursor-pointer" [attr.aria-label]="t.modals.close">
-          <span class="material-symbols-outlined text-[18px]">close</span>
+        <button type="button" (click)="lib.isSearchOpen.set(false)" class="w-10 h-10 rounded-xl liquid-glass-pill flex items-center justify-center text-outline hover:text-on-surface transition-colors cursor-pointer" [attr.aria-label]="t.modals.close">
+          <span class="material-symbols-outlined text-[19px]">close</span>
         </button>
       </div>
 
@@ -125,22 +125,22 @@
 
 <!-- ================= 2. FILTER & TUNE MODAL ================= -->
 @if (lib.isFilterOpen()) {
-  <div class="fixed inset-0 z-50 flex items-start justify-center pt-24 px-4 animate-fadeIn">
+  <div class="fixed inset-0 z-[60] flex items-start justify-center pt-20 sm:pt-24 px-4 animate-fadeIn">
     <button
       type="button"
       class="fixed inset-0 w-full h-full bg-black/50 dark:bg-black/70 backdrop-blur-md cursor-default border-none"
       [attr.aria-label]="t.modals.close"
       (click)="lib.isFilterOpen.set(false)"
     ></button>
-    <div class="w-full max-w-lg bg-surface-container-low border border-surface-variant rounded-2xl shadow-2xl p-6 space-y-5 relative z-10">
+    <div class="w-full max-w-lg liquid-glass-drawer border border-outline-variant/45 rounded-3xl shadow-2xl p-6 space-y-5 relative z-10">
 
-      <div class="flex items-center justify-between border-b border-surface-variant/50 pb-3">
+      <div class="flex items-center justify-between border-b border-surface-variant/50 pb-3.5">
         <div class="flex items-center gap-2 text-secondary font-bold text-lg">
           <span class="material-symbols-outlined text-[22px]">tune</span>
           <span>{{ t.modals.filterTitle }}</span>
         </div>
-        <button type="button" (click)="lib.isFilterOpen.set(false)" class="w-9 h-9 rounded-xl bg-surface-container flex items-center justify-center text-outline hover:text-on-surface transition-colors cursor-pointer" [attr.aria-label]="t.modals.close">
-          <span class="material-symbols-outlined text-[18px]">close</span>
+        <button type="button" (click)="lib.isFilterOpen.set(false)" class="w-10 h-10 rounded-xl liquid-glass-pill flex items-center justify-center text-outline hover:text-on-surface transition-colors cursor-pointer" [attr.aria-label]="t.modals.close">
+          <span class="material-symbols-outlined text-[19px]">close</span>
         </button>
       </div>
 
@@ -242,22 +242,22 @@
 
 <!-- ================= 3. BOOKMARKS SANCTUARY MODAL ================= -->
 @if (lib.isBookmarksOpen()) {
-  <div class="fixed inset-0 z-50 flex items-start justify-center pt-24 px-4 animate-fadeIn">
+  <div class="fixed inset-0 z-[60] flex items-start justify-center pt-20 sm:pt-24 px-4 animate-fadeIn">
     <button
       type="button"
       class="fixed inset-0 w-full h-full bg-black/50 dark:bg-black/70 backdrop-blur-md cursor-default border-none"
       [attr.aria-label]="t.modals.close"
       (click)="lib.isBookmarksOpen.set(false)"
     ></button>
-    <div class="w-full max-w-xl bg-surface-container-low border border-surface-variant rounded-2xl shadow-2xl p-6 space-y-5 relative z-10">
+    <div class="w-full max-w-xl liquid-glass-drawer border border-outline-variant/45 rounded-3xl shadow-2xl p-6 space-y-5 relative z-10">
 
-      <div class="flex items-center justify-between border-b border-surface-variant/50 pb-3">
+      <div class="flex items-center justify-between border-b border-surface-variant/50 pb-3.5">
         <div class="flex items-center gap-2 text-secondary font-bold text-lg">
           <span class="material-symbols-outlined text-[22px]">bookmark</span>
           <span>{{ t.modals.bookmarksTitle }} ({{ lib.i18n.formatNumber(lib.bookmarkedIds().size) }})</span>
         </div>
-        <button type="button" (click)="lib.isBookmarksOpen.set(false)" class="w-9 h-9 rounded-xl bg-surface-container flex items-center justify-center text-outline hover:text-on-surface transition-colors cursor-pointer" [attr.aria-label]="t.modals.close">
-          <span class="material-symbols-outlined text-[18px]">close</span>
+        <button type="button" (click)="lib.isBookmarksOpen.set(false)" class="w-10 h-10 rounded-xl liquid-glass-pill flex items-center justify-center text-outline hover:text-on-surface transition-colors cursor-pointer" [attr.aria-label]="t.modals.close">
+          <span class="material-symbols-outlined text-[19px]">close</span>
         </button>
       </div>
 
@@ -320,14 +320,14 @@
 
 <!-- ================= 4. GLOBAL SITE SETTINGS MODAL ================= -->
 @if (lib.isSiteSettingsOpen()) {
-  <div class="fixed inset-0 z-50 flex items-center justify-center px-4 animate-fadeIn">
+  <div class="fixed inset-0 z-[60] flex items-center justify-center px-4 animate-fadeIn">
     <button
       type="button"
       class="fixed inset-0 w-full h-full bg-black/50 dark:bg-black/70 backdrop-blur-md cursor-default border-none"
       [attr.aria-label]="t.siteSettings.close"
       (click)="lib.closeSiteSettings()"
     ></button>
-    <div class="w-full max-w-lg bg-surface-container-low border border-surface-variant rounded-3xl shadow-2xl p-6 sm:p-7 space-y-6 relative z-10">
+    <div class="w-full max-w-lg liquid-glass-drawer border border-outline-variant/45 rounded-3xl shadow-2xl p-6 sm:p-7 space-y-6 relative z-10">
 
       <div class="flex items-start justify-between gap-4 border-b border-surface-variant/50 pb-4">
         <div class="space-y-1">
@@ -340,10 +340,10 @@
         <button
           type="button"
           (click)="lib.closeSiteSettings()"
-          class="w-9 h-9 rounded-xl bg-surface-container flex items-center justify-center text-outline hover:text-on-surface transition-colors cursor-pointer"
+          class="w-10 h-10 rounded-xl liquid-glass-pill flex items-center justify-center text-outline hover:text-on-surface transition-colors cursor-pointer shrink-0"
           [attr.aria-label]="t.siteSettings.close"
         >
-          <span class="material-symbols-outlined text-[18px]">close</span>
+          <span class="material-symbols-outlined text-[19px]">close</span>
         </button>
       </div>
 
@@ -457,22 +457,22 @@
 
 <!-- ================= 5. PUBLISHING / DEPOSIT MODAL ================= -->
 @if (lib.isPublishModalOpen()) {
-  <div class="fixed inset-0 z-50 flex items-start justify-center pt-16 px-4 animate-fadeIn overflow-y-auto pb-10">
+  <div class="fixed inset-0 z-[60] flex items-start justify-center pt-16 px-4 animate-fadeIn overflow-y-auto pb-10">
     <button
       type="button"
       class="fixed inset-0 w-full h-full bg-black/50 dark:bg-black/70 backdrop-blur-md cursor-default border-none"
       [attr.aria-label]="t.modals.close"
       (click)="lib.closePublishModal()"
     ></button>
-    <div class="w-full max-w-xl bg-surface-container-low border border-primary/40 rounded-3xl shadow-2xl p-6 sm:p-8 space-y-5 relative z-10 my-auto">
+    <div class="w-full max-w-xl liquid-glass-drawer border border-primary/40 rounded-3xl shadow-2xl p-6 sm:p-8 space-y-5 relative z-10 my-auto">
 
-      <div class="flex items-center justify-between border-b border-surface-variant/50 pb-3">
+      <div class="flex items-center justify-between border-b border-surface-variant/50 pb-3.5">
         <div class="flex items-center gap-2 text-primary font-bold text-lg">
           <span class="material-symbols-outlined text-[24px]">history_edu</span>
           <span>{{ t.modals.publishTitle }}</span>
         </div>
-        <button type="button" (click)="lib.closePublishModal()" class="w-9 h-9 rounded-xl bg-surface-container flex items-center justify-center text-outline hover:text-on-surface transition-colors cursor-pointer" [attr.aria-label]="t.modals.close">
-          <span class="material-symbols-outlined text-[18px]">close</span>
+        <button type="button" (click)="lib.closePublishModal()" class="w-10 h-10 rounded-xl liquid-glass-pill flex items-center justify-center text-outline hover:text-on-surface transition-colors cursor-pointer" [attr.aria-label]="t.modals.close">
+          <span class="material-symbols-outlined text-[19px]">close</span>
         </button>
       </div>
 

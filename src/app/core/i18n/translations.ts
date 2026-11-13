@@ -271,6 +271,8 @@ export const TRANSLATIONS = {
       marginaliaHeading: 'حواشٍ وتوثيق',
       endOfChapter: 'انتهى الفصل',
       siteUiNote: 'لغة الفصول المعروضة:',
+      done: 'تم',
+      enProseNote: 'النصوص الإنجليزية تُعرض بخط Lora الأدبي الكلاسيكي تلقائياً.',
       themes: {
         andalusian: 'السواد الأندلسي',
         parchment: 'رق البردي',
@@ -676,6 +678,8 @@ export const TRANSLATIONS = {
       marginaliaHeading: 'Editorial Marginalia',
       endOfChapter: 'End of Chapter',
       siteUiNote: 'Active Chapter Edition:',
+      done: 'Done',
+      enProseNote: 'English chapters automatically render in Lora & Cormorant literary serif.',
       themes: {
         andalusian: 'Andalusian Dark',
         parchment: 'Ancient Parchment',

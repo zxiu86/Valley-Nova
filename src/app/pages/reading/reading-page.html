@@ -3,9 +3,9 @@
   [class]="'relative w-full h-screen overflow-hidden flex flex-col ' + lib.readerThemeConfig().bg + ' ' + lib.readerThemeConfig().text"
   [attr.dir]="lib.i18n.dir()"
 >
-  <!-- 1. ADAPTIVE RECEDING TOP TOOLBAR (without top yellow progress bar or top progress indicators) -->
+  <!-- 1. ADAPTIVE RECEDING TOP TOOLBAR -->
   <header
-    [class]="'fixed top-0 inset-x-0 z-40 transition-transform duration-300 ease-in-out border-b backdrop-blur-xl shadow-lg ' + lib.readerThemeConfig().toolbarBg"
+    [class]="'fixed top-0 inset-x-0 z-40 transition-transform duration-300 ease-in-out border-b backdrop-blur-xl shadow-md ' + lib.readerThemeConfig().toolbarBg"
     [class.-translate-y-full]="!lib.readerToolbarVisible()"
     [class.translate-y-0]="lib.readerToolbarVisible()"
   >
@@ -15,7 +15,7 @@
         <button
           type="button"
           (click)="lib.exitReader()"
-          class="btn-tactile flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-current/15 hover:border-current/30 hover:bg-black/5 dark:hover:bg-white/10 transition-all cursor-pointer text-xs sm:text-sm font-semibold shrink-0"
+          [class]="'btn-tactile flex items-center gap-1.5 h-10 px-3 rounded-xl border transition-all cursor-pointer text-xs sm:text-sm font-semibold shrink-0 ' + lib.readerThemeConfig().cardBorder + ' ' + lib.readerThemeConfig().hoverBg"
           [title]="t.reader.back"
         >
           <span class="material-symbols-outlined text-[20px]">{{ lib.i18n.isRtl() ? 'arrow_forward' : 'arrow_back' }}</span>
@@ -25,7 +25,7 @@
         <div class="h-6 w-px bg-current opacity-20 shrink-0"></div>
 
         <div class="flex flex-col min-w-0">
-          <span class="text-[11px] truncate opacity-70">
+          <span class="text-[11px] truncate opacity-75">
             {{ (lib.selectedNovel() || lib.defaultEchoesSamarkand).title }}
           </span>
           <h2 class="text-xs sm:text-sm font-bold truncate">
@@ -36,12 +36,12 @@
 
       <!-- End side: Quick Controls & Drawers Triggers -->
       <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
-        <!-- Theme quick switcher dots -->
-        <div [class]="'hidden sm:flex items-center p-1 rounded-xl gap-1 border shadow-xs ' + lib.readerThemeConfig().cardBorder">
+        <!-- Quick Theme Switcher Dots (Desktop md+) -->
+        <div [class]="'hidden md:flex items-center p-1 rounded-xl gap-1 border shadow-xs ' + lib.readerThemeConfig().cardBorder">
           <button
             type="button"
             (click)="lib.setReaderTheme('andalusian')"
-            class="w-6 h-6 rounded-lg bg-[#121214] border border-[#27272a] hover:scale-110 active:scale-95 transition-all cursor-pointer flex items-center justify-center text-[10px]"
+            class="w-7 h-7 rounded-lg bg-[#121214] border border-[#27272a] hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center"
             [class.ring-2]="lib.readerTheme() === 'andalusian'"
             [class.ring-amber-400]="lib.readerTheme() === 'andalusian'"
             [title]="t.reader.themes.andalusian"
@@ -54,7 +54,7 @@
           <button
             type="button"
             (click)="lib.setReaderTheme('parchment')"
-            class="w-6 h-6 rounded-lg bg-[#f4ebd9] border border-[#dfd2bc] hover:scale-110 active:scale-95 transition-all cursor-pointer flex items-center justify-center text-[10px]"
+            class="w-7 h-7 rounded-lg bg-[#f4ebd9] border border-[#dfd2bc] hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center"
             [class.ring-2]="lib.readerTheme() === 'parchment'"
             [class.ring-amber-800]="lib.readerTheme() === 'parchment'"
             [title]="t.reader.themes.parchment"
@@ -67,7 +67,7 @@
           <button
             type="button"
             (click)="lib.setReaderTheme('ivory')"
-            class="w-6 h-6 rounded-lg bg-[#fbf9f4] border border-[#e4ded0] hover:scale-110 active:scale-95 transition-all cursor-pointer flex items-center justify-center text-[10px]"
+            class="w-7 h-7 rounded-lg bg-[#fbf9f4] border border-[#e4ded0] hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center"
             [class.ring-2]="lib.readerTheme() === 'ivory'"
             [class.ring-teal-700]="lib.readerTheme() === 'ivory'"
             [title]="t.reader.themes.ivory"
@@ -80,7 +80,7 @@
           <button
             type="button"
             (click)="lib.setReaderTheme('daylight')"
-            class="w-6 h-6 rounded-lg bg-white border border-slate-300 hover:scale-110 active:scale-95 transition-all cursor-pointer flex items-center justify-center text-[10px]"
+            class="w-7 h-7 rounded-lg bg-white border border-slate-300 hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center"
             [class.ring-2]="lib.readerTheme() === 'daylight'"
             [class.ring-blue-600]="lib.readerTheme() === 'daylight'"
             [title]="t.reader.themes.daylight"
@@ -92,22 +92,24 @@
           </button>
         </div>
 
-        <!-- Quick Font Size Steppers -->
-        <div [class]="'hidden sm:flex items-center border rounded-xl overflow-hidden shadow-xs ' + lib.readerThemeConfig().cardBorder">
+        <!-- Quick Font Size Steppers (Desktop lg+) -->
+        <div [class]="'hidden lg:flex items-center border rounded-xl overflow-hidden shadow-xs h-9 ' + lib.readerThemeConfig().cardBorder">
           <button
             type="button"
             (click)="lib.adjustReaderFontSize(-2)"
-            class="w-7 h-7 flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10 active:scale-90 text-xs font-bold cursor-pointer transition-all"
+            [class]="'w-8 h-full flex items-center justify-center active:scale-90 text-xs font-bold cursor-pointer transition-all ' + lib.readerThemeConfig().hoverBg"
             [title]="t.reader.fontSizeSection"
+            [attr.aria-label]="t.reader.fontSizeSection + ' -'"
           >
             -A
           </button>
-          <span class="px-1 text-[11px] font-mono opacity-80 min-w-6 text-center select-none tabular-nums">{{ lib.readerFontSizePx() }}</span>
+          <span class="px-1.5 text-[11px] font-mono opacity-80 min-w-7 text-center select-none tabular-nums">{{ lib.readerFontSizePx() }}</span>
           <button
             type="button"
             (click)="lib.adjustReaderFontSize(2)"
-            class="w-7 h-7 flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10 active:scale-90 text-xs font-bold cursor-pointer transition-all"
+            [class]="'w-8 h-full flex items-center justify-center active:scale-90 text-xs font-bold cursor-pointer transition-all ' + lib.readerThemeConfig().hoverBg"
             [title]="t.reader.fontSizeSection"
+            [attr.aria-label]="t.reader.fontSizeSection + ' +'"
           >
             +A
           </button>
@@ -117,22 +119,26 @@
         <button
           type="button"
           (click)="lib.toggleReaderChapterDrawer()"
-          [class]="'btn-tactile w-8 h-8 rounded-xl flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer border shadow-xs ' + lib.readerThemeConfig().cardBorder + (lib.readerChapterDrawerOpen() ? ' bg-black/10 dark:bg-white/15' : '')"
+          [class]="'btn-tactile w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-colors cursor-pointer border shadow-xs ' + lib.readerThemeConfig().cardBorder + ' ' + lib.readerThemeConfig().hoverBg + (lib.readerChapterDrawerOpen() ? ' ' + lib.readerThemeConfig().accentBg : '')"
           [title]="t.reader.chaptersIndex"
+          [attr.aria-label]="t.reader.chaptersIndex"
+          [attr.aria-expanded]="lib.readerChapterDrawerOpen()"
         >
-          <span class="material-symbols-outlined text-[19px]">menu_book</span>
+          <span class="material-symbols-outlined text-[20px]">menu_book</span>
         </button>
 
         <!-- Bookmarks Drawer Trigger -->
         <button
           type="button"
           (click)="lib.toggleReaderBookmarksDrawer()"
-          [class]="'btn-tactile relative w-8 h-8 rounded-xl flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer border shadow-xs ' + lib.readerThemeConfig().cardBorder + (lib.readerBookmarksDrawerOpen() ? ' bg-black/10 dark:bg-white/15' : '')"
+          [class]="'btn-tactile relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-colors cursor-pointer border shadow-xs ' + lib.readerThemeConfig().cardBorder + ' ' + lib.readerThemeConfig().hoverBg + (lib.readerBookmarksDrawerOpen() ? ' ' + lib.readerThemeConfig().accentBg : '')"
           [title]="t.reader.bookmarks"
+          [attr.aria-label]="t.reader.bookmarks"
+          [attr.aria-expanded]="lib.readerBookmarksDrawerOpen()"
         >
-          <span class="material-symbols-outlined text-[19px]">bookmark</span>
+          <span class="material-symbols-outlined text-[20px]">bookmark</span>
           @if (lib.readerBookmarks().length > 0) {
-            <span [class]="'absolute -top-1 -end-1 w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center tabular-nums shadow-xs ' + lib.readerThemeConfig().accentBg">
+            <span [class]="'absolute -top-1 -end-1 min-w-[17px] h-[17px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center tabular-nums shadow-xs ' + lib.readerThemeConfig().accentBg">
               {{ lib.readerBookmarks().length }}
             </span>
           }
@@ -142,10 +148,11 @@
         <button
           type="button"
           (click)="lib.toggleSoundscape()"
-          [class]="'btn-tactile w-8 h-8 rounded-xl flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer border shadow-xs ' + lib.readerThemeConfig().cardBorder + (lib.soundscapeActive() ? ' bg-black/10 dark:bg-white/15' : '')"
+          [class]="'btn-tactile hidden sm:flex w-9 h-9 sm:w-10 sm:h-10 rounded-xl items-center justify-center transition-colors cursor-pointer border shadow-xs ' + lib.readerThemeConfig().cardBorder + ' ' + lib.readerThemeConfig().hoverBg + (lib.soundscapeActive() ? ' ' + lib.readerThemeConfig().cardBg : '')"
           [title]="lib.soundscapeActive() ? t.hero.soundOn : t.hero.soundOff"
+          [attr.aria-label]="lib.soundscapeActive() ? t.hero.soundOn : t.hero.soundOff"
         >
-          <span class="material-symbols-outlined text-[19px]" [class.text-amber-400]="lib.soundscapeActive()">
+          <span class="material-symbols-outlined text-[20px]" [class]="lib.soundscapeActive() ? lib.readerThemeConfig().accent : ''">
             {{ lib.soundscapeActive() ? 'volume_up' : 'volume_off' }}
           </span>
         </button>
@@ -154,20 +161,23 @@
         <button
           type="button"
           (click)="lib.toggleReaderSettingsDrawer()"
-          [class]="'btn-tactile w-8 h-8 rounded-xl flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer border shadow-xs ' + lib.readerThemeConfig().cardBorder + (lib.readerSettingsDrawerOpen() ? ' bg-black/10 dark:bg-white/15' : '')"
+          [class]="'btn-tactile w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center transition-colors cursor-pointer border shadow-xs ' + lib.readerThemeConfig().cardBorder + ' ' + lib.readerThemeConfig().hoverBg + (lib.readerSettingsDrawerOpen() ? ' ' + lib.readerThemeConfig().accentBg : '')"
           [title]="t.reader.settings"
+          [attr.aria-label]="t.reader.settings"
+          [attr.aria-expanded]="lib.readerSettingsDrawerOpen()"
         >
-          <span class="material-symbols-outlined text-[19px]">tune</span>
+          <span class="material-symbols-outlined text-[20px]">tune</span>
         </button>
 
         <!-- Fullscreen Toggle -->
         <button
           type="button"
           (click)="lib.toggleFullscreen()"
-          [class]="'btn-tactile hidden sm:flex w-8 h-8 rounded-xl items-center justify-center hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer border shadow-xs ' + lib.readerThemeConfig().cardBorder"
+          [class]="'btn-tactile hidden sm:flex w-9 h-9 sm:w-10 sm:h-10 rounded-xl items-center justify-center transition-colors cursor-pointer border shadow-xs ' + lib.readerThemeConfig().cardBorder + ' ' + lib.readerThemeConfig().hoverBg"
           [title]="lib.readerIsFullscreen() ? t.reader.exitFullscreen : t.reader.fullscreen"
+          [attr.aria-label]="lib.readerIsFullscreen() ? t.reader.exitFullscreen : t.reader.fullscreen"
         >
-          <span class="material-symbols-outlined text-[19px]">
+          <span class="material-symbols-outlined text-[20px]">
             {{ lib.readerIsFullscreen() ? 'fullscreen_exit' : 'fullscreen' }}
           </span>
         </button>
@@ -276,7 +286,7 @@
             <button
               type="button"
               (click)="lib.prevChapter()"
-              [class]="'btn-tactile px-5 py-3 rounded-xl border flex items-center justify-center gap-2 hover:bg-black/5 dark:hover:bg-white/5 transition-all text-xs sm:text-sm font-semibold cursor-pointer shadow-xs ' + lib.readerThemeConfig().cardBorder"
+              [class]="'btn-tactile px-5 py-3 rounded-xl border flex items-center justify-center gap-2 transition-all text-xs sm:text-sm font-semibold cursor-pointer shadow-xs ' + lib.readerThemeConfig().cardBorder + ' ' + lib.readerThemeConfig().hoverBg"
             >
               <span class="material-symbols-outlined text-[18px]">{{ lib.i18n.isRtl() ? 'arrow_forward' : 'arrow_back' }}</span>
               <span>{{ t.reader.previousChapter }}</span>
@@ -285,7 +295,7 @@
             <button
               type="button"
               (click)="lib.addCurrentBookmark()"
-              [class]="'btn-tactile px-4 py-2.5 rounded-xl border flex items-center justify-center gap-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-all text-xs font-semibold cursor-pointer shadow-xs ' + lib.readerThemeConfig().cardBorder"
+              [class]="'btn-tactile px-4 py-3 rounded-xl border flex items-center justify-center gap-1.5 transition-all text-xs font-semibold cursor-pointer shadow-xs ' + lib.readerThemeConfig().cardBorder + ' ' + lib.readerThemeConfig().hoverBg"
             >
               <span class="material-symbols-outlined text-[18px]">bookmark_add</span>
               <span>{{ t.reader.addBookmark }}</span>
@@ -306,18 +316,18 @@
   </div>
 
   <!-- 3. FLOATING AMBIENT BOTTOM BAR -->
-  <div class="fixed bottom-6 inset-x-0 z-30 flex justify-center pointer-events-none px-4">
+  <div class="fixed bottom-5 inset-x-0 z-30 flex justify-center pointer-events-none px-3">
     <div
-      [class]="'pointer-events-auto flex items-center gap-2 sm:gap-3 px-4 py-2 rounded-full backdrop-blur-xl shadow-2xl border transition-all ' + lib.readerThemeConfig().toolbarBg"
+      [class]="'pointer-events-auto flex items-center gap-1.5 sm:gap-2.5 px-3 sm:px-4 py-1.5 rounded-full backdrop-blur-xl shadow-2xl border transition-all ' + lib.readerThemeConfig().toolbarBg"
     >
       <button
         type="button"
         (click)="lib.toggleAutoScroll()"
-        [class]="'btn-tactile flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer text-xs font-semibold' + (lib.readerAutoScrollActive() ? ' bg-black/15 dark:bg-white/20' : '')"
+        [class]="'btn-tactile flex items-center gap-1.5 h-9 px-3 rounded-full transition-colors cursor-pointer text-xs font-semibold ' + lib.readerThemeConfig().hoverBg + (lib.readerAutoScrollActive() ? ' ' + lib.readerThemeConfig().cardBg : '')"
         [title]="lib.readerAutoScrollActive() ? t.reader.stopAutoScroll : t.reader.autoScroll"
       >
         <span
-          [class]="'material-symbols-outlined text-[18px] ' + (lib.readerAutoScrollActive() ? lib.readerThemeConfig().accent : '')"
+          [class]="'material-symbols-outlined text-[19px] ' + (lib.readerAutoScrollActive() ? lib.readerThemeConfig().accent : '')"
         >
           {{ lib.readerAutoScrollActive() ? 'pause_circle' : 'play_circle' }}
         </span>
@@ -331,7 +341,7 @@
               type="button"
               (click)="lib.setAutoScrollSpeed(spd === 1 ? 1 : spd === 2 ? 2 : 3)"
               [class.font-bold]="lib.readerAutoScrollSpeed() === spd"
-              [class]="'btn-tactile w-6 h-6 rounded-full flex items-center justify-center transition-all cursor-pointer tabular-nums ' + (lib.readerAutoScrollSpeed() === spd ? lib.readerThemeConfig().accentBg : 'opacity-60 hover:opacity-100')"
+              [class]="'btn-tactile w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer tabular-nums ' + (lib.readerAutoScrollSpeed() === spd ? lib.readerThemeConfig().accentBg : 'opacity-70 hover:opacity-100')"
             >
               {{ spd }}x
             </button>
@@ -343,8 +353,18 @@
 
       <button
         type="button"
+        (click)="lib.toggleReaderChapterDrawer()"
+        [class]="'btn-tactile flex items-center gap-1.5 h-9 px-2.5 rounded-full transition-colors cursor-pointer text-xs ' + lib.readerThemeConfig().hoverBg"
+        [title]="t.reader.chaptersIndex"
+      >
+        <span class="material-symbols-outlined text-[18px]">menu_book</span>
+        <span class="hidden md:inline">{{ t.reader.chaptersIndex }}</span>
+      </button>
+
+      <button
+        type="button"
         (click)="lib.addCurrentBookmark()"
-        class="btn-tactile flex items-center gap-1 px-2.5 py-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer text-xs"
+        [class]="'btn-tactile flex items-center gap-1.5 h-9 px-2.5 rounded-full transition-colors cursor-pointer text-xs ' + lib.readerThemeConfig().hoverBg"
         [title]="t.reader.addBookmark"
       >
         <span class="material-symbols-outlined text-[18px]">bookmark_add</span>
@@ -354,7 +374,7 @@
       <button
         type="button"
         (click)="lib.toggleReaderSettingsDrawer()"
-        class="btn-tactile flex items-center gap-1 px-2.5 py-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer text-xs"
+        [class]="'btn-tactile flex items-center gap-1.5 h-9 px-2.5 rounded-full transition-colors cursor-pointer text-xs ' + lib.readerThemeConfig().hoverBg"
         [title]="t.reader.settings"
       >
         <span class="material-symbols-outlined text-[18px]">tune</span>
@@ -363,52 +383,67 @@
     </div>
   </div>
 
-  <!-- 4. DRAWERS -->
+  <!-- 4. UNIFIED SANCTUARY READING DRAWERS -->
 
   <!-- A. SETTINGS DRAWER -->
   @if (lib.readerSettingsDrawerOpen()) {
-    <div class="fixed inset-0 z-50 flex items-start justify-end animate-fadeIn">
+    <div class="fixed inset-0 z-[60] flex justify-end animate-fadeIn">
       <button
         type="button"
-        class="fixed inset-0 w-full h-full bg-black/60 backdrop-blur-sm cursor-default border-none"
+        class="fixed inset-0 w-full h-full bg-black/55 backdrop-blur-sm cursor-default border-none"
         [attr.aria-label]="t.modals.close"
         (click)="lib.readerSettingsDrawerOpen.set(false)"
       ></button>
 
-      <div
-        [class]="'w-full max-w-md h-full overflow-y-auto relative z-10 border-s shadow-2xl p-6 flex flex-col justify-between ' + lib.readerThemeConfig().bg + ' ' + lib.readerThemeConfig().text + ' ' + lib.readerThemeConfig().cardBorder"
+      <aside
+        role="dialog"
+        aria-modal="true"
+        [attr.aria-label]="t.reader.settings"
+        [class]="'relative z-10 w-full sm:max-w-[440px] h-full border-s shadow-2xl flex flex-col overflow-hidden sm:rounded-s-3xl animate-drawer-end ' + lib.readerThemeConfig().drawerBg + ' ' + lib.readerThemeConfig().text + ' ' + lib.readerThemeConfig().cardBorder"
       >
-        <div class="space-y-6">
-          <div [class]="'flex items-center justify-between border-b pb-4 ' + lib.readerThemeConfig().cardBorder">
-            <div class="flex items-center gap-2 font-bold text-base">
-              <span [class]="'material-symbols-outlined text-[22px] ' + lib.readerThemeConfig().accent">tune</span>
-              <span>{{ t.reader.settings }}</span>
+        <!-- Sticky Drawer Header -->
+        <div [class]="'flex items-center justify-between gap-3 px-5 py-4 border-b shrink-0 ' + lib.readerThemeConfig().drawerHeaderBg + ' ' + lib.readerThemeConfig().cardBorder">
+          <div class="flex items-center gap-3 min-w-0">
+            <div [class]="'w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ' + lib.readerThemeConfig().pillBg">
+              <span [class]="'material-symbols-outlined text-[21px] ' + lib.readerThemeConfig().accent">tune</span>
             </div>
-            <button
-              type="button"
-              (click)="lib.readerSettingsDrawerOpen.set(false)"
-              class="btn-tactile w-8 h-8 rounded-lg flex items-center justify-center hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer"
-              [attr.aria-label]="t.modals.close"
-            >
-              <span class="material-symbols-outlined text-[20px]">close</span>
-            </button>
+            <div class="flex flex-col min-w-0">
+              <h2 class="font-bold text-base truncate">{{ t.reader.settings }}</h2>
+              <span [class]="'text-[11px] truncate ' + lib.readerThemeConfig().textMuted">
+                {{ (lib.selectedNovel() || lib.defaultEchoesSamarkand).title }}
+              </span>
+            </div>
           </div>
 
-          <!-- 1. Color Themes -->
-          <div class="space-y-2.5">
-            <span class="text-xs font-bold opacity-70 block">{{ t.reader.themeSection }}:</span>
+          <button
+            type="button"
+            (click)="lib.readerSettingsDrawerOpen.set(false)"
+            [class]="'btn-tactile w-10 h-10 rounded-xl border flex items-center justify-center transition-colors cursor-pointer shrink-0 ' + lib.readerThemeConfig().cardBorder + ' ' + lib.readerThemeConfig().hoverBg"
+            [attr.aria-label]="t.modals.close"
+          >
+            <span class="material-symbols-outlined text-[20px]">close</span>
+          </button>
+        </div>
+
+        <!-- Scrollable Controls Body -->
+        <div class="flex-1 min-h-0 overflow-y-auto px-5 py-5 space-y-6">
+
+          <!-- 1. Paper & Reading Themes -->
+          <section class="space-y-2.5">
+            <span [class]="'text-xs font-bold block ' + lib.readerThemeConfig().textMuted">{{ t.reader.themeSection }}</span>
             <div class="grid grid-cols-2 gap-2.5 text-xs">
               <button
                 type="button"
                 (click)="lib.setReaderTheme('andalusian')"
                 [class.ring-2]="lib.readerTheme() === 'andalusian'"
                 [class.ring-amber-400]="lib.readerTheme() === 'andalusian'"
-                class="btn-tactile p-3 rounded-xl bg-[#121214] text-[#e4e4e7] border border-[#27272a] text-start flex flex-col gap-1 transition-all cursor-pointer shadow-sm"
+                class="btn-tactile min-h-[64px] p-3.5 rounded-2xl bg-[#121214] text-[#e4e4e7] border border-[#2c2b30] text-start flex flex-col justify-between gap-1.5 transition-all cursor-pointer shadow-sm"
               >
-                <div class="flex items-center justify-between">
-                  <span class="font-bold">{{ lib.i18n.isRtl() ? 'السواد الأندلسي' : 'Andalusian' }}</span>
-                  <span class="w-3 h-3 rounded-full bg-amber-400"></span>
+                <div class="flex items-center justify-between w-full">
+                  <span class="text-sm font-serif font-bold">Aa أب</span>
+                  <span class="w-3.5 h-3.5 rounded-full bg-[#e9c349] shrink-0"></span>
                 </div>
+                <span class="font-bold text-xs truncate">{{ t.reader.themes.andalusian }}</span>
               </button>
 
               <button
@@ -416,12 +451,13 @@
                 (click)="lib.setReaderTheme('parchment')"
                 [class.ring-2]="lib.readerTheme() === 'parchment'"
                 [class.ring-amber-800]="lib.readerTheme() === 'parchment'"
-                class="btn-tactile p-3 rounded-xl bg-[#f4ebd9] text-[#2c231a] border border-[#dfd2bc] text-start flex flex-col gap-1 transition-all cursor-pointer shadow-sm"
+                class="btn-tactile min-h-[64px] p-3.5 rounded-2xl bg-[#f4ebd9] text-[#2c231a] border border-[#d8c7ab] text-start flex flex-col justify-between gap-1.5 transition-all cursor-pointer shadow-sm"
               >
-                <div class="flex items-center justify-between">
-                  <span class="font-bold">{{ lib.i18n.isRtl() ? 'رق البردي' : 'Parchment' }}</span>
-                  <span class="w-3 h-3 rounded-full bg-amber-800"></span>
+                <div class="flex items-center justify-between w-full">
+                  <span class="text-sm font-serif font-bold">Aa أب</span>
+                  <span class="w-3.5 h-3.5 rounded-full bg-[#92400e] shrink-0"></span>
                 </div>
+                <span class="font-bold text-xs truncate">{{ t.reader.themes.parchment }}</span>
               </button>
 
               <button
@@ -429,12 +465,13 @@
                 (click)="lib.setReaderTheme('ivory')"
                 [class.ring-2]="lib.readerTheme() === 'ivory'"
                 [class.ring-teal-700]="lib.readerTheme() === 'ivory'"
-                class="btn-tactile p-3 rounded-xl bg-[#fbf9f4] text-[#1e2024] border border-[#e4ded0] text-start flex flex-col gap-1 transition-all cursor-pointer shadow-sm"
+                class="btn-tactile min-h-[64px] p-3.5 rounded-2xl bg-[#fbf9f4] text-[#1e2024] border border-[#ded7c5] text-start flex flex-col justify-between gap-1.5 transition-all cursor-pointer shadow-sm"
               >
-                <div class="flex items-center justify-between">
-                  <span class="font-bold">{{ lib.i18n.isRtl() ? 'العاجي' : 'Ivory' }}</span>
-                  <span class="w-3 h-3 rounded-full bg-teal-700"></span>
+                <div class="flex items-center justify-between w-full">
+                  <span class="text-sm font-serif font-bold">Aa أب</span>
+                  <span class="w-3.5 h-3.5 rounded-full bg-[#0f766e] shrink-0"></span>
                 </div>
+                <span class="font-bold text-xs truncate">{{ t.reader.themes.ivory }}</span>
               </button>
 
               <button
@@ -442,64 +479,80 @@
                 (click)="lib.setReaderTheme('daylight')"
                 [class.ring-2]="lib.readerTheme() === 'daylight'"
                 [class.ring-blue-600]="lib.readerTheme() === 'daylight'"
-                class="btn-tactile p-3 rounded-xl bg-white text-[#0f172a] border border-slate-300 text-start flex flex-col gap-1 transition-all cursor-pointer shadow-sm"
+                class="btn-tactile min-h-[64px] p-3.5 rounded-2xl bg-white text-[#0f172a] border border-[#dce3ec] text-start flex flex-col justify-between gap-1.5 transition-all cursor-pointer shadow-sm"
               >
-                <div class="flex items-center justify-between">
-                  <span class="font-bold">{{ lib.i18n.isRtl() ? 'النهاري' : 'Daylight' }}</span>
-                  <span class="w-3 h-3 rounded-full bg-blue-600"></span>
+                <div class="flex items-center justify-between w-full">
+                  <span class="text-sm font-serif font-bold">Aa أب</span>
+                  <span class="w-3.5 h-3.5 rounded-full bg-[#2563eb] shrink-0"></span>
                 </div>
+                <span class="font-bold text-xs truncate">{{ t.reader.themes.daylight }}</span>
               </button>
             </div>
-          </div>
+          </section>
 
-          <!-- 2. Arabic Typefaces -->
-          <div class="space-y-2.5">
-            <span class="text-xs font-bold opacity-70 block">{{ t.reader.fontFamilySection }}:</span>
-            <div class="grid grid-cols-1 gap-2 text-xs max-h-52 overflow-y-auto pe-1">
+          <!-- 2. Typeface Selector -->
+          <section class="space-y-2.5">
+            <div class="flex items-center justify-between gap-2">
+              <span [class]="'text-xs font-bold block ' + lib.readerThemeConfig().textMuted">{{ t.reader.fontFamilySection }}</span>
+            </div>
+            @if (lib.readerActiveChapterContent()?.language === 'en') {
+              <p [class]="'text-[11px] px-3 py-2 rounded-xl border ' + lib.readerThemeConfig().cardBg + ' ' + lib.readerThemeConfig().cardBorder + ' ' + lib.readerThemeConfig().textMuted">
+                {{ t.reader.enProseNote }}
+              </p>
+            }
+            <div class="grid grid-cols-1 gap-2 text-xs">
               @for (font of [
                 { id: 'amiri', nameAr: 'الخط الأميري', nameEn: 'Amiri Literary', class: 'font-amiri' },
                 { id: 'naskh', nameAr: 'خط النسخ (Noto Naskh)', nameEn: 'Noto Naskh Arabic', class: 'font-naskh' },
                 { id: 'aref', nameAr: 'خط الرقعة (Aref Ruqaa)', nameEn: 'Aref Ruqaa', class: 'font-aref' },
                 { id: 'almarai', nameAr: 'خط المراعي (Almarai)', nameEn: 'Almarai Clean', class: 'font-almarai' },
-                { id: 'tajawal', nameAr: 'خط تجوال (Tajawal)', nameEn: 'Tajawal', class: 'font-tajawal' },
+                { id: 'tajawal', nameAr: 'خط تجوال (Tajawal)', nameEn: 'Tajawal Modern', class: 'font-tajawal' },
                 { id: 'kufi', nameAr: 'خط الكوفي (Noto Kufi)', nameEn: 'Noto Kufi', class: 'font-kufi' },
                 { id: 'alexandria', nameAr: 'خط الإسكندرية (Alexandria)', nameEn: 'Alexandria', class: 'font-alexandria' }
               ]; track font.id) {
                 <button
                   type="button"
                   (click)="lib.setReaderFontFamily(font.id === 'amiri' ? 'amiri' : font.id === 'naskh' ? 'naskh' : font.id === 'aref' ? 'aref' : font.id === 'almarai' ? 'almarai' : font.id === 'tajawal' ? 'tajawal' : font.id === 'kufi' ? 'kufi' : 'alexandria')"
-                  [class.ring-2]="lib.readerFontFamily() === font.id"
-                  [class.ring-current]="lib.readerFontFamily() === font.id"
-                  [class]="'btn-tactile p-2.5 rounded-xl border text-start flex items-center justify-between transition-all cursor-pointer shadow-xs ' + lib.readerThemeConfig().cardBg"
+                  [class]="
+                    'btn-tactile min-h-[48px] px-3.5 py-2.5 rounded-2xl border text-start flex items-center justify-between gap-3 transition-all cursor-pointer shadow-xs ' +
+                    (lib.readerFontFamily() === font.id ? 'ring-2 ' + lib.readerThemeConfig().ringColor + ' ' + lib.readerThemeConfig().cardBg : lib.readerThemeConfig().cardBg + ' ' + lib.readerThemeConfig().cardBorder + ' ' + lib.readerThemeConfig().hoverBg)
+                  "
                 >
-                  <span [class]="'font-bold text-sm ' + font.class">{{ lib.i18n.isRtl() ? font.nameAr : font.nameEn }}</span>
-                  <span [class]="'text-xs opacity-70 ' + font.class">Aa أ ب ج</span>
+                  <div class="flex items-center gap-2.5 min-w-0">
+                    @if (lib.readerFontFamily() === font.id) {
+                      <span [class]="'material-symbols-outlined text-[18px] shrink-0 ' + lib.readerThemeConfig().accent">check_circle</span>
+                    }
+                    <span [class]="'font-bold text-sm truncate ' + font.class">{{ lib.i18n.isRtl() ? font.nameAr : font.nameEn }}</span>
+                  </div>
+                  <span [class]="'text-xs opacity-75 shrink-0 ' + font.class">أ ب ج · Aa</span>
                 </button>
               }
             </div>
-          </div>
+          </section>
 
-          <!-- 3. Font Size -->
-          <div class="space-y-2">
+          <!-- 3. Font Size Stepper & Presets -->
+          <section [class]="'p-4 rounded-2xl border space-y-3 ' + lib.readerThemeConfig().cardBg + ' ' + lib.readerThemeConfig().cardBorder">
             <div class="flex items-center justify-between text-xs">
-              <span class="font-bold opacity-70">{{ t.reader.fontSizeSection }}:</span>
-              <span [class]="'font-mono font-bold tabular-nums ' + lib.readerThemeConfig().accent">{{ lib.readerFontSizePx() }}px</span>
+              <span class="font-bold">{{ t.reader.fontSizeSection }}</span>
+              <span [class]="'font-mono font-bold tabular-nums px-2 py-0.5 rounded-md ' + lib.readerThemeConfig().pillBg">{{ lib.readerFontSizePx() }}px</span>
             </div>
-            <div class="flex items-center gap-3">
+
+            <div class="flex items-center gap-2">
               <button
                 type="button"
                 (click)="lib.adjustReaderFontSize(-2)"
-                [class]="'btn-tactile w-9 h-9 rounded-xl border flex items-center justify-center font-bold text-sm hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer shrink-0 shadow-xs ' + lib.readerThemeConfig().cardBorder"
+                [class]="'btn-tactile w-11 h-11 rounded-xl border flex items-center justify-center font-bold text-sm transition-colors cursor-pointer shrink-0 ' + lib.readerThemeConfig().cardBorder + ' ' + lib.readerThemeConfig().hoverBg"
+                [attr.aria-label]="t.reader.fontSizeSection + ' -'"
               >
                 -A
               </button>
-              <div class="flex-1 flex items-center justify-between gap-1">
+              <div class="flex-1 grid grid-cols-6 gap-1">
                 @for (sz of [18, 20, 22, 24, 28, 32]; track sz) {
                   <button
                     type="button"
                     (click)="lib.setReaderFontSizePx(sz)"
                     [class.font-bold]="lib.readerFontSizePx() === sz"
-                    [class]="'btn-tactile w-7 h-7 rounded-lg text-xs font-mono transition-colors cursor-pointer tabular-nums ' + (lib.readerFontSizePx() === sz ? lib.readerThemeConfig().accentBg : 'opacity-60 hover:opacity-100')"
+                    [class]="'btn-tactile h-10 rounded-xl text-xs font-mono transition-colors cursor-pointer tabular-nums ' + (lib.readerFontSizePx() === sz ? lib.readerThemeConfig().accentBg : 'opacity-75 hover:opacity-100 ' + lib.readerThemeConfig().hoverBg)"
                   >
                     {{ sz }}
                   </button>
@@ -508,16 +561,17 @@
               <button
                 type="button"
                 (click)="lib.adjustReaderFontSize(2)"
-                [class]="'btn-tactile w-9 h-9 rounded-xl border flex items-center justify-center font-bold text-sm hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer shrink-0 shadow-xs ' + lib.readerThemeConfig().cardBorder"
+                [class]="'btn-tactile w-11 h-11 rounded-xl border flex items-center justify-center font-bold text-sm transition-colors cursor-pointer shrink-0 ' + lib.readerThemeConfig().cardBorder + ' ' + lib.readerThemeConfig().hoverBg"
+                [attr.aria-label]="t.reader.fontSizeSection + ' +'"
               >
                 +A
               </button>
             </div>
-          </div>
+          </section>
 
           <!-- 4. Line Height -->
-          <div class="space-y-2">
-            <span class="text-xs font-bold opacity-70 block">{{ t.reader.lineHeightSection }}:</span>
+          <section class="space-y-2.5">
+            <span [class]="'text-xs font-bold block ' + lib.readerThemeConfig().textMuted">{{ t.reader.lineHeightSection }}</span>
             <div class="grid grid-cols-4 gap-2 text-xs">
               @for (lh of [
                 { val: 1.75, label: t.reader.compact },
@@ -529,17 +583,17 @@
                   type="button"
                   (click)="lib.setReaderLineHeight(lh.val)"
                   [class.font-bold]="lib.readerLineHeight() === lh.val"
-                  [class]="'btn-tactile py-2 rounded-xl border text-center transition-all cursor-pointer shadow-xs ' + (lib.readerLineHeight() === lh.val ? lib.readerThemeConfig().accentBg : lib.readerThemeConfig().cardBg)"
+                  [class]="'btn-tactile min-h-[42px] px-2 rounded-xl border text-center transition-all cursor-pointer shadow-xs ' + (lib.readerLineHeight() === lh.val ? lib.readerThemeConfig().accentBg + ' border-transparent' : lib.readerThemeConfig().cardBg + ' ' + lib.readerThemeConfig().cardBorder + ' ' + lib.readerThemeConfig().hoverBg)"
                 >
                   {{ lh.label }}
                 </button>
               }
             </div>
-          </div>
+          </section>
 
-          <!-- 5. Reading Measure -->
-          <div class="space-y-2">
-            <span class="text-xs font-bold opacity-70 block">{{ t.reader.measureSection }}:</span>
+          <!-- 5. Column Width -->
+          <section class="space-y-2.5">
+            <span [class]="'text-xs font-bold block ' + lib.readerThemeConfig().textMuted">{{ t.reader.measureSection }}</span>
             <div class="grid grid-cols-4 gap-2 text-xs">
               @for (m of [
                 { val: 'compact', label: t.reader.compact },
@@ -551,23 +605,23 @@
                   type="button"
                   (click)="lib.setReaderMeasure(m.val === 'compact' ? 'compact' : m.val === 'balanced' ? 'balanced' : m.val === 'wide' ? 'wide' : 'fluid')"
                   [class.font-bold]="lib.readerMeasure() === m.val"
-                  [class]="'btn-tactile py-2 rounded-xl border text-center transition-all cursor-pointer shadow-xs ' + (lib.readerMeasure() === m.val ? lib.readerThemeConfig().accentBg : lib.readerThemeConfig().cardBg)"
+                  [class]="'btn-tactile min-h-[42px] px-2 rounded-xl border text-center transition-all cursor-pointer shadow-xs ' + (lib.readerMeasure() === m.val ? lib.readerThemeConfig().accentBg + ' border-transparent' : lib.readerThemeConfig().cardBg + ' ' + lib.readerThemeConfig().cardBorder + ' ' + lib.readerThemeConfig().hoverBg)"
                 >
                   {{ m.label }}
                 </button>
               }
             </div>
-          </div>
+          </section>
 
           <!-- 6. Text Alignment -->
-          <div class="space-y-2">
-            <span class="text-xs font-bold opacity-70 block">{{ t.reader.alignSection }}:</span>
+          <section class="space-y-2.5">
+            <span [class]="'text-xs font-bold block ' + lib.readerThemeConfig().textMuted">{{ t.reader.alignSection }}</span>
             <div class="grid grid-cols-2 gap-2 text-xs">
               <button
                 type="button"
                 (click)="lib.setReaderTextAlign('justify')"
                 [class.font-bold]="lib.readerTextAlign() === 'justify'"
-                [class]="'btn-tactile py-2 px-3 rounded-xl border flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs ' + (lib.readerTextAlign() === 'justify' ? lib.readerThemeConfig().accentBg : lib.readerThemeConfig().cardBg)"
+                [class]="'btn-tactile min-h-[44px] px-3 rounded-xl border flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs ' + (lib.readerTextAlign() === 'justify' ? lib.readerThemeConfig().accentBg + ' border-transparent' : lib.readerThemeConfig().cardBg + ' ' + lib.readerThemeConfig().cardBorder + ' ' + lib.readerThemeConfig().hoverBg)"
               >
                 <span class="material-symbols-outlined text-[18px]">format_align_justify</span>
                 <span>{{ t.reader.alignJustify }}</span>
@@ -576,132 +630,168 @@
                 type="button"
                 (click)="lib.setReaderTextAlign('right')"
                 [class.font-bold]="lib.readerTextAlign() === 'right'"
-                [class]="'btn-tactile py-2 px-3 rounded-xl border flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs ' + (lib.readerTextAlign() === 'right' ? lib.readerThemeConfig().accentBg : lib.readerThemeConfig().cardBg)"
+                [class]="'btn-tactile min-h-[44px] px-3 rounded-xl border flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs ' + (lib.readerTextAlign() === 'right' ? lib.readerThemeConfig().accentBg + ' border-transparent' : lib.readerThemeConfig().cardBg + ' ' + lib.readerThemeConfig().cardBorder + ' ' + lib.readerThemeConfig().hoverBg)"
               >
                 <span class="material-symbols-outlined text-[18px]">{{ lib.readerActiveChapterContent()?.language === 'en' ? 'format_align_left' : 'format_align_right' }}</span>
                 <span>{{ t.reader.alignEdge }}</span>
               </button>
             </div>
+          </section>
+
+          <!-- 7. Paragraph Spacing & Side Margins -->
+          <div class="grid grid-cols-1 gap-5">
+            <section class="space-y-2.5">
+              <span [class]="'text-xs font-bold block ' + lib.readerThemeConfig().textMuted">{{ t.reader.paragraphSpacingSection }}</span>
+              <div class="grid grid-cols-3 gap-2 text-xs">
+                @for (sp of [
+                  { val: 'compact', label: t.reader.compact },
+                  { val: 'normal', label: t.reader.normal },
+                  { val: 'relaxed', label: t.reader.relaxed }
+                ]; track sp.val) {
+                  <button
+                    type="button"
+                    (click)="lib.setReaderParagraphSpacing(sp.val === 'compact' ? 'compact' : sp.val === 'normal' ? 'normal' : 'relaxed')"
+                    [class.font-bold]="lib.readerParagraphSpacing() === sp.val"
+                    [class]="'btn-tactile min-h-[42px] px-2 rounded-xl border text-center transition-all cursor-pointer shadow-xs ' + (lib.readerParagraphSpacing() === sp.val ? lib.readerThemeConfig().accentBg + ' border-transparent' : lib.readerThemeConfig().cardBg + ' ' + lib.readerThemeConfig().cardBorder + ' ' + lib.readerThemeConfig().hoverBg)"
+                  >
+                    {{ sp.label }}
+                  </button>
+                }
+              </div>
+            </section>
+
+            <section class="space-y-2.5">
+              <span [class]="'text-xs font-bold block ' + lib.readerThemeConfig().textMuted">{{ t.reader.paddingSection }}</span>
+              <div class="grid grid-cols-3 gap-2 text-xs">
+                @for (pad of [
+                  { val: 'compact', label: t.reader.compact },
+                  { val: 'balanced', label: t.reader.balanced },
+                  { val: 'generous', label: t.reader.generous }
+                ]; track pad.val) {
+                  <button
+                    type="button"
+                    (click)="lib.setReaderPadding(pad.val === 'compact' ? 'compact' : pad.val === 'balanced' ? 'balanced' : 'generous')"
+                    [class.font-bold]="lib.readerPadding() === pad.val"
+                    [class]="'btn-tactile min-h-[42px] px-2 rounded-xl border text-center transition-all cursor-pointer shadow-xs ' + (lib.readerPadding() === pad.val ? lib.readerThemeConfig().accentBg + ' border-transparent' : lib.readerThemeConfig().cardBg + ' ' + lib.readerThemeConfig().cardBorder + ' ' + lib.readerThemeConfig().hoverBg)"
+                  >
+                    {{ pad.label }}
+                  </button>
+                }
+              </div>
+            </section>
           </div>
 
-          <!-- 7. Paragraph Spacing -->
-          <div class="space-y-2">
-            <span class="text-xs font-bold opacity-70 block">{{ t.reader.paragraphSpacingSection }}:</span>
-            <div class="grid grid-cols-3 gap-2 text-xs">
-              @for (sp of [
-                { val: 'compact', label: t.reader.compact },
-                { val: 'normal', label: t.reader.normal },
-                { val: 'relaxed', label: t.reader.relaxed }
-              ]; track sp.val) {
-                <button
-                  type="button"
-                  (click)="lib.setReaderParagraphSpacing(sp.val === 'compact' ? 'compact' : sp.val === 'normal' ? 'normal' : 'relaxed')"
-                  [class.font-bold]="lib.readerParagraphSpacing() === sp.val"
-                  [class]="'btn-tactile py-2 rounded-xl border text-center transition-all cursor-pointer shadow-xs ' + (lib.readerParagraphSpacing() === sp.val ? lib.readerThemeConfig().accentBg : lib.readerThemeConfig().cardBg)"
-                >
-                  {{ sp.label }}
-                </button>
-              }
-            </div>
-          </div>
-
-          <!-- 8. Side Padding -->
-          <div class="space-y-2">
-            <span class="text-xs font-bold opacity-70 block">{{ t.reader.paddingSection }}:</span>
-            <div class="grid grid-cols-3 gap-2 text-xs">
-              @for (pad of [
-                { val: 'compact', label: t.reader.compact },
-                { val: 'balanced', label: t.reader.balanced },
-                { val: 'generous', label: t.reader.generous }
-              ]; track pad.val) {
-                <button
-                  type="button"
-                  (click)="lib.setReaderPadding(pad.val === 'compact' ? 'compact' : pad.val === 'balanced' ? 'balanced' : 'generous')"
-                  [class.font-bold]="lib.readerPadding() === pad.val"
-                  [class]="'btn-tactile py-2 rounded-xl border text-center transition-all cursor-pointer shadow-xs ' + (lib.readerPadding() === pad.val ? lib.readerThemeConfig().accentBg : lib.readerThemeConfig().cardBg)"
-                >
-                  {{ pad.label }}
-                </button>
-              }
-            </div>
-          </div>
         </div>
 
-        <div [class]="'pt-6 mt-6 border-t flex items-center justify-between text-xs ' + lib.readerThemeConfig().cardBorder">
+        <!-- Sticky Footer -->
+        <div [class]="'px-5 py-4 border-t flex items-center justify-between gap-3 shrink-0 ' + lib.readerThemeConfig().drawerHeaderBg + ' ' + lib.readerThemeConfig().cardBorder">
           <button
             type="button"
             (click)="lib.resetReaderSettings()"
-            class="btn-tactile flex items-center gap-1.5 opacity-70 hover:opacity-100 transition-opacity cursor-pointer underline underline-offset-2"
+            [class]="'btn-tactile min-h-[44px] px-3.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ' + lib.readerThemeConfig().cardBorder + ' ' + lib.readerThemeConfig().hoverBg"
           >
-            <span class="material-symbols-outlined text-[16px]">restart_alt</span>
+            <span class="material-symbols-outlined text-[17px]">restart_alt</span>
             <span>{{ t.reader.resetSettings }}</span>
           </button>
+
+          <button
+            type="button"
+            (click)="lib.readerSettingsDrawerOpen.set(false)"
+            [class]="'btn-tactile min-h-[44px] px-6 rounded-xl text-xs font-bold shadow-md cursor-pointer ' + lib.readerThemeConfig().accentBg"
+          >
+            {{ t.reader.done }}
+          </button>
         </div>
-      </div>
+      </aside>
     </div>
   }
 
   <!-- B. CHAPTERS INDEX DRAWER -->
   @if (lib.readerChapterDrawerOpen()) {
-    <div class="fixed inset-0 z-50 flex items-start justify-end animate-fadeIn">
+    <div class="fixed inset-0 z-[60] flex justify-end animate-fadeIn">
       <button
         type="button"
-        class="fixed inset-0 w-full h-full bg-black/60 backdrop-blur-sm cursor-default border-none"
+        class="fixed inset-0 w-full h-full bg-black/55 backdrop-blur-sm cursor-default border-none"
         [attr.aria-label]="t.modals.close"
         (click)="lib.readerChapterDrawerOpen.set(false)"
       ></button>
 
-      <div
-        [class]="'w-full max-w-md h-full overflow-y-auto relative z-10 border-s shadow-2xl p-6 flex flex-col justify-between ' + lib.readerThemeConfig().bg + ' ' + lib.readerThemeConfig().text + ' ' + lib.readerThemeConfig().cardBorder"
+      <aside
+        role="dialog"
+        aria-modal="true"
+        [attr.aria-label]="t.reader.chaptersIndex"
+        [class]="'relative z-10 w-full sm:max-w-[440px] h-full border-s shadow-2xl flex flex-col overflow-hidden sm:rounded-s-3xl animate-drawer-end ' + lib.readerThemeConfig().drawerBg + ' ' + lib.readerThemeConfig().text + ' ' + lib.readerThemeConfig().cardBorder"
       >
-        <div class="space-y-4">
-          <div [class]="'flex items-center justify-between border-b pb-4 ' + lib.readerThemeConfig().cardBorder">
-            <div class="flex items-center gap-2 font-bold text-base">
-              <span [class]="'material-symbols-outlined text-[22px] ' + lib.readerThemeConfig().accent">menu_book</span>
-              <span>{{ t.reader.chaptersIndex }} ({{ lib.i18n.formatNumber(lib.availableChaptersForNovel().length) }})</span>
+        <!-- Sticky Drawer Header + Pinned Search -->
+        <div [class]="'px-5 pt-4 pb-4 border-b space-y-3.5 shrink-0 ' + lib.readerThemeConfig().drawerHeaderBg + ' ' + lib.readerThemeConfig().cardBorder">
+          <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+              <div [class]="'w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ' + lib.readerThemeConfig().pillBg">
+                <span [class]="'material-symbols-outlined text-[21px] ' + lib.readerThemeConfig().accent">menu_book</span>
+              </div>
+              <div class="flex flex-col min-w-0">
+                <h2 class="font-bold text-base truncate">
+                  {{ t.reader.chaptersIndex }} ({{ lib.i18n.formatNumber(lib.availableChaptersForNovel().length) }})
+                </h2>
+                <span [class]="'text-[11px] truncate ' + lib.readerThemeConfig().textMuted">
+                  {{ (lib.selectedNovel() || lib.defaultEchoesSamarkand).title }}
+                </span>
+              </div>
             </div>
+
             <button
               type="button"
               (click)="lib.readerChapterDrawerOpen.set(false)"
-              class="btn-tactile w-8 h-8 rounded-lg flex items-center justify-center hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer"
+              [class]="'btn-tactile w-10 h-10 rounded-xl border flex items-center justify-center transition-colors cursor-pointer shrink-0 ' + lib.readerThemeConfig().cardBorder + ' ' + lib.readerThemeConfig().hoverBg"
               [attr.aria-label]="t.modals.close"
             >
               <span class="material-symbols-outlined text-[20px]">close</span>
             </button>
           </div>
 
-          <div [class]="'relative flex items-center rounded-xl p-2.5 border shadow-xs ' + lib.readerThemeConfig().cardBorder">
-            <span class="material-symbols-outlined text-outline me-2 text-[18px]">search</span>
+          <div [class]="'relative flex items-center h-11 rounded-xl px-3.5 border shadow-xs ' + lib.readerThemeConfig().cardBg + ' ' + lib.readerThemeConfig().cardBorder">
+            <span class="material-symbols-outlined opacity-60 me-2 text-[19px] shrink-0">search</span>
             <input
               [formControl]="lib.readerChapterSearch"
               type="text"
               [placeholder]="t.reader.searchChapters"
-              class="bg-transparent w-full text-xs focus:outline-none placeholder:opacity-50"
+              class="bg-transparent w-full text-xs focus:outline-none placeholder:opacity-60"
             />
             @if (lib.readerChapterSearch.value) {
               <button
                 type="button"
                 (click)="lib.readerChapterSearch.setValue('')"
-                class="text-xs opacity-60 hover:opacity-100 cursor-pointer active:scale-90 transition-transform"
+                class="w-7 h-7 rounded-lg flex items-center justify-center opacity-70 hover:opacity-100 cursor-pointer shrink-0"
                 [attr.aria-label]="t.explore.clearSearch"
               >
                 <span class="material-symbols-outlined text-[16px]">clear</span>
               </button>
             }
           </div>
+        </div>
 
-          <div class="space-y-2 max-h-[calc(100vh-210px)] overflow-y-auto pe-1">
+        <!-- Flex Scrollable Chapters List -->
+        <div class="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-2.5">
+          @if (lib.filteredReaderChapters().length === 0) {
+            <div class="text-center py-12 opacity-70 flex flex-col items-center gap-3">
+              <span class="material-symbols-outlined text-[38px]">search_off</span>
+              <p class="text-xs">{{ t.details.noChapterSearchResults }}</p>
+            </div>
+          } @else {
             @for (chap of lib.filteredReaderChapters(); track chap.id) {
               <button
                 type="button"
                 (click)="lib.openChapter(chap); lib.readerChapterDrawerOpen.set(false)"
-                [class.ring-2]="lib.activeReadingChapter()?.id === chap.id"
-                [class.ring-current]="lib.activeReadingChapter()?.id === chap.id"
-                [class]="'btn-tactile w-full p-3 rounded-xl border text-start flex items-center justify-between gap-3 transition-all cursor-pointer group shadow-xs ' + (lib.activeReadingChapter()?.id === chap.id ? lib.readerThemeConfig().cardBg : 'hover:bg-black/5 dark:hover:bg-white/5')"
+                [class]="
+                  'btn-tactile w-full min-h-[58px] p-3 rounded-2xl border text-start flex items-center justify-between gap-3 transition-all cursor-pointer group shadow-xs ' +
+                  (lib.activeReadingChapter()?.id === chap.id
+                    ? 'ring-2 ' + lib.readerThemeConfig().ringColor + ' ' + lib.readerThemeConfig().cardBg + ' border-transparent'
+                    : lib.readerThemeConfig().cardBg + ' ' + lib.readerThemeConfig().cardBorder + ' ' + lib.readerThemeConfig().hoverBg)
+                "
               >
                 <div class="flex items-center gap-3 min-w-0">
                   <span
-                    [class]="'w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold font-mono shrink-0 tabular-nums ' + (lib.activeReadingChapter()?.id === chap.id ? lib.readerThemeConfig().accentBg : lib.readerThemeConfig().pillBg)"
+                    [class]="'w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold font-mono shrink-0 tabular-nums ' + (lib.activeReadingChapter()?.id === chap.id ? lib.readerThemeConfig().accentBg : lib.readerThemeConfig().pillBg)"
                   >
                     {{ lib.selectedChapterLang() === 'en' ? (chap.chapterNumber ?? chap.id) : chap.arabicNumber }}
                   </span>
@@ -709,50 +799,89 @@
                     <span class="text-xs font-bold truncate group-hover:underline">
                       {{ chap.title }}
                     </span>
-                    <span class="text-[10px] opacity-60">
+                    <span [class]="'text-[11px] truncate ' + lib.readerThemeConfig().textMuted">
                       {{ chap.duration }}
                     </span>
                   </div>
                 </div>
 
                 <div class="shrink-0 flex items-center gap-1.5 text-[10px]">
-                  @if (chap.status === 'read') {
-                    <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 font-bold">{{ t.details.chapterReadBadge }}</span>
-                  } @else if (chap.status === 'current') {
-                    <span [class]="'px-2 py-0.5 rounded-full font-bold ' + lib.readerThemeConfig().pillBg">{{ t.details.chapterCurrentBadge }}</span>
+                  @if (lib.activeReadingChapter()?.id === chap.id) {
+                    <span [class]="'px-2.5 py-1 rounded-full font-bold ' + lib.readerThemeConfig().accentBg">
+                      {{ t.details.chapterCurrentBadge }}
+                    </span>
+                  } @else if (chap.status === 'read') {
+                    <span class="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-bold">
+                      {{ t.details.chapterReadBadge }}
+                    </span>
                   }
                 </div>
               </button>
             }
-          </div>
+          }
         </div>
-      </div>
+
+        <!-- Sticky Footer with Progress -->
+        <div [class]="'px-5 py-4 border-t flex items-center justify-between gap-4 shrink-0 ' + lib.readerThemeConfig().drawerHeaderBg + ' ' + lib.readerThemeConfig().cardBorder">
+          <div class="flex flex-col flex-1 min-w-0 gap-1.5">
+            <div class="flex items-center justify-between text-[11px]">
+              <span class="font-semibold opacity-80">{{ t.reader.progress }}</span>
+              <span class="font-mono font-bold tabular-nums">{{ lib.i18n.formatNumber(lib.readerProgressPercent()) }}%</span>
+            </div>
+            <div [class]="'w-full h-1.5 rounded-full overflow-hidden ' + lib.readerThemeConfig().pillBg">
+              <div [class]="'h-full rounded-full transition-all ' + lib.readerThemeConfig().progressBg" [style.width.%]="lib.readerProgressPercent()"></div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            (click)="lib.readerChapterDrawerOpen.set(false)"
+            [class]="'btn-tactile min-h-[42px] px-5 rounded-xl border text-xs font-bold cursor-pointer shrink-0 ' + lib.readerThemeConfig().cardBorder + ' ' + lib.readerThemeConfig().hoverBg"
+          >
+            {{ t.modals.close }}
+          </button>
+        </div>
+      </aside>
     </div>
   }
 
   <!-- C. BOOKMARKS DRAWER -->
   @if (lib.readerBookmarksDrawerOpen()) {
-    <div class="fixed inset-0 z-50 flex items-start justify-end animate-fadeIn">
+    <div class="fixed inset-0 z-[60] flex justify-end animate-fadeIn">
       <button
         type="button"
-        class="fixed inset-0 w-full h-full bg-black/60 backdrop-blur-sm cursor-default border-none"
+        class="fixed inset-0 w-full h-full bg-black/55 backdrop-blur-sm cursor-default border-none"
         [attr.aria-label]="t.modals.close"
         (click)="lib.readerBookmarksDrawerOpen.set(false)"
       ></button>
 
-      <div
-        [class]="'w-full max-w-md h-full overflow-y-auto relative z-10 border-s shadow-2xl p-6 flex flex-col justify-between ' + lib.readerThemeConfig().bg + ' ' + lib.readerThemeConfig().text + ' ' + lib.readerThemeConfig().cardBorder"
+      <aside
+        role="dialog"
+        aria-modal="true"
+        [attr.aria-label]="t.reader.bookmarks"
+        [class]="'relative z-10 w-full sm:max-w-[440px] h-full border-s shadow-2xl flex flex-col overflow-hidden sm:rounded-s-3xl animate-drawer-end ' + lib.readerThemeConfig().drawerBg + ' ' + lib.readerThemeConfig().text + ' ' + lib.readerThemeConfig().cardBorder"
       >
-        <div class="space-y-4">
-          <div [class]="'flex items-center justify-between border-b pb-4 ' + lib.readerThemeConfig().cardBorder">
-            <div class="flex items-center gap-2 font-bold text-base">
-              <span [class]="'material-symbols-outlined text-[22px] ' + lib.readerThemeConfig().accent">bookmark</span>
-              <span>{{ t.reader.bookmarks }} ({{ lib.i18n.formatNumber(lib.readerBookmarks().length) }})</span>
+        <!-- Sticky Drawer Header + Primary Add Bookmark Action -->
+        <div [class]="'px-5 pt-4 pb-4 border-b space-y-3.5 shrink-0 ' + lib.readerThemeConfig().drawerHeaderBg + ' ' + lib.readerThemeConfig().cardBorder">
+          <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+              <div [class]="'w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ' + lib.readerThemeConfig().pillBg">
+                <span [class]="'material-symbols-outlined text-[21px] ' + lib.readerThemeConfig().accent">bookmark</span>
+              </div>
+              <div class="flex flex-col min-w-0">
+                <h2 class="font-bold text-base truncate">
+                  {{ t.reader.bookmarks }} ({{ lib.i18n.formatNumber(lib.readerBookmarks().length) }})
+                </h2>
+                <span [class]="'text-[11px] truncate ' + lib.readerThemeConfig().textMuted">
+                  {{ lib.activeReadingChapter()?.title }}
+                </span>
+              </div>
             </div>
+
             <button
               type="button"
               (click)="lib.readerBookmarksDrawerOpen.set(false)"
-              class="btn-tactile w-8 h-8 rounded-lg flex items-center justify-center hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer"
+              [class]="'btn-tactile w-10 h-10 rounded-xl border flex items-center justify-center transition-colors cursor-pointer shrink-0 ' + lib.readerThemeConfig().cardBorder + ' ' + lib.readerThemeConfig().hoverBg"
               [attr.aria-label]="t.modals.close"
             >
               <span class="material-symbols-outlined text-[20px]">close</span>
@@ -762,58 +891,76 @@
           <button
             type="button"
             (click)="lib.addCurrentBookmark()"
-            [class]="'btn-tactile w-full py-2.5 px-3 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition-all cursor-pointer shadow-md ' + lib.readerThemeConfig().accentBg"
+            [class]="'btn-tactile w-full min-h-[44px] px-4 rounded-xl flex items-center justify-center gap-2 text-xs font-bold transition-all cursor-pointer shadow-md ' + lib.readerThemeConfig().accentBg"
           >
             <span class="material-symbols-outlined text-[18px]">bookmark_add</span>
             <span>{{ t.reader.addBookmark }}</span>
           </button>
+        </div>
 
-          <div class="space-y-2.5 max-h-[calc(100vh-220px)] overflow-y-auto pe-1">
-            @if (lib.readerBookmarks().length === 0) {
-              <div class="text-center py-12 opacity-60 flex flex-col items-center gap-3">
-                <span class="material-symbols-outlined text-[40px]">bookmark_border</span>
-                <p class="text-xs">{{ t.reader.noBookmarks }}</p>
+        <!-- Scrollable Bookmarks List -->
+        <div class="flex-1 min-h-0 overflow-y-auto px-5 py-4 space-y-3">
+          @if (lib.readerBookmarks().length === 0) {
+            <div class="text-center py-14 opacity-70 flex flex-col items-center gap-3">
+              <div [class]="'w-14 h-14 rounded-2xl flex items-center justify-center ' + lib.readerThemeConfig().pillBg">
+                <span class="material-symbols-outlined text-[30px]">bookmark_border</span>
               </div>
-            } @else {
-              @for (bm of lib.readerBookmarks(); track bm.id) {
-                <div
-                  [class]="'p-3 rounded-xl border text-start space-y-2 shadow-xs transition-all hover:border-current/30 ' + lib.readerThemeConfig().cardBg"
-                >
-                  <div class="flex items-center justify-between">
-                    <span class="font-bold text-xs truncate max-w-[200px]">{{ bm.chapterTitle }}</span>
-                    <span [class]="'font-mono text-[10px] font-bold px-2 py-0.5 rounded-full tabular-nums ' + lib.readerThemeConfig().pillBg">
-                      {{ bm.percent }}%
-                    </span>
-                  </div>
-                  <p class="text-[11px] opacity-75 line-clamp-2 italic leading-relaxed">
-                    «{{ bm.excerpt }}»
-                  </p>
-                  <div class="flex items-center justify-between pt-1 border-t border-current/10 text-[10px]">
-                    <span class="opacity-60 tabular-nums">{{ bm.date }}</span>
-                    <div class="flex items-center gap-2">
-                      <button
-                        type="button"
-                        (click)="lib.jumpToBookmark(bm)"
-                        [class]="'btn-tactile text-xs font-bold hover:underline cursor-pointer flex items-center gap-0.5 ' + lib.readerThemeConfig().accent"
-                      >
-                        <span class="material-symbols-outlined text-[14px]">{{ lib.i18n.isRtl() ? 'arrow_back' : 'arrow_forward' }}</span>
-                      </button>
-                      <button
-                        type="button"
-                        (click)="lib.removeBookmark(bm.id)"
-                        class="btn-tactile text-xs text-rose-500 hover:text-rose-600 cursor-pointer p-1 rounded-md"
-                        [attr.aria-label]="t.home.removeBookmark"
-                      >
-                        <span class="material-symbols-outlined text-[16px]">delete</span>
-                      </button>
-                    </div>
+              <p class="text-xs max-w-xs leading-relaxed">{{ t.reader.noBookmarks }}</p>
+            </div>
+          } @else {
+            @for (bm of lib.readerBookmarks(); track bm.id) {
+              <article
+                [class]="'p-3.5 rounded-2xl border text-start space-y-2.5 shadow-xs transition-all ' + lib.readerThemeConfig().cardBg + ' ' + lib.readerThemeConfig().cardBorder"
+              >
+                <div class="flex items-center justify-between gap-2">
+                  <h3 class="font-bold text-xs truncate flex-1">{{ bm.chapterTitle }}</h3>
+                  <span [class]="'font-mono text-[10px] font-bold px-2.5 py-0.5 rounded-full tabular-nums shrink-0 ' + lib.readerThemeConfig().pillBg">
+                    {{ bm.percent }}%
+                  </span>
+                </div>
+
+                <p [class]="'text-xs line-clamp-2 italic leading-relaxed ' + lib.readerThemeConfig().textMuted">
+                  «{{ bm.excerpt }}»
+                </p>
+
+                <div class="flex items-center justify-between gap-2 pt-2 border-t border-current/10 text-[11px]">
+                  <span [class]="'tabular-nums ' + lib.readerThemeConfig().textMuted">{{ bm.date }}</span>
+                  <div class="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      (click)="lib.jumpToBookmark(bm)"
+                      [class]="'btn-tactile min-h-[36px] px-3 rounded-xl border text-xs font-bold flex items-center gap-1 cursor-pointer ' + lib.readerThemeConfig().cardBorder + ' ' + lib.readerThemeConfig().hoverBg + ' ' + lib.readerThemeConfig().accent"
+                    >
+                      <span>{{ t.explore.readNow }}</span>
+                      <span class="material-symbols-outlined text-[15px]">{{ lib.i18n.isRtl() ? 'arrow_back' : 'arrow_forward' }}</span>
+                    </button>
+                    <button
+                      type="button"
+                      (click)="lib.removeBookmark(bm.id)"
+                      class="btn-tactile w-9 h-9 rounded-xl text-rose-500 hover:bg-rose-500/15 flex items-center justify-center cursor-pointer transition-colors"
+                      [attr.aria-label]="t.home.removeBookmark"
+                      [title]="t.home.removeBookmark"
+                    >
+                      <span class="material-symbols-outlined text-[17px]">delete</span>
+                    </button>
                   </div>
                 </div>
-              }
+              </article>
             }
-          </div>
+          }
         </div>
-      </div>
+
+        <!-- Sticky Footer -->
+        <div [class]="'px-5 py-4 border-t flex justify-end shrink-0 ' + lib.readerThemeConfig().drawerHeaderBg + ' ' + lib.readerThemeConfig().cardBorder">
+          <button
+            type="button"
+            (click)="lib.readerBookmarksDrawerOpen.set(false)"
+            [class]="'btn-tactile min-h-[44px] px-6 rounded-xl border text-xs font-bold cursor-pointer ' + lib.readerThemeConfig().cardBorder + ' ' + lib.readerThemeConfig().hoverBg"
+          >
+            {{ t.modals.close }}
+          </button>
+        </div>
+      </aside>
     </div>
   }
 </div>

@@ -15,6 +15,7 @@ import { ProfilePage } from './pages/profile/profile-page';
 import { LibraryStateService } from './core/services/library-state.service';
 import { isArabicCatalogNovel } from './core/mtx-catalog-data';
 import { getChaptersForNovel } from './core/mtx-reader-chapters';
+import { SiteHeader } from './shared/components/site-header/site-header';
 
 describe('MTX Compression, Shell, Theme, Bilingual i18n, Chapters & Copy Protection Specs', () => {
   beforeEach(() => {
@@ -362,5 +363,118 @@ describe('MTX Compression, Shell, Theme, Bilingual i18n, Chapters & Copy Protect
     expect(mapEmailAuthErrorMessage({ code: 'auth/invalid-credential' }, 'login', 'en')).toContain(
       'Incorrect'
     );
+  });
+
+  it('should render single-line SiteHeader navigation and unified z-[60] Sanctuary Drawer cleanly in Arabic and English', () => {
+    const i18n = TestBed.inject(I18nService);
+    const lib = TestBed.inject(LibraryStateService);
+    lib.isMobileNavOpen.set(false);
+
+    i18n.setLanguage('en', false);
+    const headerFixture = TestBed.createComponent(SiteHeader);
+    headerFixture.detectChanges();
+    const headerEl = headerFixture.nativeElement as HTMLElement;
+
+    // Header has no bulky inline search input and enforces single-line nav buttons
+    expect(headerEl.querySelector('header input[type="text"]')).toBeNull();
+    const navButtons = Array.from(headerEl.querySelectorAll('header nav button'));
+    expect(navButtons.length).toBe(6);
+    expect(navButtons.every((btn) => btn.className.includes('whitespace-nowrap'))).toBe(true);
+
+    // Opening main hamburger menu renders the z-[60] Sanctuary drawer with corridors and EN/AR controls
+    lib.toggleMobileNav();
+    headerFixture.detectChanges();
+    const drawerWrapper = headerEl.querySelector('.fixed.inset-0.z-\\[60\\]');
+    expect(drawerWrapper).toBeTruthy();
+    const drawerAside = headerEl.querySelector('aside[role="dialog"]');
+    expect(drawerAside?.className).toContain('liquid-glass-drawer');
+    expect(drawerAside?.textContent).toContain('Eternity Corridors');
+    expect(drawerAside?.textContent).toContain('Epics');
+    expect(drawerAside?.textContent).toContain('Heroic sagas & ancient legends');
+
+    i18n.setLanguage('ar', false);
+    headerFixture.detectChanges();
+    expect(drawerAside?.textContent).toContain('أروقة الخلود');
+    expect(drawerAside?.textContent).toContain('الملاحم');
+    expect(drawerAside?.textContent).toContain('حكايات البطولة والأساطير');
+
+    lib.isMobileNavOpen.set(false);
+  });
+
+  it('should render all 3 ReadingPage drawers at z-[60] with localized theme cards, chapter search, and bookmark controls', () => {
+    const i18n = TestBed.inject(I18nService);
+    const lib = TestBed.inject(LibraryStateService);
+    i18n.setLanguage('en', false);
+    lib.openChapter(lib.chapters[0]);
+
+    const readingFixture = TestBed.createComponent(ReadingPage);
+    readingFixture.detectChanges();
+    const el = readingFixture.nativeElement as HTMLElement;
+
+    // 1. Settings Drawer with 4 localized reading paper themes
+    lib.readerSettingsDrawerOpen.set(true);
+    lib.readerChapterDrawerOpen.set(false);
+    lib.readerBookmarksDrawerOpen.set(false);
+    readingFixture.detectChanges();
+
+    expect(el.querySelectorAll('.fixed.inset-0.z-\\[60\\]').length).toBe(1);
+    const settingsAside = el.querySelector('aside[role="dialog"]');
+    expect(settingsAside?.textContent).toContain('Andalusian Dark');
+    expect(settingsAside?.textContent).toContain('Ancient Parchment');
+    expect(settingsAside?.textContent).toContain('Warm Ivory');
+    expect(settingsAside?.textContent).toContain('Crisp Daylight');
+
+    lib.setReaderTheme('ivory');
+    readingFixture.detectChanges();
+    expect(lib.readerTheme()).toBe('ivory');
+
+    // 2. Chapters Index Drawer + empty search state
+    lib.readerSettingsDrawerOpen.set(false);
+    lib.readerChapterDrawerOpen.set(true);
+    lib.readerChapterSearch.setValue('__non_existent_chapter_query__');
+    readingFixture.detectChanges();
+    expect(el.textContent).toContain(i18n.copy().details.noChapterSearchResults);
+    lib.readerChapterSearch.setValue('');
+
+    // 3. Bookmarks Drawer
+    lib.readerChapterDrawerOpen.set(false);
+    lib.readerBookmarksDrawerOpen.set(true);
+    readingFixture.detectChanges();
+    expect(el.textContent).toContain(i18n.copy().reader.addBookmark);
+
+    lib.readerBookmarksDrawerOpen.set(false);
+    lib.setReaderTheme('andalusian');
+    i18n.setLanguage('ar', false);
+  });
+
+  it('should apply fixed-header top clearance on non-reader views and center novel titles beneath covers', () => {
+    const i18n = TestBed.inject(I18nService);
+    const lib = TestBed.inject(LibraryStateService);
+    i18n.setLanguage('ar', false);
+
+    lib.currentView.set('novels');
+    const appFixture = TestBed.createComponent(App);
+    appFixture.detectChanges();
+    const mainEl = (appFixture.nativeElement as HTMLElement).querySelector('#main-content');
+    expect(mainEl?.className).toContain('pt-[76px]');
+
+    lib.openChapter(lib.chapters[0]);
+    appFixture.detectChanges();
+    expect(mainEl?.className).not.toContain('pt-[76px]');
+
+    lib.currentView.set('novels');
+
+    const homeFixture = TestBed.createComponent(HomePage);
+    homeFixture.detectChanges();
+    const homeTitles = (homeFixture.nativeElement as HTMLElement).querySelectorAll('h3.text-center');
+    expect(homeTitles.length).toBeGreaterThan(0);
+
+    lib.exploreViewMode.set('grid');
+    const exploreFixture = TestBed.createComponent(ExplorePage);
+    exploreFixture.detectChanges();
+    const exploreTitles = (exploreFixture.nativeElement as HTMLElement).querySelectorAll(
+      '#catalog-container .text-center h3'
+    );
+    expect(exploreTitles.length).toBeGreaterThan(0);
   });
 });

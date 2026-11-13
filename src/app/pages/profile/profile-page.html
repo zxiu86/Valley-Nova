@@ -528,7 +528,7 @@
                 }
               </div>
 
-              <div class="p-3 space-y-1">
+              <div class="p-3 space-y-1 text-center">
                 <h3 class="text-xs sm:text-sm font-bold text-on-surface group-hover:text-primary transition-colors line-clamp-1">
                   {{ book.title }}
                 </h3>
@@ -564,7 +564,7 @@
 
     <!-- ================= SLIDING SIDE SETTINGS DRAWER ================= -->
     @if (account.viewedIsOwner() && account.isSettingsOpen()) {
-      <div class="fixed inset-0 z-50 flex justify-end animate-fadeIn">
+      <div class="fixed inset-0 z-[60] flex justify-end animate-fadeIn">
         <button
           type="button"
           class="fixed inset-0 w-full h-full bg-black/55 dark:bg-black/75 backdrop-blur-sm border-none cursor-default"
@@ -574,10 +574,10 @@
 
         <aside
           [attr.aria-label]="t.profile.settingsTitle"
-          class="relative z-10 w-full max-w-lg h-full bg-surface-container-low border-s border-surface-variant/50 shadow-2xl flex flex-col overflow-hidden"
+          class="relative z-10 w-[min(94vw,512px)] h-full liquid-glass-drawer border-s border-surface-variant/50 shadow-2xl flex flex-col overflow-hidden animate-drawer-end"
         >
           <!-- Drawer Top Header -->
-          <div class="px-5 py-4 border-b border-surface-variant/40 flex items-center justify-between bg-surface-container">
+          <div class="px-5 py-4 border-b border-surface-variant/40 flex items-center justify-between bg-surface-container/60 shrink-0">
             <div class="flex items-center gap-2.5">
               <span class="material-symbols-outlined text-secondary text-[22px]">manage_accounts</span>
               <div>
@@ -589,7 +589,7 @@
               type="button"
               (click)="closeSettingsDrawer()"
               [attr.aria-label]="t.profile.settingsClose"
-              class="w-9 h-9 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors cursor-pointer"
+              class="w-10 h-10 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors cursor-pointer shrink-0"
             >
               <span class="material-symbols-outlined text-[20px]">close</span>
             </button>

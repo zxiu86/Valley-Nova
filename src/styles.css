@@ -1,10 +1,16 @@
-@import url('https://fonts.googleapis.com/icon?family=Material+Icons');
 @import "tailwindcss";
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* ================= UNIFIED THEME SYSTEM (LIGHT & DARK MODES) ================= */
+/* ================= UNIFIED THEME & TYPOGRAPHY SYSTEM ================= */
 :root {
   color-scheme: light;
+  --mtx-font-sans: 'Tajawal', 'Cairo', 'Plus Jakarta Sans', 'Almarai', system-ui, -apple-system, sans-serif;
+  --mtx-font-display: 'Alexandria', 'Tajawal', 'Plus Jakarta Sans', system-ui, sans-serif;
+  --mtx-font-serif: 'Amiri', 'Noto Naskh Arabic', Georgia, serif;
+  --mtx-font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  --mtx-body-tracking: 0em;
+  --mtx-display-tracking: -0.01em;
+
   --mtx-background: #F7F7FA;
   --mtx-surface: #F7F7FA;
   --mtx-surface-dim: #ECEAF2;
@@ -148,16 +154,20 @@
   --color-inverse-surface: var(--mtx-inverse-surface);
   --color-inverse-on-surface: var(--mtx-inverse-on-surface);
 
-  --font-display-hero: 'Alexandria', 'Tajawal', sans-serif;
-  --font-headline-lg: 'Alexandria', 'Tajawal', sans-serif;
-  --font-headline-md: 'Alexandria', 'Tajawal', sans-serif;
-  --font-headline-sm: 'Alexandria', 'Tajawal', sans-serif;
-  --font-title-lg: 'Alexandria', 'Tajawal', sans-serif;
-  --font-body-lg: 'Tajawal', 'Almarai', sans-serif;
-  --font-body-md: 'Tajawal', 'Almarai', sans-serif;
-  --font-body-sm: 'Tajawal', 'Almarai', sans-serif;
-  --font-label-md: 'Tajawal', 'Almarai', sans-serif;
-  --font-label-sm: 'Tajawal', 'Almarai', sans-serif;
+  --font-sans: var(--mtx-font-sans);
+  --font-serif: var(--mtx-font-serif);
+  --font-mono: var(--mtx-font-mono);
+
+  --font-display-hero: var(--mtx-font-display);
+  --font-headline-lg: var(--mtx-font-display);
+  --font-headline-md: var(--mtx-font-display);
+  --font-headline-sm: var(--mtx-font-display);
+  --font-title-lg: var(--mtx-font-display);
+  --font-body-lg: var(--mtx-font-sans);
+  --font-body-md: var(--mtx-font-sans);
+  --font-body-sm: var(--mtx-font-sans);
+  --font-label-md: var(--mtx-font-sans);
+  --font-label-sm: var(--mtx-font-sans);
 
   --spacing-margin: 3rem;
   --spacing-margin-mobile: 1.25rem;
@@ -172,15 +182,17 @@
 }
 
 @layer utilities {
-  .font-alexandria { font-family: 'Alexandria', sans-serif; }
-  .font-almarai { font-family: 'Almarai', sans-serif; }
-  .font-aref { font-family: 'Aref Ruqaa', serif; }
-  .font-amiri { font-family: 'Amiri', serif; }
-  .font-cairo { font-family: 'Cairo', sans-serif; }
-  .font-tajawal { font-family: 'Tajawal', sans-serif; }
-  .font-naskh { font-family: 'Noto Naskh Arabic', serif; }
-  .font-kufi { font-family: 'Noto Kufi Arabic', sans-serif; }
-  .font-mono-code { font-family: 'JetBrains Mono', monospace; }
+  .font-alexandria { font-family: 'Alexandria', var(--mtx-font-display); }
+  .font-almarai { font-family: 'Almarai', var(--mtx-font-sans); }
+  .font-aref { font-family: 'Aref Ruqaa', var(--mtx-font-serif); }
+  .font-amiri { font-family: 'Amiri', var(--mtx-font-serif); }
+  .font-cairo { font-family: 'Cairo', var(--mtx-font-sans); }
+  .font-tajawal { font-family: 'Tajawal', var(--mtx-font-sans); }
+  .font-naskh { font-family: 'Noto Naskh Arabic', var(--mtx-font-serif); }
+  .font-kufi { font-family: 'Noto Kufi Arabic', var(--mtx-font-display); }
+  .font-jakarta { font-family: 'Plus Jakarta Sans', var(--mtx-font-sans); }
+  .font-lora { font-family: 'Lora', 'Cormorant Garamond', Georgia, serif; }
+  .font-mono-code { font-family: var(--mtx-font-mono); }
 
   /* Apple Liquid Glass & Threads-inspired Frosted Surfaces */
   .liquid-glass {
@@ -296,14 +308,32 @@
   }
 }
 
+html {
+  font-size: 16px;
+}
+
+html[lang="en"] {
+  --mtx-font-sans: 'Plus Jakarta Sans', 'Tajawal', system-ui, -apple-system, sans-serif;
+  --mtx-font-display: 'Plus Jakarta Sans', 'Cormorant Garamond', system-ui, sans-serif;
+  --mtx-font-serif: 'Lora', 'Cormorant Garamond', Georgia, serif;
+  --mtx-body-tracking: -0.01em;
+  --mtx-display-tracking: -0.025em;
+  font-size: 15.5px;
+}
+
 html, body {
   overflow-x: hidden;
   max-width: 100vw;
   background-color: var(--mtx-surface);
   color: var(--mtx-on-surface);
-  font-family: 'Tajawal', 'Almarai', system-ui, -apple-system, sans-serif;
-  letter-spacing: -0.01em;
+  font-family: var(--mtx-font-sans);
+  letter-spacing: var(--mtx-body-tracking);
   scroll-behavior: smooth;
+  text-rendering: optimizeLegibility;
+}
+
+button, input, textarea, select {
+  font-family: inherit;
 }
 
 /* Custom modern scrollbars */
@@ -586,16 +616,65 @@ img {
   scroll-padding-inline-start: 1rem;
 }
 
+@keyframes sanctuaryDrawerSlideStart {
+  from {
+    opacity: 0;
+    transform: translate3d(-18px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes sanctuaryDrawerSlideEnd {
+  from {
+    opacity: 0;
+    transform: translate3d(18px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+html[dir="rtl"] .animate-drawer-start {
+  animation: sanctuaryDrawerSlideEnd 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+html[dir="ltr"] .animate-drawer-start {
+  animation: sanctuaryDrawerSlideStart 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+html[dir="rtl"] .animate-drawer-end {
+  animation: sanctuaryDrawerSlideStart 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+html[dir="ltr"] .animate-drawer-end {
+  animation: sanctuaryDrawerSlideEnd 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 /* English literary serif typography applies wherever English prose is rendered */
 .font-literary-en,
 html[lang="en"] .font-amiri {
   font-family: 'Lora', 'Cormorant Garamond', 'Amiri', Georgia, serif;
 }
 
-/* English typography optimization when lang="en" */
+/* Bilingual heading & prose harmony */
+html[lang="en"] .font-display-hero {
+  font-family: 'Cormorant Garamond', 'Plus Jakarta Sans', Georgia, serif;
+  letter-spacing: -0.015em;
+}
+
+html[lang="en"] .font-headline-lg,
+html[lang="en"] .font-headline-md,
+html[lang="en"] .font-headline-sm,
+html[lang="en"] .font-title-lg {
+  font-family: var(--mtx-font-display);
+  letter-spacing: var(--mtx-display-tracking);
+}
+
 html[lang="en"] body {
-  font-family: 'Plus Jakarta Sans', 'Tajawal', system-ui, -apple-system, sans-serif;
-  letter-spacing: -0.005em;
+  font-family: var(--mtx-font-sans);
+  letter-spacing: var(--mtx-body-tracking);
 }
 
 /* Subtle, low-cost Liquid Glass Crimson Glow for Chapter Language Switcher Card */
@@ -651,7 +730,9 @@ html[lang="en"] body {
   .filter-pill-tactile:hover,
   .filter-pill-tactile:active,
   .group:hover .cover-zoom-img,
-  .liquid-glass-crimson-glow {
+  .liquid-glass-crimson-glow,
+  .animate-drawer-start,
+  .animate-drawer-end {
     transform: none !important;
     animation: none !important;
   }
