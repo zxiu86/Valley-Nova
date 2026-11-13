@@ -44,7 +44,13 @@ import {
   getDownloadURL,
   deleteObject,
 } from 'firebase/storage';
-import firebaseConfig from '../../../firebase-applet-config.example.json';
+import {
+  getFirebaseClientConfig,
+  getFirebaseOAuthClientId,
+  getFirestoreDatabaseId,
+  getMissingFirebaseSecretKeys,
+  isFirebaseConfigComplete,
+} from './firebase-config';
 import {
   FullAccountProfile,
   NovelCard,
@@ -139,14 +145,13 @@ let storageInstance: FirebaseStorage | null = null;
 let persistencePromise: Promise<void> | null = null;
 
 export function isFirebaseConfigured(): boolean {
-  const cfg = firebaseConfig as { apiKey?: string; projectId?: string; appId?: string };
-  return Boolean(cfg?.apiKey?.trim() && cfg?.projectId?.trim() && cfg?.appId?.trim());
+  return isFirebaseConfigComplete();
 }
 
 export function getFirebaseApp(): FirebaseApp {
   if (!appInstance) {
     const existing = getApps();
-    appInstance = existing.length > 0 ? existing[0] : initializeApp(firebaseConfig);
+    appInstance = existing.length > 0 ? existing[0] : initializeApp(getFirebaseClientConfig());
   }
   return appInstance;
 }
@@ -154,7 +159,7 @@ export function getFirebaseApp(): FirebaseApp {
 export function getDb(): Firestore {
   if (!dbInstance) {
     const app = getFirebaseApp();
-    const dbId = (firebaseConfig as { firestoreDatabaseId?: string }).firestoreDatabaseId;
+    const dbId = getFirestoreDatabaseId();
     dbInstance = dbId && dbId !== '(default)' ? getFirestore(app, dbId) : getFirestore(app);
   }
   return dbInstance;
@@ -248,7 +253,13 @@ function isPermissionDeniedError(err: unknown): boolean {
 }
 
 export async function verifyFirestoreConnection(): Promise<boolean> {
-  if (!isFirebaseConfigured()) return false;
+  if (!isFirebaseConfigured()) {
+    const missing = getMissingFirebaseSecretKeys();
+    if (missing.length > 0) {
+      console.warn(`Firebase configuration incomplete. Missing keys: ${missing.join(', ')}`);
+    }
+    return false;
+  }
   try {
     const db = getDb();
     await getDocFromServer(doc(db, 'test', 'connection'));
@@ -307,6 +318,7 @@ export async function loginWithGoogle(): Promise<User> {
   if (!isFirebaseConfigured()) {
     throw Object.assign(new Error('Firebase is not configured.'), { code: 'auth/invalid-api-key' });
   }
+  getFirebaseOAuthClientId();
   await ensureAuthPersistence();
   const auth = getFirebaseAuth();
   const provider = new GoogleAuthProvider();
