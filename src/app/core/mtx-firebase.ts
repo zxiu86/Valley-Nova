@@ -1695,6 +1695,32 @@ export async function getUserProfileFromFirestore(
   }
 }
 
+export interface AuthorAppearance {
+  photoURL: string;
+  coverURL: string;
+  displayName: string;
+}
+
+export async function getPublicAuthorAppearance(
+  authorUid: string
+): Promise<AuthorAppearance | null> {
+  if (!authorUid || !isFirebaseConfigured()) return null;
+  try {
+    const db = getDb();
+    const snap = await getDoc(doc(db, 'public_profiles', authorUid));
+    if (!snap.exists()) return null;
+    const pub = snap.data() as PublicProfile;
+    if (!pub.isPublic) return null;
+    return {
+      photoURL: pub.photoURL || '',
+      coverURL: pub.coverURL || '',
+      displayName: pub.showProfileInfo ? pub.displayName || '' : '',
+    };
+  } catch {
+    return null;
+  }
+}
+
 // ================= CLOUD VAULT (COMPATIBILITY) ================= //
 
 export interface CloudMtxBook {

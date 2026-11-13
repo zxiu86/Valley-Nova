@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
+import { AccountService } from '../../core/services/account.service';
 import { LibraryStateService } from '../../core/services/library-state.service';
 import { WriterBadge } from '../../shared/components/writer-badge/writer-badge';
 
@@ -11,4 +12,5 @@ import { WriterBadge } from '../../shared/components/writer-badge/writer-badge';
 })
 export class DetailsPage {
   readonly lib = inject(LibraryStateService);
+  readonly accountService = inject(AccountService);
 }

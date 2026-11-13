@@ -12,10 +12,12 @@ import {
   WriterApplicationStatus,
 } from '../models/library.models';
 import {
+  AuthorAppearance,
   checkUsernameAvailability,
   deleteAppAccountAndData,
   fetchAuthorPublishedNovels,
   fetchPendingWriterApplicationsForAdmin,
+  getPublicAuthorAppearance,
   getUserReadChaptersCount,
   getVerifiedWriterStatus,
   getWriterApplicationFromFirestore,
@@ -62,6 +64,10 @@ export class AccountService implements OnDestroy {
   // Authoritative Verified Writer Badge Cache (never trusts client profile flags)
   readonly writerBadgeCache = signal<Record<string, boolean>>({});
   private readonly pendingBadgeLookups = new Set<string>();
+
+  // Reactive Public Author Appearance Cache (avatar photoURL & 1500x800 coverURL)
+  readonly authorAppearanceCache = signal<Record<string, AuthorAppearance | null>>({});
+  private readonly pendingAppearanceLookups = new Set<string>();
 
   // Owner Authenticated Account State
   readonly ownProfile = signal<FullAccountProfile | null>(null);
@@ -147,6 +153,50 @@ export class AccountService implements OnDestroy {
     return false;
   }
 
+  /**
+   * Resolves a writer's configured avatar (photoURL) and 1500x800 cover banner (coverURL)
+   * reactively from the owner's live profile or their public Firestore profile.
+   */
+  getAuthorAppearance(authorUid: string | undefined): AuthorAppearance | null {
+    if (!authorUid) return null;
+
+    const own = this.ownProfile();
+    if (own && own.uid === authorUid) {
+      return {
+        photoURL: own.photoURL || '',
+        coverURL: own.coverURL || '',
+        displayName: own.displayName || '',
+      };
+    }
+
+    const cache = this.authorAppearanceCache();
+    if (Object.prototype.hasOwnProperty.call(cache, authorUid)) {
+      return cache[authorUid];
+    }
+
+    if (isPlatformBrowser(this.platformId) && !this.pendingAppearanceLookups.has(authorUid)) {
+      this.pendingAppearanceLookups.add(authorUid);
+      void getPublicAuthorAppearance(authorUid)
+        .then((appearance) => {
+          this.authorAppearanceCache.update((prev) => ({
+            ...prev,
+            [authorUid]: appearance,
+          }));
+        })
+        .catch(() => {
+          this.authorAppearanceCache.update((prev) => ({
+            ...prev,
+            [authorUid]: null,
+          }));
+        })
+        .finally(() => {
+          this.pendingAppearanceLookups.delete(authorUid);
+        });
+    }
+
+    return null;
+  }
+
   async loadOwnerAccount(uid: string): Promise<boolean> {
     if (!uid || !isPlatformBrowser(this.platformId)) return false;
 
@@ -160,6 +210,14 @@ export class AccountService implements OnDestroy {
 
       if (profile) {
         this.ownProfile.set(profile);
+        this.authorAppearanceCache.update((prev) => ({
+          ...prev,
+          [uid]: {
+            photoURL: profile.photoURL || '',
+            coverURL: profile.coverURL || '',
+            displayName: profile.displayName || '',
+          },
+        }));
       }
       this.ownWriterStatus.set(writerStatus);
       this.writerBadgeCache.update((prev) => ({
