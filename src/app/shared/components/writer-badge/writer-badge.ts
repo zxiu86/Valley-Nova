@@ -1,14 +1,16 @@
 import { ChangeDetectionStrategy, Component, computed, inject, input } from '@angular/core';
 import { AccountService } from '../../../core/services/account.service';
+import { I18nService } from '../../../core/services/i18n.service';
 
 @Component({
   selector: 'app-writer-badge',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (isVerifiedWriter()) {
+      @let badgeText = i18n.copy().writerBadge.label;
       <span
-        [title]="'كاتب معتمد في أروقة الخلود'"
-        [attr.aria-label]="'كاتب معتمد في أروقة الخلود'"
+        [title]="badgeText"
+        [attr.aria-label]="badgeText"
         [class]="
           compact()
             ? 'inline-flex items-center justify-center align-middle shrink-0 text-[#9A7209] dark:text-[#E9C349]'
@@ -39,7 +41,7 @@ import { AccountService } from '../../../core/services/account.service';
           />
         </svg>
         @if (!compact()) {
-          <span>كاتب معتمد</span>
+          <span>{{ badgeText }}</span>
         }
       </span>
     }
@@ -47,6 +49,7 @@ import { AccountService } from '../../../core/services/account.service';
 })
 export class WriterBadge {
   private readonly accountService = inject(AccountService);
+  readonly i18n = inject(I18nService);
 
   readonly authorId = input<string | undefined>(undefined);
   readonly compact = input<boolean>(false);

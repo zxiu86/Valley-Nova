@@ -1,3 +1,7 @@
+export type SiteLanguage = 'ar' | 'en';
+export type ChapterLanguage = 'ar' | 'en';
+export type ExploreLanguageScope = 'all' | 'ar' | 'non-ar';
+
 export interface NovelCard {
   id: string;
   title: string;
@@ -19,6 +23,8 @@ export interface NovelCard {
   isCompleted?: boolean;
   readingHours?: number;
   originLanguage?: string;
+  languageCode?: string;
+  availableChapterLanguages?: ChapterLanguage[];
   tags?: string[];
   isOriginal?: boolean;
   isTranslated?: boolean;
@@ -37,6 +43,9 @@ export interface SerendipityNovel {
 
 export interface ChapterItem {
   id: number;
+  chapterNumber?: number;
+  language?: ChapterLanguage;
+  translationGroupId?: string;
   arabicNumber: string;
   title: string;
   duration: string;
@@ -77,6 +86,7 @@ export interface ReaderBookmarkItem {
   id: string;
   chapterId: number;
   chapterTitle: string;
+  language?: ChapterLanguage;
   excerpt: string;
   percent: number;
   date: string;
@@ -153,6 +163,8 @@ export interface PublishedNovelRecord {
   coverUrl: string;
   description: string;
   readingHours: number;
+  originLanguage?: string;
+  languageCode?: string;
   isPublished: boolean;
   createdAt: string;
   updatedAt: string;

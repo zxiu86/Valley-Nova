@@ -1,4 +1,4 @@
-import { Injectable, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { Injectable, OnDestroy, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import {
@@ -30,6 +30,8 @@ import {
   uploadProfileImageAsset,
 } from '../mtx-firebase';
 
+import { I18nService } from './i18n.service';
+
 export type ViewedProfileState = 'loading' | 'ok' | 'private' | 'not_found' | 'error';
 
 export interface CroppedImageDraft {
@@ -52,9 +54,10 @@ const DEFAULT_WRITER_STATUS: VerifiedWriterStatus = {
 };
 
 @Injectable({ providedIn: 'root' })
-export class AccountService {
+export class AccountService implements OnDestroy {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly router = inject(Router);
+  private readonly i18n = inject(I18nService);
 
   // Authoritative Verified Writer Badge Cache (never trusts client profile flags)
   readonly writerBadgeCache = signal<Record<string, boolean>>({});
@@ -88,7 +91,7 @@ export class AccountService {
 
   // Settings Drawer & Async Operation States
   readonly isSettingsOpen = signal<boolean>(false);
-  readonly activeSettingsSection = signal<'edit' | 'privacy' | 'writer' | 'security' | 'admin'>('edit');
+  readonly activeSettingsSection = signal<'edit' | 'privacy' | 'site' | 'writer' | 'security' | 'admin'>('edit');
   readonly isSavingProfile = signal<boolean>(false);
   readonly isSavingPrivacy = signal<boolean>(false);
   readonly isSubmittingApplication = signal<boolean>(false);
@@ -103,6 +106,13 @@ export class AccountService {
   });
 
   private usernameCheckTimer: ReturnType<typeof setTimeout> | null = null;
+
+  ngOnDestroy(): void {
+    if (this.usernameCheckTimer) {
+      clearTimeout(this.usernameCheckTimer);
+      this.usernameCheckTimer = null;
+    }
+  }
 
   /**
    * Authoritatively verifies whether a given author UID has an active writer role
@@ -310,16 +320,35 @@ export class AccountService {
       return;
     }
 
+    const isEn = this.i18n.lang() === 'en';
     this.usernameCheck.set({
       status: 'checking',
       normalized: norm,
-      message: 'جارٍ التحقق من توفر اسم المستخدم...',
+      message: isEn ? 'Checking username availability...' : 'جارٍ التحقق من توفر اسم المستخدم...',
       suggestions: [],
     });
 
+    const isAdmin = this.ownWriterStatus().isAdmin;
     this.usernameCheckTimer = setTimeout(() => {
-      void checkUsernameAvailability(rawUsername, uid, currentUsername).then((result) => {
-        this.usernameCheck.set(result);
+      void checkUsernameAvailability(rawUsername, uid, currentUsername, isAdmin).then((result) => {
+        if (isEn) {
+          const translated: Record<string, string> = {
+            reserved:
+              result.normalized === 'zid'
+                ? '@zid is reserved exclusively for official Sanctuary administration.'
+                : 'This username is reserved and cannot be used.',
+            invalid: 'Invalid username format (4–24 chars: a–z, 0–9, _).',
+            unchanged: 'This is already your current username.',
+            available: `@${result.normalized} is available.`,
+            taken: `@${result.normalized} is already taken.`,
+          };
+          this.usernameCheck.set({
+            ...result,
+            message: translated[result.status] || result.message,
+          });
+        } else {
+          this.usernameCheck.set(result);
+        }
       });
     }, 320);
   }
@@ -336,14 +365,21 @@ export class AccountService {
       bannerDraft: CroppedImageDraft | null;
     }
   ): Promise<boolean> {
+    const isEn = this.i18n.lang() === 'en';
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
-      this.settingsError.set('لا يوجد اتصال بالإنترنت حالياً. يرجى المحاولة بعد استعادة الاتصال.');
+      this.settingsError.set(
+        isEn
+          ? 'No internet connection. Please try again once reconnected.'
+          : 'لا يوجد اتصال بالإنترنت حالياً. يرجى المحاولة بعد استعادة الاتصال.'
+      );
       return false;
     }
 
     const current = this.ownProfile();
     if (!current) {
-      this.settingsError.set('تعذر العثور على بيانات الحساب الحالية.');
+      this.settingsError.set(
+        isEn ? 'Could not locate your account profile.' : 'تعذر العثور على بيانات الحساب الحالية.'
+      );
       return false;
     }
 
@@ -355,10 +391,17 @@ export class AccountService {
       // Re-validate username if entered
       const nextUsernameInput = payload.username.trim();
       if (nextUsernameInput) {
-        const check = await checkUsernameAvailability(nextUsernameInput, uid, current.username);
+        const check = await checkUsernameAvailability(
+          nextUsernameInput,
+          uid,
+          current.username,
+          this.ownWriterStatus().isAdmin
+        );
         this.usernameCheck.set(check);
         if (check.status !== 'available' && check.status !== 'unchanged') {
-          throw new Error(check.message || 'اسم المستخدم غير متاح.');
+          throw new Error(
+            check.message || (isEn ? 'Username is unavailable.' : 'اسم المستخدم غير متاح.')
+          );
         }
       }
 
@@ -415,10 +458,17 @@ export class AccountService {
         await this.router.navigate(['/profile', savedUsername], { replaceUrl: true });
       }
 
-      this.settingsSuccess.set('تم حفظ بيانات الملف الشخصي والصور بنجاح.');
+      this.settingsSuccess.set(
+        isEn
+          ? 'Profile details and media saved successfully.'
+          : 'تم حفظ بيانات الملف الشخصي والصور بنجاح.'
+      );
       return true;
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'تعذر حفظ التغييرات، يرجى المحاولة لاحقاً.';
+      const fallback = isEn
+        ? 'Could not save changes. Please try again later.'
+        : 'تعذر حفظ التغييرات، يرجى المحاولة لاحقاً.';
+      const msg = err instanceof Error ? err.message : fallback;
       this.settingsError.set(msg);
       return false;
     } finally {
@@ -427,8 +477,13 @@ export class AccountService {
   }
 
   async savePrivacy(uid: string, privacy: PrivacySettings): Promise<boolean> {
+    const isEn = this.i18n.lang() === 'en';
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
-      this.settingsError.set('لا يوجد اتصال بالإنترنت لحفظ إعدادات الخصوصية.');
+      this.settingsError.set(
+        isEn
+          ? 'No internet connection to save privacy settings.'
+          : 'لا يوجد اتصال بالإنترنت لحفظ إعدادات الخصوصية.'
+      );
       return false;
     }
 
@@ -450,10 +505,18 @@ export class AccountService {
       if (this.viewedIsOwner()) {
         this.viewedProfile.set(updated);
       }
-      this.settingsSuccess.set('تم تحديث وتطبيق إعدادات الخصوصية على قاعدة البيانات.');
+      this.settingsSuccess.set(
+        isEn
+          ? 'Privacy settings updated and applied.'
+          : 'تم تحديث وتطبيق إعدادات الخصوصية على قاعدة البيانات.'
+      );
       return true;
     } catch {
-      this.settingsError.set('فشل حفظ إعدادات الخصوصية، يرجى المحاولة مجدداً.');
+      this.settingsError.set(
+        isEn
+          ? 'Failed to save privacy settings. Please retry.'
+          : 'فشل حفظ إعدادات الخصوصية، يرجى المحاولة مجدداً.'
+      );
       return false;
     } finally {
       this.isSavingPrivacy.set(false);
@@ -471,8 +534,13 @@ export class AccountService {
       writingSample: string;
     }
   ): Promise<boolean> {
+    const isEn = this.i18n.lang() === 'en';
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
-      this.settingsError.set('تعذر إرسال الطلب بسبب انقطاع الاتصال بالإنترنت.');
+      this.settingsError.set(
+        isEn
+          ? 'Cannot submit application while offline.'
+          : 'تعذر إرسال الطلب بسبب انقطاع الاتصال بالإنترنت.'
+      );
       return false;
     }
 
@@ -483,10 +551,15 @@ export class AccountService {
     try {
       const appDoc = await submitWriterApplicationToFirestore(uid, payload);
       this.ownApplication.set(appDoc);
-      this.settingsSuccess.set('تم إرسال طلب الانضمام ككاتب إلى الإدارة للمراجعة بنجاح.');
+      this.settingsSuccess.set(
+        isEn
+          ? 'Writer application submitted for editorial review.'
+          : 'تم إرسال طلب الانضمام ككاتب إلى الإدارة للمراجعة بنجاح.'
+      );
       return true;
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'تعذر إرسال الطلب حالياً.';
+      const fallback = isEn ? 'Could not submit application.' : 'تعذر إرسال الطلب حالياً.';
+      const msg = err instanceof Error ? err.message : fallback;
       this.settingsError.set(msg);
       return false;
     } finally {
@@ -500,8 +573,17 @@ export class AccountService {
     adminUid: string,
     reviewNote = ''
   ): Promise<boolean> {
+    const isEn = this.i18n.lang() === 'en';
     this.settingsError.set(null);
     this.settingsSuccess.set(null);
+    if (!this.ownWriterStatus().isAdmin) {
+      this.settingsError.set(
+        isEn
+          ? 'Only official Sanctuary admins can review writer applications.'
+          : 'مراجعة طلبات الكتّاب حكرٌ على المشرف الرسمي فقط.'
+      );
+      return false;
+    }
     try {
       await reviewWriterApplicationAsAdmin(applicantUid, decision, adminUid, reviewNote);
       this.pendingAdminApplications.update((list) =>
@@ -514,11 +596,19 @@ export class AccountService {
         }
       }
       this.settingsSuccess.set(
-        decision === 'approved' ? 'تمت الموافقة ومنح صلاحية الكاتب بنجاح.' : 'تم رفض الطلب مع حفظ النتيجة.'
+        decision === 'approved'
+          ? isEn
+            ? 'Writer permission granted.'
+            : 'تمت الموافقة ومنح صلاحية الكاتب بنجاح.'
+          : isEn
+            ? 'Application declined.'
+            : 'تم رفض الطلب مع حفظ النتيجة.'
       );
       return true;
     } catch {
-      this.settingsError.set('تعذر تنفيذ قرار المراجعة. تحقق من الصلاحيات.');
+      this.settingsError.set(
+        isEn ? 'Failed to process review decision.' : 'تعذر تنفيذ قرار المراجعة. تحقق من الصلاحيات.'
+      );
       return false;
     }
   }
@@ -526,6 +616,7 @@ export class AccountService {
   // ================= PERMANENT ACCOUNT DELETION ================= //
 
   async deleteOwnAccount(uid: string, passwordForReauth?: string): Promise<boolean> {
+    const isEn = this.i18n.lang() === 'en';
     const profile = this.ownProfile();
     this.isDeletingAccount.set(true);
     this.settingsError.set(null);
@@ -551,13 +642,25 @@ export class AccountService {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg === 'PASSWORD_REQUIRED') {
-        this.settingsError.set('يرجى إدخال كلمة المرور لإعادة المصادقة قبل الحذف النهائي.');
+        this.settingsError.set(
+          isEn
+            ? 'Please enter your current password to confirm deletion.'
+            : 'يرجى إدخال كلمة المرور لإعادة المصادقة قبل الحذف النهائي.'
+        );
       } else if (msg.includes('popup-closed-by-user')) {
-        this.settingsError.set('تم إلغاء نافذة إعادة التحقق عبر Google، لم يُحذف الحساب.');
+        this.settingsError.set(
+          isEn
+            ? 'Google re-verification popup cancelled. Account not deleted.'
+            : 'تم إلغاء نافذة إعادة التحقق عبر Google، لم يُحذف الحساب.'
+        );
       } else if (msg.includes('wrong-password') || msg.includes('invalid-credential')) {
-        this.settingsError.set('كلمة المرور غير صحيحة.');
+        this.settingsError.set(isEn ? 'Incorrect password.' : 'كلمة المرور غير صحيحة.');
       } else {
-        this.settingsError.set('تعذر إتمام حذف الحساب بالكامل دون أخطاء. لم تُفقد بياناتك، أعد المحاولة بعد إعادة تسجيل الدخول.');
+        this.settingsError.set(
+          isEn
+            ? 'Could not complete deletion. Your data was not lost; sign in again and retry.'
+            : 'تعذر إتمام حذف الحساب بالكامل دون أخطاء. لم تُفقد بياناتك، أعد المحاولة بعد إعادة تسجيل الدخول.'
+        );
       }
       return false;
     } finally {

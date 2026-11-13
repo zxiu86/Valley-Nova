@@ -18,6 +18,8 @@ import {
   waitForAuthSessionReady,
 } from '../mtx-firebase';
 import { AccountService } from './account.service';
+import { I18nService } from './i18n.service';
+import { SiteLanguage } from '../models/library.models';
 
 const AUTH_HINT_KEY = 'mtx_auth_display_hint';
 
@@ -42,13 +44,51 @@ export function extractFirebaseErrorCode(err: unknown): string {
   return match ? match[0].toLowerCase() : '';
 }
 
-export function mapGoogleAuthErrorMessage(err: unknown, hostname = ''): string | null {
+export function mapGoogleAuthErrorMessage(
+  err: unknown,
+  hostname = '',
+  lang: SiteLanguage = 'ar'
+): string | null {
   const code = extractFirebaseErrorCode(err);
   const msg = err instanceof Error ? err.message : String(err ?? '');
 
   if (code === 'auth/popup-closed-by-user' || msg.includes('popup-closed-by-user')) {
     return null;
   }
+  if (lang === 'en') {
+    if (code === 'auth/cancelled-popup-request' || msg.includes('cancelled-popup-request')) {
+      return 'Previous sign-in popup was cancelled. Please try again.';
+    }
+    if (code === 'auth/unauthorized-domain' || msg.includes('unauthorized-domain')) {
+      const hostSuffix = hostname ? ` (${hostname})` : '';
+      return `The current domain${hostSuffix} is not authorized in Firebase Console: Authentication -> Settings -> Authorized domains.`;
+    }
+    if (code === 'auth/operation-not-allowed' || msg.includes('operation-not-allowed')) {
+      return 'Google Sign-In is disabled in Firebase Console. Enable it under Authentication -> Sign-in method -> Google.';
+    }
+    if (code === 'auth/popup-blocked' || msg.includes('popup-blocked')) {
+      return 'Google sign-in popup was blocked by your browser. Please allow popups and try again.';
+    }
+    if (
+      code === 'auth/account-exists-with-different-credential' ||
+      msg.includes('account-exists-with-different-credential')
+    ) {
+      return 'This email is already registered with a password. Please sign in with email and password.';
+    }
+    if (code === 'auth/network-request-failed' || msg.includes('network-request-failed')) {
+      return 'Could not reach Google servers. Check your internet connection and retry.';
+    }
+    if (
+      code === 'auth/invalid-api-key' ||
+      code === 'auth/api-key-not-valid' ||
+      msg.includes('api-key-not-valid')
+    ) {
+      return 'Invalid or domain-restricted Firebase API key in Google Cloud Console.';
+    }
+    const codeTag = code ? ` (${code})` : '';
+    return `Could not sign in with Google${codeTag}. Please try again later.`;
+  }
+
   if (code === 'auth/cancelled-popup-request' || msg.includes('cancelled-popup-request')) {
     return 'تم إلغاء نافذة تسجيل الدخول السابقة، يرجى الضغط مرة أخرى والمتابعة من النافذة الجديدة.';
   }
@@ -83,9 +123,44 @@ export function mapGoogleAuthErrorMessage(err: unknown, hostname = ''): string |
   return `تعذر تسجيل الدخول عبر جوجل${codeTag}، يرجى المحاولة لاحقاً.`;
 }
 
-export function mapEmailAuthErrorMessage(err: unknown, mode: 'login' | 'register'): string {
+export function mapEmailAuthErrorMessage(
+  err: unknown,
+  mode: 'login' | 'register',
+  lang: SiteLanguage = 'ar'
+): string {
   const code = extractFirebaseErrorCode(err);
   const msg = err instanceof Error ? err.message : String(err ?? '');
+
+  if (lang === 'en') {
+    if (
+      code === 'auth/user-not-found' ||
+      code === 'auth/invalid-credential' ||
+      code === 'auth/wrong-password' ||
+      msg.includes('user-not-found') ||
+      msg.includes('invalid-credential') ||
+      msg.includes('wrong-password')
+    ) {
+      return 'Incorrect email address or password.';
+    }
+    if (code === 'auth/invalid-email' || msg.includes('invalid-email')) {
+      return 'Invalid email address format.';
+    }
+    if (code === 'auth/email-already-in-use' || msg.includes('email-already-in-use')) {
+      return 'This email is already registered. Try signing in instead.';
+    }
+    if (code === 'auth/weak-password' || msg.includes('weak-password')) {
+      return 'Password is too weak. Use at least 6 characters.';
+    }
+    if (code === 'auth/too-many-requests' || msg.includes('too-many-requests')) {
+      return 'Too many attempts. Please wait a moment and try again.';
+    }
+    if (code === 'auth/network-request-failed' || msg.includes('network-request-failed')) {
+      return 'Unable to connect to authentication servers. Check your internet connection.';
+    }
+    return mode === 'login'
+      ? 'Could not sign in. Verify your credentials and try again.'
+      : 'Could not create account. Please try again later.';
+  }
 
   if (
     code === 'auth/user-not-found' ||
@@ -122,6 +197,7 @@ export function mapEmailAuthErrorMessage(err: unknown, mode: 'login' | 'register
 export class AuthSessionService {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly accountService = inject(AccountService);
+  private readonly i18n = inject(I18nService);
 
   readonly authReady = signal<boolean>(false);
   readonly currentUser = signal<User | null>(null);
@@ -134,12 +210,13 @@ export class AuthSessionService {
   readonly isAuthenticated = computed(() => Boolean(this.currentUser()));
 
   readonly displayName = computed(() => {
+    const fallback = this.i18n.lang() === 'en' ? 'Sanctuary Reader' : 'قارئ أروقة الخلود';
     return (
       this.accountService.ownProfile()?.displayName ||
       this.userProfile()?.displayName ||
       this.currentUser()?.displayName ||
       this.authHint()?.displayName ||
-      'قارئ أروقة الخلود'
+      fallback
     );
   });
 
@@ -274,8 +351,13 @@ export class AuthSessionService {
   async loginWithEmailForm(): Promise<User | null> {
     const email = this.authLoginForm.controls.email.value.trim();
     const pass = this.authLoginForm.controls.password.value;
+    const lang = this.i18n.lang();
     if (!email || !pass) {
-      this.authError.set('يرجى إدخال البريد الإلكتروني وكلمة المرور');
+      this.authError.set(
+        lang === 'en'
+          ? 'Please enter your email address and password.'
+          : 'يرجى إدخال البريد الإلكتروني وكلمة المرور'
+      );
       return null;
     }
 
@@ -289,7 +371,7 @@ export class AuthSessionService {
       this.authLoginForm.reset();
       return user;
     } catch (err: unknown) {
-      this.authError.set(mapEmailAuthErrorMessage(err, 'login'));
+      this.authError.set(mapEmailAuthErrorMessage(err, 'login', lang));
       return null;
     } finally {
       this.authLoading.set(false);
@@ -300,26 +382,34 @@ export class AuthSessionService {
     const name = this.authRegisterForm.controls.displayName.value.trim();
     const email = this.authRegisterForm.controls.email.value.trim();
     const pass = this.authRegisterForm.controls.password.value;
+    const lang = this.i18n.lang();
     if (!email || !pass) {
-      this.authError.set('يرجى ملء جميع الحقول المطلوبة');
+      this.authError.set(
+        lang === 'en' ? 'Please fill in all required fields.' : 'يرجى ملء جميع الحقول المطلوبة'
+      );
       return null;
     }
     if (pass.length < 6) {
-      this.authError.set('كلمة المرور يجب أن لا تقل عن ٦ أحرف');
+      this.authError.set(
+        lang === 'en'
+          ? 'Password must be at least 6 characters.'
+          : 'كلمة المرور يجب أن لا تقل عن ٦ أحرف'
+      );
       return null;
     }
 
     this.authLoading.set(true);
     this.authError.set(null);
     try {
-      const user = await registerWithEmail(email, pass, name || 'قارئ أروقة الخلود');
+      const defaultName = lang === 'en' ? 'Sanctuary Reader' : 'قارئ أروقة الخلود';
+      const user = await registerWithEmail(email, pass, name || defaultName);
       this.currentUser.set(user);
       this.saveDisplayHint(user);
       await this.loadUserData(user.uid);
       this.authRegisterForm.reset();
       return user;
     } catch (err: unknown) {
-      this.authError.set(mapEmailAuthErrorMessage(err, 'register'));
+      this.authError.set(mapEmailAuthErrorMessage(err, 'register', lang));
       return null;
     } finally {
       this.authLoading.set(false);
@@ -342,7 +432,7 @@ export class AuthSessionService {
         isPlatformBrowser(this.platformId) && typeof window !== 'undefined'
           ? window.location.hostname
           : '';
-      const mapped = mapGoogleAuthErrorMessage(err, hostname);
+      const mapped = mapGoogleAuthErrorMessage(err, hostname, this.i18n.lang());
       if (mapped) {
         this.authError.set(mapped);
       }
@@ -366,7 +456,7 @@ export class AuthSessionService {
   private saveDisplayHint(user: User): void {
     const hint: AuthDisplayHint = {
       uid: user.uid,
-      displayName: user.displayName || 'قارئ أروقة الخلود',
+      displayName: user.displayName || (this.i18n.lang() === 'en' ? 'Sanctuary Reader' : 'قارئ أروقة الخلود'),
       email: user.email || '',
       photoURL: user.photoURL || '',
     };

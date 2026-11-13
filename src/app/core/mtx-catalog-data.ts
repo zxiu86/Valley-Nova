@@ -1,9 +1,107 @@
 import { NovelCard } from './models/library.models';
 
-export const INITIAL_EXPLORE_CATALOG: NovelCard[] = [
-  // ==========================================
-  // 1. روايات وخيال سردي (NOVELS) - 24 Works
-  // ==========================================
+const ORIGIN_TO_LANGUAGE_CODE: Record<string, string> = {
+  'عربي أصيل': 'ar',
+  'الإنجليزية': 'en',
+  'الروسية': 'ru',
+  'الإسبانية': 'es',
+  'اليابانية': 'ja',
+  'الفرنسية': 'fr',
+  'الفرنسية القديمة': 'fro',
+  'السومرية': 'sux',
+  'الفارسية': 'fa',
+  'اليونانية القديمة': 'grc',
+  'الفنلندية': 'fi',
+  'الألمانية القديمة': 'goh',
+  'الألمانية': 'de',
+  'السنسكريتية': 'sa',
+  'الصينية القديمة': 'lzh',
+  'اللاتينية': 'la',
+};
+
+const RAW_EXPLORE_CATALOG: NovelCard[] = [
+  {
+    id: 'dorian-gray-classic',
+    title: 'The Picture of Dorian Gray',
+    author: 'Oscar Wilde',
+    genre: 'كلاسيكيات عالمية',
+    subGenre: 'Gothic Philosophical Fiction',
+    categoryBadgeClass: 'text-primary',
+    categoryLabel: 'روايات',
+    categoryGroup: 'novels',
+    metaIcon: 'auto_stories',
+    metaPrimary: 'English Classic',
+    metaSecondary: '٦ ساعات قراءة',
+    isCompleted: true,
+    readingHours: 6,
+    originLanguage: 'الإنجليزية',
+    languageCode: 'en',
+    availableChapterLanguages: ['en'],
+    isOriginal: true,
+    isTranslated: false,
+    isManuscript: false,
+    tags: ['#كلاسيكيات_عالمية', '#سرد_نفسي_عميق'],
+    coverUrl: '/images/writers_sanctuary_bg.jpg',
+    coverAlt: 'The Picture of Dorian Gray archival cover',
+    quote: '“The only way to get rid of a temptation is to yield to it. Resist it, and your soul grows sick with longing.”',
+    description:
+      'In Victorian London, a young man’s painted portrait bears the hidden scars of his vanity and moral decay while his outward youth stays untouched.',
+  },
+  {
+    id: 'wuthering-heights-classic',
+    title: 'Wuthering Heights',
+    author: 'Emily Brontë',
+    genre: 'كلاسيكيات عالمية',
+    subGenre: 'Yorkshire Gothic Tragedy',
+    categoryBadgeClass: 'text-primary',
+    categoryLabel: 'روايات',
+    categoryGroup: 'novels',
+    metaIcon: 'auto_stories',
+    metaPrimary: 'English Classic',
+    metaSecondary: '٩ ساعات قراءة',
+    isCompleted: true,
+    readingHours: 9,
+    originLanguage: 'الإنجليزية',
+    languageCode: 'en',
+    availableChapterLanguages: ['en'],
+    isOriginal: true,
+    isTranslated: false,
+    isManuscript: false,
+    tags: ['#كلاسيكيات_عالمية', '#سرد_نفسي_عميق'],
+    coverUrl: '/images/mtx_hero.jpg',
+    coverAlt: 'Wuthering Heights archival cover',
+    quote: '“Whatever our souls are made of, his and mine are the same.”',
+    description:
+      'Set across the windswept Yorkshire moors, a tempestuous tale of obsession, exile, and generational reckoning between Earnshaw Grange and Thrushcross.',
+  },
+  {
+    id: 'frankenstein-classic',
+    title: 'Frankenstein; or, The Modern Prometheus',
+    author: 'Mary Shelley',
+    genre: 'الخيال العلمي',
+    subGenre: 'Early Speculative Gothic',
+    categoryBadgeClass: 'text-primary',
+    categoryLabel: 'روايات',
+    categoryGroup: 'novels',
+    metaIcon: 'science',
+    metaPrimary: 'English Classic',
+    metaSecondary: '٦ ساعات قراءة',
+    isCompleted: true,
+    readingHours: 6,
+    originLanguage: 'الإنجليزية',
+    languageCode: 'en',
+    availableChapterLanguages: ['en'],
+    isOriginal: true,
+    isTranslated: false,
+    isManuscript: false,
+    tags: ['#كلاسيكيات_عالمية', '#غموض_وتشويق'],
+    coverUrl:
+      'https://lh3.googleusercontent.com/aida-public/AB6AXuBAz1xq6XuC38uev7bkxfGlrGDz6aru-Oulp4S1mTAn_R0E-v_RY6oWjm1eSWjfyMCdXk6TaLx2CA1UyYtbyyilDRQM0H6XIfFWZRAV6mb5xu7xb8-m5sGN4DaUDKsMfuS3i14N_Kn6hwb7paN6HfprYJgCYuwh-6ea99GW9Ke-2fE2lD75yzjCAbNLKS6Mj6j4oAeUNGr_fTypozXYNfLaQWhjHSDuo9o6Vmo4sAED5PhuK-4a9aqbFg',
+    coverAlt: 'Frankenstein archival cover',
+    quote: '“Beware; for I am fearless, and therefore powerful.”',
+    description:
+      'Victor Frankenstein’s pursuit of forbidden natural philosophy gives life to a solitary sentient being across Arctic ice and Alpine peaks.',
+  },
   {
     id: 'echoes-of-samarkand',
     title: 'أصداء سمرقند — في دهاليز الفلك',
@@ -2421,3 +2519,25 @@ export const INITIAL_EXPLORE_CATALOG: NovelCard[] = [
     description: 'أعظم معجم للغة العربية على الإطلاق، يستشهد بشعر الجاهلية والقرآن والحديث في شرح كل مفردة وبيانها.',
   },
 ];
+
+export const INITIAL_EXPLORE_CATALOG: NovelCard[] = RAW_EXPLORE_CATALOG.map((item) => {
+  const langCode =
+    item.languageCode ||
+    (item.originLanguage ? ORIGIN_TO_LANGUAGE_CODE[item.originLanguage] : undefined) ||
+    'ar';
+  return {
+    ...item,
+    languageCode: langCode,
+  };
+});
+
+export function isArabicCatalogNovel(novel: Pick<NovelCard, 'languageCode' | 'originLanguage'>): boolean {
+  if (novel.languageCode) {
+    return novel.languageCode.toLowerCase() === 'ar';
+  }
+  if (novel.originLanguage) {
+    return novel.originLanguage.trim() === 'عربي أصيل';
+  }
+  return true;
+}
+

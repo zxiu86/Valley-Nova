@@ -574,7 +574,6 @@ img {
 }
 
 .reading-prose {
-  text-align: justify;
   text-justify: inter-word;
   word-spacing: 0.05em;
 }
@@ -582,9 +581,66 @@ img {
   text-wrap: pretty;
 }
 
-.smooth-horizontal-rail {
+  .smooth-horizontal-rail {
   scroll-behavior: smooth;
   scroll-padding-inline-start: 1rem;
+}
+
+/* English literary serif typography applies wherever English prose is rendered */
+.font-literary-en,
+html[lang="en"] .font-amiri {
+  font-family: 'Lora', 'Cormorant Garamond', 'Amiri', Georgia, serif;
+}
+
+/* English typography optimization when lang="en" */
+html[lang="en"] body {
+  font-family: 'Plus Jakarta Sans', 'Tajawal', system-ui, -apple-system, sans-serif;
+  letter-spacing: -0.005em;
+}
+
+/* Subtle, low-cost Liquid Glass Crimson Glow for Chapter Language Switcher Card */
+.liquid-glass-crimson-card {
+  position: relative;
+  overflow: hidden;
+  background: var(--mtx-glass-bg);
+  backdrop-filter: blur(22px) saturate(185%);
+  -webkit-backdrop-filter: blur(22px) saturate(185%);
+  border: 1px solid var(--mtx-glass-border);
+  box-shadow: var(--mtx-glass-specular), var(--mtx-glass-shadow);
+}
+
+.liquid-glass-crimson-glow {
+  position: absolute;
+  inset: -35%;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 55% 48% at 50% 50%,
+    rgba(158, 27, 66, 0.16),
+    rgba(136, 19, 55, 0.05) 55%,
+    transparent 75%
+  );
+  will-change: transform, opacity;
+  animation: crimsonGlassSweep 7.5s ease-in-out infinite;
+}
+
+.dark .liquid-glass-crimson-glow {
+  background: radial-gradient(
+    ellipse 55% 48% at 50% 50%,
+    rgba(255, 147, 166, 0.18),
+    rgba(136, 19, 55, 0.16) 55%,
+    transparent 75%
+  );
+}
+
+@keyframes crimsonGlassSweep {
+  0%, 100% {
+    opacity: 0.55;
+    transform: translate3d(-12%, -6%, 0) scale(0.98);
+  }
+  50% {
+    opacity: 0.92;
+    transform: translate3d(12%, 6%, 0) scale(1.04);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -594,8 +650,11 @@ img {
   .novel-card-interactive:active,
   .filter-pill-tactile:hover,
   .filter-pill-tactile:active,
-  .group:hover .cover-zoom-img {
+  .group:hover .cover-zoom-img,
+  .liquid-glass-crimson-glow {
     transform: none !important;
+    animation: none !important;
   }
 }
+
 

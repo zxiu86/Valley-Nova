@@ -1,10 +1,11 @@
 <div class="flex flex-col w-full min-h-[75vh] bg-surface text-on-surface pb-space-2xl animate-fadeIn" id="profile-view">
+  @let t = lib.i18n.copy();
 
   <!-- ================= STATE 1: LOADING ================= -->
   @if (account.viewedState() === 'loading') {
     <div class="w-full max-w-5xl mx-auto px-4 sm:px-6 pt-10 space-y-6">
       <div class="w-full aspect-[15/8] max-h-[360px] rounded-3xl bg-surface-container animate-pulse flex items-center justify-center">
-        <span class="text-xs text-outline font-medium">جارٍ تحميل بيانات الحساب...</span>
+        <span class="text-xs text-outline font-medium">{{ t.profile.loadingAccount }}</span>
       </div>
       <div class="flex flex-col items-center -mt-20 space-y-3">
         <div class="w-32 h-32 rounded-full bg-surface-container-high ring-4 ring-surface animate-pulse"></div>
@@ -24,9 +25,9 @@
       <div class="w-20 h-20 rounded-full bg-surface-container-high border border-surface-variant/50 mx-auto flex items-center justify-center text-secondary shadow-md">
         <span class="material-symbols-outlined text-[38px]">lock</span>
       </div>
-      <h1 class="text-2xl sm:text-3xl font-display-hero font-bold text-on-surface">هذا الحساب خاص</h1>
+      <h1 class="text-2xl sm:text-3xl font-display-hero font-bold text-on-surface">{{ t.profile.privateTitle }}</h1>
       <p class="text-sm text-on-surface-variant leading-relaxed">
-        اختار صاحب هذا الحساب إبقاء ملفه الشخصي ومحتواه غير مرئي للزوار.
+        {{ t.profile.privateDesc }}
       </p>
       <div class="pt-2 flex items-center justify-center gap-3">
         <button
@@ -35,14 +36,14 @@
           class="btn-tactile px-5 py-2.5 rounded-xl bg-primary text-on-primary text-xs sm:text-sm font-bold flex items-center gap-2 cursor-pointer shadow-sm"
         >
           <span class="material-symbols-outlined text-[18px]">home</span>
-          <span>العودة إلى الرئيسية</span>
+          <span>{{ t.profile.backHome }}</span>
         </button>
         <button
           type="button"
           (click)="lib.openExplore()"
           class="btn-tactile px-5 py-2.5 rounded-xl bg-surface-container-high text-on-surface text-xs sm:text-sm font-semibold border border-surface-variant/40 cursor-pointer"
         >
-          استكشاف الروايات
+          {{ t.profile.exploreBooks }}
         </button>
       </div>
     </div>
@@ -54,9 +55,9 @@
       <div class="w-20 h-20 rounded-full bg-surface-container-high border border-surface-variant/50 mx-auto flex items-center justify-center text-outline shadow-md">
         <span class="material-symbols-outlined text-[38px]">person_off</span>
       </div>
-      <h1 class="text-2xl sm:text-3xl font-display-hero font-bold text-on-surface">الحساب غير موجود</h1>
+      <h1 class="text-2xl sm:text-3xl font-display-hero font-bold text-on-surface">{{ t.profile.notFoundTitle }}</h1>
       <p class="text-sm text-on-surface-variant leading-relaxed">
-        تعذر العثور على الحساب المطلوب. ربما تغير اسم المستخدم أو تم حذف الحساب نهائياً.
+        {{ t.profile.notFoundDesc }}
       </p>
       <div class="pt-2 flex items-center justify-center gap-3">
         <button
@@ -65,7 +66,7 @@
           class="btn-tactile px-5 py-2.5 rounded-xl bg-primary text-on-primary text-xs sm:text-sm font-bold flex items-center gap-2 cursor-pointer shadow-sm"
         >
           <span class="material-symbols-outlined text-[18px]">home</span>
-          <span>العودة إلى الرئيسية</span>
+          <span>{{ t.profile.backHome }}</span>
         </button>
       </div>
     </div>
@@ -77,15 +78,15 @@
       <div class="w-20 h-20 rounded-full bg-rose-500/10 border border-rose-500/30 mx-auto flex items-center justify-center text-rose-600 dark:text-rose-400">
         <span class="material-symbols-outlined text-[38px]">cloud_off</span>
       </div>
-      <h1 class="text-2xl font-bold text-on-surface">تعذر تحميل بيانات الحساب</h1>
-      <p class="text-sm text-on-surface-variant">يرجى التحقق من اتصال الإنترنت ثم المحاولة مجدداً.</p>
+      <h1 class="text-2xl font-bold text-on-surface">{{ t.profile.errorTitle }}</h1>
+      <p class="text-sm text-on-surface-variant">{{ t.profile.errorDesc }}</p>
       <button
         type="button"
         (click)="retryLoadProfile()"
         class="btn-tactile px-5 py-2.5 rounded-xl bg-primary text-on-primary text-xs sm:text-sm font-bold inline-flex items-center gap-2 cursor-pointer"
       >
         <span class="material-symbols-outlined text-[18px]">refresh</span>
-        <span>إعادة المحاولة</span>
+        <span>{{ lib.i18n.lang() === 'en' ? 'Retry' : 'إعادة المحاولة' }}</span>
       </button>
     </div>
   }
@@ -100,47 +101,55 @@
         <div class="p-3.5 sm:p-4 rounded-2xl bg-secondary/10 border border-secondary/35 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
           <div class="flex items-center gap-2.5 text-on-surface">
             <span class="material-symbols-outlined text-secondary text-[20px] shrink-0">edit_note</span>
-            <span>
-              حسابك يفتقد بعض البيانات التكميلية (مثل <strong>&#64;اسم_المستخدم</strong> أو <strong>النبذة الشخصية</strong>) ليصبح رابطك الفريد جاهزاً للمشاركة.
-            </span>
+            @if (lib.i18n.lang() === 'en') {
+              <span>
+                Your profile is missing some details (such as <strong>&#64;username</strong> or <strong>Personal Bio</strong>) so your unique sanctuary link can be shared.
+              </span>
+            } @else {
+              <span>
+                حسابك يفتقد بعض البيانات التكميلية (مثل <strong>&#64;اسم_المستخدم</strong> أو <strong>النبذة الشخصية</strong>) ليصبح رابطك الفريد جاهزاً للمشاركة.
+              </span>
+            }
           </div>
           <button
             type="button"
             (click)="openSettingsDrawer('edit')"
             class="btn-tactile shrink-0 px-4 py-1.5 rounded-xl bg-secondary text-on-secondary font-bold text-xs cursor-pointer shadow-xs"
           >
-            إكمال الملف الشخصي
+            {{ lib.i18n.lang() === 'en' ? 'Complete Profile' : 'إكمال الملف الشخصي' }}
           </button>
         </div>
       </div>
     }
 
-    <!-- 1. PROFILE BANNER (1500x800 aspect responsive with seamless multi-edge fades) -->
+    <!-- 1. PROFILE BANNER -->
     <section class="relative w-full max-w-6xl mx-auto px-0 sm:px-6 pt-2 sm:pt-5">
       <div class="relative w-full aspect-[15/8] max-h-[380px] sm:max-h-[430px] overflow-hidden sm:rounded-3xl bg-surface-container-lowest">
         <img
           [src]="profile.coverURL || '/images/writers_sanctuary_bg.jpg'"
-          [alt]="'غلاف حساب ' + profile.displayName"
+          [alt]="profile.displayName"
           class="w-full h-full object-cover object-center select-none"
           referrerpolicy="no-referrer"
         />
 
-        <!-- Multi-edge Soft Gradient Fades adapting seamlessly to Dark & Light Mode backgrounds -->
+        <!-- Multi-edge Soft Gradient Fades -->
         <div class="absolute inset-0 bg-gradient-to-t from-surface via-surface/35 to-transparent pointer-events-none"></div>
         <div class="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-surface via-surface/80 to-transparent pointer-events-none"></div>
         <div class="absolute inset-y-0 right-0 w-24 sm:w-44 bg-gradient-to-l from-surface via-surface/45 to-transparent pointer-events-none"></div>
         <div class="absolute inset-y-0 left-0 w-24 sm:w-44 bg-gradient-to-r from-surface via-surface/45 to-transparent pointer-events-none"></div>
         <div class="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-surface/45 to-transparent pointer-events-none"></div>
 
-        <!-- Top Floating Utility Controls (Owner & Visitors) -->
+        <!-- Top Floating Utility Controls -->
         <div class="absolute top-4 inset-x-4 sm:inset-x-6 flex items-center justify-between gap-2 z-20">
           <button
             type="button"
             (click)="lib.returnToNovels()"
             class="px-3 py-1.5 rounded-xl bg-surface/80 hover:bg-surface backdrop-blur-md border border-surface-variant/40 text-xs text-on-surface font-medium flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
           >
-            <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
-            <span class="hidden sm:inline">الرئيسية</span>
+            <span class="material-symbols-outlined text-[16px]">
+              {{ lib.i18n.isRtl() ? 'arrow_forward' : 'arrow_back' }}
+            </span>
+            <span class="hidden sm:inline">{{ t.profile.backHome }}</span>
           </button>
 
           <div class="flex items-center gap-2">
@@ -149,31 +158,47 @@
                 type="button"
                 (click)="copyProfileUrl(profile.username)"
                 class="px-3 py-1.5 rounded-xl bg-surface/80 hover:bg-surface backdrop-blur-md border border-surface-variant/40 text-xs text-on-surface font-medium flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-                [attr.aria-label]="'نسخ رابط الحساب'"
+                [attr.aria-label]="lib.i18n.lang() === 'en' ? 'Copy profile URL' : 'نسخ رابط الحساب'"
               >
                 <span class="material-symbols-outlined text-[16px] text-secondary">
                   {{ copiedProfileLink() ? 'check' : 'share' }}
                 </span>
-                <span class="hidden sm:inline">{{ copiedProfileLink() ? 'تم النسخ' : 'مشاركة الحساب' }}</span>
+                <span class="hidden sm:inline">
+                  {{
+                    copiedProfileLink()
+                      ? (lib.i18n.lang() === 'en' ? 'Copied' : 'تم النسخ')
+                      : (lib.i18n.lang() === 'en' ? 'Share Profile' : 'مشاركة الحساب')
+                  }}
+                </span>
               </button>
             }
 
             @if (account.viewedIsOwner()) {
               <button
                 type="button"
+                (click)="openSettingsDrawer('site')"
+                class="px-3 py-1.5 rounded-xl bg-surface/85 hover:bg-surface-container-high backdrop-blur-md border border-surface-variant/50 text-xs text-on-surface font-medium flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                [attr.aria-label]="t.profile.siteSettingsBtn"
+              >
+                <span class="material-symbols-outlined text-[16px] text-secondary">translate</span>
+                <span class="hidden sm:inline">{{ t.profile.siteSettingsBtn }}</span>
+              </button>
+
+              <button
+                type="button"
                 (click)="openSettingsDrawer('edit')"
                 class="btn-tactile px-3.5 py-1.5 rounded-xl bg-surface/90 hover:bg-surface-container-high backdrop-blur-md border border-secondary/40 text-xs text-on-surface font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm"
-                aria-label="إعدادات الحساب"
+                [attr.aria-label]="t.profile.settingsTitle"
               >
                 <span class="material-symbols-outlined text-[17px] text-secondary">settings</span>
-                <span>إعدادات الحساب</span>
+                <span>{{ t.profile.settingsTitle }}</span>
               </button>
             }
           </div>
         </div>
       </div>
 
-      <!-- 2. CIRCULAR AVATAR (Centered & overlapping banner bottom fade) -->
+      <!-- 2. CIRCULAR AVATAR -->
       <div class="relative z-20 flex flex-col items-center -mt-16 sm:-mt-20 px-4">
         <div class="w-28 h-28 sm:w-36 sm:h-36 rounded-full ring-4 ring-surface bg-primary shadow-2xl overflow-hidden flex items-center justify-center relative">
           @if (profile.photoURL) {
@@ -190,9 +215,8 @@
           }
         </div>
 
-        <!-- 3. ACCOUNT IDENTITY INFO (Centered) -->
+        <!-- 3. ACCOUNT IDENTITY INFO -->
         <div class="mt-4 text-center max-w-xl mx-auto space-y-2">
-          <!-- Display Name + Unified Verified Writer Badge -->
           <div class="flex items-center justify-center gap-2 flex-wrap">
             <h1 class="text-2xl sm:text-3xl font-display-hero font-bold text-on-surface leading-snug">
               {{ profile.displayName }}
@@ -200,7 +224,6 @@
             <app-writer-badge [authorId]="profile.uid" [compact]="false" />
           </div>
 
-          <!-- @username -->
           <div class="flex items-center justify-center gap-2 flex-wrap">
             @if (profile.username) {
               <span
@@ -216,14 +239,14 @@
                 class="inline-flex items-center gap-1 px-3 py-0.5 rounded-full bg-surface-container hover:bg-surface-container-high border border-dashed border-secondary/50 text-xs text-secondary cursor-pointer transition-colors"
               >
                 <span class="material-symbols-outlined text-[14px]">alternate_email</span>
-                <span>تعيين اسم مستخدم فريد</span>
+                <span>{{ lib.i18n.lang() === 'en' ? 'Set a unique @username' : 'تعيين اسم مستخدم فريد' }}</span>
               </button>
             }
 
             @if (account.viewedIsOwner() && !profile.isPublic) {
               <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-surface-container-high border border-surface-variant/50 text-[11px] text-outline">
                 <span class="material-symbols-outlined text-[13px]">lock</span>
-                <span>حساب خاص</span>
+                <span>{{ lib.i18n.lang() === 'en' ? 'Private Account' : 'حساب خاص' }}</span>
               </span>
             }
           </div>
@@ -240,11 +263,11 @@
                 (click)="openSettingsDrawer('edit')"
                 class="text-xs text-outline hover:text-secondary transition-colors cursor-pointer pt-1"
               >
-                + أضف نبذة تعريفية قصيرة عن ذائقتك الأدبية
+                {{ lib.i18n.lang() === 'en' ? '+ Add a short bio about your literary taste' : '+ أضف نبذة تعريفية قصيرة عن ذائقتك الأدبية' }}
               </button>
             }
           } @else {
-            <p class="text-xs text-outline italic pt-1">المعلومات التعريفية مخفية حسب إعدادات الخصوصية</p>
+            <p class="text-xs text-outline italic pt-1">{{ t.profile.hiddenStat }}</p>
           }
 
           <!-- Owner Quick Action Row -->
@@ -256,7 +279,16 @@
                 class="btn-tactile px-4 py-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-semibold border border-surface-variant/40 flex items-center gap-1.5 cursor-pointer"
               >
                 <span class="material-symbols-outlined text-[16px] text-secondary">tune</span>
-                <span>تعديل الملف والإعدادات</span>
+                <span>{{ t.profile.editProfileBtn }}</span>
+              </button>
+
+              <button
+                type="button"
+                (click)="openSettingsDrawer('site')"
+                class="btn-tactile px-4 py-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-semibold border border-surface-variant/40 flex items-center gap-1.5 cursor-pointer"
+              >
+                <span class="material-symbols-outlined text-[16px] text-secondary">translate</span>
+                <span>{{ t.profile.siteSettingsBtn }}</span>
               </button>
 
               @if (canShowPublishedWorksSection()) {
@@ -266,7 +298,7 @@
                   class="btn-tactile px-4 py-2 rounded-xl bg-primary hover:bg-primary-fixed-dim text-on-primary text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm"
                 >
                   <span class="material-symbols-outlined text-[16px]">history_edu</span>
-                  <span>نشر عمل جديد</span>
+                  <span>{{ t.profile.publishBtn }}</span>
                 </button>
               } @else if (account.ownApplicationStatus() === 'none' || account.ownApplicationStatus() === 'rejected') {
                 <button
@@ -275,7 +307,7 @@
                   class="btn-tactile px-4 py-2 rounded-xl bg-secondary/15 hover:bg-secondary/25 text-secondary text-xs font-bold border border-secondary/35 flex items-center gap-1.5 cursor-pointer"
                 >
                   <span class="material-symbols-outlined text-[16px]">ink_pen</span>
-                  <span>التقديم ككاتب</span>
+                  <span>{{ t.profile.tabWriter }}</span>
                 </button>
               }
             </div>
@@ -285,7 +317,7 @@
     </section>
 
     <!-- 4. ACCOUNT STATISTICS (STRICTLY ONLY TWO STATS) -->
-    <section class="w-full max-w-2xl mx-auto px-4 sm:px-6 pt-8" aria-label="إحصائيات الحساب">
+    <section class="w-full max-w-2xl mx-auto px-4 sm:px-6 pt-8" [attr.aria-label]="t.profile.statSavedNovels">
       <div class="grid grid-cols-2 gap-3 sm:gap-5">
         <!-- Stat 1: Saved Novels Count -->
         <div class="p-4 sm:p-5 rounded-2xl bg-surface-container-low border border-surface-variant/40 shadow-xs flex items-center gap-3.5">
@@ -295,12 +327,12 @@
           <div class="min-w-0">
             @if (displaySavedCount() !== null) {
               <span class="text-xl sm:text-2xl font-bold text-on-surface block tabular-nums leading-tight">
-                {{ displaySavedCount() }}
+                {{ lib.i18n.formatNumber(displaySavedCount()!) }}
               </span>
             } @else {
-              <span class="text-xs font-semibold text-outline block leading-tight">مخفي</span>
+              <span class="text-xs font-semibold text-outline block leading-tight">{{ t.profile.hiddenStat }}</span>
             }
-            <span class="text-xs text-on-surface-variant block mt-0.5">عدد الروايات المحفوظة</span>
+            <span class="text-xs text-on-surface-variant block mt-0.5">{{ t.profile.statSavedNovels }}</span>
           </div>
         </div>
 
@@ -312,25 +344,25 @@
           <div class="min-w-0">
             @if (displayReadChaptersCount() !== null) {
               <span class="text-xl sm:text-2xl font-bold text-on-surface block tabular-nums leading-tight">
-                {{ displayReadChaptersCount() }}
+                {{ lib.i18n.formatNumber(displayReadChaptersCount()!) }}
               </span>
             } @else {
-              <span class="text-xs font-semibold text-outline block leading-tight">مخفي</span>
+              <span class="text-xs font-semibold text-outline block leading-tight">{{ t.profile.hiddenStat }}</span>
             }
-            <span class="text-xs text-on-surface-variant block mt-0.5">عدد الفصول المقروءة</span>
+            <span class="text-xs text-on-surface-variant block mt-0.5">{{ t.profile.statReadChapters }}</span>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- 5. PUBLISHED WORKS («أعمالي المنشورة» - ONLY FOR VERIFIED WRITER PERMISSION) -->
+    <!-- 5. PUBLISHED WORKS (ONLY FOR VERIFIED WRITER PERMISSION) -->
     @if (canShowPublishedWorksSection()) {
-      <section class="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-10" aria-label="أعمالي المنشورة">
+      <section class="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-10" [attr.aria-label]="t.profile.publishedWorksSection">
         <div class="flex items-center justify-between gap-3 mb-5">
           <div class="flex items-center gap-2.5">
             <span class="w-1.5 h-6 rounded-full bg-secondary"></span>
-            <h2 class="text-lg sm:text-xl font-bold text-on-surface font-display-hero">أعمالي المنشورة</h2>
-            <span class="text-xs text-outline font-mono tabular-nums">({{ account.viewedPublishedNovels().length }})</span>
+            <h2 class="text-lg sm:text-xl font-bold text-on-surface font-display-hero">{{ t.profile.publishedWorksSection }}</h2>
+            <span class="text-xs text-outline font-mono tabular-nums">({{ lib.i18n.formatNumber(account.viewedPublishedNovels().length) }})</span>
           </div>
 
           @if (account.viewedIsOwner()) {
@@ -340,7 +372,7 @@
               class="btn-tactile px-3.5 py-2 rounded-xl bg-primary text-on-primary text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
             >
               <span class="material-symbols-outlined text-[16px]">add</span>
-              <span>إيداع رواية جديدة</span>
+              <span>{{ t.profile.publishBtn }}</span>
             </button>
           }
         </div>
@@ -365,7 +397,7 @@
                 </div>
                 <div class="flex flex-col justify-between min-w-0 flex-1">
                   <div>
-                    <span class="text-[11px] font-semibold text-secondary">{{ work.genre }}</span>
+                    <span class="text-[11px] font-semibold text-secondary">{{ lib.i18n.displayGenre(work.genre) }}</span>
                     <h3 class="text-sm sm:text-base font-bold text-on-surface group-hover:text-primary transition-colors line-clamp-1 mt-0.5">
                       {{ work.title }}
                     </h3>
@@ -374,10 +406,12 @@
                     </p>
                   </div>
                   <div class="flex items-center justify-between pt-2 text-[11px] text-outline border-t border-surface-variant/30 mt-2">
-                    <span>عمل منشور رسمياً</span>
+                    <span>{{ lib.i18n.lang() === 'en' ? 'Verified Publication' : 'عمل منشور رسمياً' }}</span>
                     <span class="text-primary font-semibold flex items-center gap-1">
-                      <span>عرض</span>
-                      <span class="material-symbols-outlined text-[14px]">arrow_back</span>
+                      <span>{{ lib.i18n.lang() === 'en' ? 'Open' : 'عرض' }}</span>
+                      <span class="material-symbols-outlined text-[14px]">
+                        {{ lib.i18n.isRtl() ? 'arrow_back' : 'arrow_forward' }}
+                      </span>
                     </span>
                   </div>
                 </div>
@@ -387,10 +421,16 @@
         } @else {
           <div class="p-8 rounded-2xl bg-surface-container-low border border-surface-variant/40 text-center space-y-3">
             <span class="material-symbols-outlined text-4xl text-secondary/70">history_edu</span>
-            <p class="text-sm font-semibold text-on-surface">لا توجد أعمال منشورة بعد</p>
+            <p class="text-sm font-semibold text-on-surface">
+              {{ lib.i18n.lang() === 'en' ? 'No published works yet' : 'لا توجد أعمال منشورة بعد' }}
+            </p>
             @if (account.viewedIsOwner()) {
               <p class="text-xs text-outline max-w-md mx-auto">
-                حسابك معتمد للنشر في أروقة الخلود. ابدأ بإيداع أول رواية لك لتظهر هنا وفي خزانة الاستكشاف.
+                {{
+                  lib.i18n.lang() === 'en'
+                    ? 'Your account is verified for publishing. Deposit your first work to showcase it here and in the Explore catalog.'
+                    : 'حسابك معتمد للنشر في أروقة الخلود. ابدأ بإيداع أول رواية لك لتظهر هنا وفي خزانة الاستكشاف.'
+                }}
               </p>
               <button
                 type="button"
@@ -398,7 +438,7 @@
                 class="btn-tactile px-4 py-2 rounded-xl bg-primary text-on-primary text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-sm"
               >
                 <span class="material-symbols-outlined text-[16px]">publish</span>
-                <span>انشر عملك الأول</span>
+                <span>{{ t.profile.publishBtn }}</span>
               </button>
             }
           </div>
@@ -406,14 +446,14 @@
       </section>
     }
 
-    <!-- 6. SAVED NOVELS («رواياتي المحفوظة» — HORIZONTAL CAROUSEL) -->
-    <section class="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-10" aria-label="رواياتي المحفوظة">
+    <!-- 6. SAVED NOVELS (HORIZONTAL CAROUSEL) -->
+    <section class="w-full max-w-6xl mx-auto px-4 sm:px-6 pt-10" [attr.aria-label]="t.profile.savedNovelsSection">
       <div class="flex items-center justify-between gap-3 mb-5">
         <div class="flex items-center gap-2.5">
           <span class="w-1.5 h-6 rounded-full bg-primary"></span>
-          <h2 class="text-lg sm:text-xl font-bold text-on-surface font-display-hero">رواياتي المحفوظة</h2>
+          <h2 class="text-lg sm:text-xl font-bold text-on-surface font-display-hero">{{ t.profile.savedNovelsSection }}</h2>
           @if (account.viewedIsOwner() || profile.showSavedNovels) {
-            <span class="text-xs text-outline font-mono tabular-nums">({{ savedNovelsForDisplay().length }})</span>
+            <span class="text-xs text-outline font-mono tabular-nums">({{ lib.i18n.formatNumber(savedNovelsForDisplay().length) }})</span>
           }
         </div>
 
@@ -423,18 +463,22 @@
             <button
               type="button"
               (click)="scrollSavedCarousel('prev')"
-              aria-label="الروايات السابقة"
+              [attr.aria-label]="lib.i18n.lang() === 'en' ? 'Previous saved novels' : 'الروايات السابقة'"
               class="hidden sm:flex w-9 h-9 rounded-xl bg-surface-container-low hover:bg-surface-container-high border border-surface-variant/40 text-on-surface items-center justify-center transition-colors cursor-pointer shadow-xs"
             >
-              <span class="material-symbols-outlined text-[20px]">chevron_right</span>
+              <span class="material-symbols-outlined text-[20px]">
+                {{ lib.i18n.isRtl() ? 'chevron_right' : 'chevron_left' }}
+              </span>
             </button>
             <button
               type="button"
               (click)="scrollSavedCarousel('next')"
-              aria-label="الروايات التالية"
+              [attr.aria-label]="lib.i18n.lang() === 'en' ? 'Next saved novels' : 'الروايات التالية'"
               class="hidden sm:flex w-9 h-9 rounded-xl bg-surface-container-low hover:bg-surface-container-high border border-surface-variant/40 text-on-surface items-center justify-center transition-colors cursor-pointer shadow-xs"
             >
-              <span class="material-symbols-outlined text-[20px]">chevron_left</span>
+              <span class="material-symbols-outlined text-[20px]">
+                {{ lib.i18n.isRtl() ? 'chevron_left' : 'chevron_right' }}
+              </span>
             </button>
           </div>
         }
@@ -443,10 +487,9 @@
       @if (!account.viewedIsOwner() && !profile.showSavedNovels) {
         <div class="p-8 rounded-2xl bg-surface-container-low border border-surface-variant/40 text-center space-y-2">
           <span class="material-symbols-outlined text-3xl text-outline">visibility_off</span>
-          <p class="text-sm font-semibold text-on-surface">قائمة الروايات المحفوظة مخفية وفق إعدادات الخصوصية</p>
+          <p class="text-sm font-semibold text-on-surface">{{ t.profile.hiddenStat }}</p>
         </div>
       } @else if (savedNovelsForDisplay().length > 0) {
-        <!-- Horizontal Scroll Carousel (Touch swipe on mobile, prev/next arrows on desktop) -->
         <div
           #savedCarouselEl
           class="smooth-horizontal-rail flex flex-row flex-nowrap overflow-x-auto snap-x snap-mandatory gap-4 pb-3 scroll-smooth scrollbar-none"
@@ -468,17 +511,17 @@
                 />
                 <div class="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-black/25 pointer-events-none"></div>
 
-                <span class="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-amber-300 text-[10px] font-semibold max-w-[115px] truncate">
-                  {{ book.genre }}
+                <span class="absolute top-2 start-2 px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-amber-300 text-[10px] font-semibold max-w-[115px] truncate">
+                  {{ lib.i18n.displayGenre(book.genre) }}
                 </span>
 
                 @if (account.viewedIsOwner()) {
                   <button
                     type="button"
                     (click)="lib.toggleBookmark(book, $event)"
-                    aria-label="إزالة من الروايات المحفوظة"
-                    title="إزالة من المحفوظات"
-                    class="absolute top-2 left-2 w-7 h-7 rounded-full bg-black/70 hover:bg-rose-700 text-amber-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                    [attr.aria-label]="t.home.removeBookmark"
+                    [title]="t.home.removeBookmark"
+                    class="absolute top-2 end-2 w-7 h-7 rounded-full bg-black/70 hover:bg-rose-700 text-amber-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
                   >
                     <span class="material-symbols-outlined text-[15px]">bookmark_remove</span>
                   </button>
@@ -490,7 +533,7 @@
                   {{ book.title }}
                 </h3>
                 <p class="text-[11px] text-on-surface-variant line-clamp-1">
-                  {{ book.author || 'أروقة الخلود' }}
+                  {{ book.author || t.site.brand }}
                 </p>
               </div>
             </article>
@@ -499,9 +542,13 @@
       } @else {
         <div class="p-10 rounded-2xl bg-surface-container-low border border-surface-variant/40 text-center space-y-3">
           <span class="material-symbols-outlined text-4xl text-outline/60">bookmark_border</span>
-          <p class="text-sm font-semibold text-on-surface">لا توجد روايات محفوظة حالياً</p>
+          <p class="text-sm font-semibold text-on-surface">{{ t.profile.noSavedNovels }}</p>
           <p class="text-xs text-outline max-w-sm mx-auto">
-            تصفّح الروايات وأضف ما يلامس ذائقتك لتظهر هنا في شريط محفوظاتك.
+            {{
+              lib.i18n.lang() === 'en'
+                ? 'Explore the catalog and bookmark any work that resonates with you to keep it in your shelf.'
+                : 'تصفّح الروايات وأضف ما يلامس ذائقتك لتظهر هنا في شريط محفوظاتك.'
+            }}
           </p>
           <button
             type="button"
@@ -509,7 +556,7 @@
             class="btn-tactile px-4 py-2 rounded-xl bg-secondary text-on-secondary text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
           >
             <span class="material-symbols-outlined text-[16px]">explore</span>
-            <span>استكشاف الروايات</span>
+            <span>{{ t.profile.exploreBooks }}</span>
           </button>
         </div>
       }
@@ -518,32 +565,30 @@
     <!-- ================= SLIDING SIDE SETTINGS DRAWER ================= -->
     @if (account.viewedIsOwner() && account.isSettingsOpen()) {
       <div class="fixed inset-0 z-50 flex justify-end animate-fadeIn">
-        <!-- Translucent Backdrop -->
         <button
           type="button"
           class="fixed inset-0 w-full h-full bg-black/55 dark:bg-black/75 backdrop-blur-sm border-none cursor-default"
-          aria-label="إغلاق لوحة الإعدادات"
+          [attr.aria-label]="t.profile.settingsClose"
           (click)="closeSettingsDrawer()"
         ></button>
 
-        <!-- Sliding Side Panel -->
         <aside
-          aria-label="إعدادات الحساب"
-          class="relative z-10 w-full max-w-lg h-full bg-surface-container-low border-r border-surface-variant/50 shadow-2xl flex flex-col overflow-hidden"
+          [attr.aria-label]="t.profile.settingsTitle"
+          class="relative z-10 w-full max-w-lg h-full bg-surface-container-low border-s border-surface-variant/50 shadow-2xl flex flex-col overflow-hidden"
         >
           <!-- Drawer Top Header -->
           <div class="px-5 py-4 border-b border-surface-variant/40 flex items-center justify-between bg-surface-container">
             <div class="flex items-center gap-2.5">
               <span class="material-symbols-outlined text-secondary text-[22px]">manage_accounts</span>
               <div>
-                <h2 class="text-base font-bold text-on-surface">إعدادات الحساب</h2>
-                <span class="text-[11px] text-outline">تعديل الملف، الخصوصية، طلب الكتابة، والأمان</span>
+                <h2 class="text-base font-bold text-on-surface">{{ t.profile.settingsTitle }}</h2>
+                <span class="text-[11px] text-outline">{{ t.siteSettings.subtitle }}</span>
               </div>
             </div>
             <button
               type="button"
               (click)="closeSettingsDrawer()"
-              aria-label="إغلاق الإعدادات"
+              [attr.aria-label]="t.profile.settingsClose"
               class="w-9 h-9 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface-variant hover:text-on-surface flex items-center justify-center transition-colors cursor-pointer"
             >
               <span class="material-symbols-outlined text-[20px]">close</span>
@@ -559,7 +604,7 @@
                 ? 'px-3 py-1.5 rounded-lg bg-primary text-on-primary text-xs font-bold whitespace-nowrap cursor-pointer'
                 : 'px-3 py-1.5 rounded-lg bg-surface-container text-on-surface-variant hover:text-on-surface text-xs font-medium whitespace-nowrap cursor-pointer'"
             >
-              تعديل الملف
+              {{ t.profile.tabEdit }}
             </button>
             <button
               type="button"
@@ -568,7 +613,16 @@
                 ? 'px-3 py-1.5 rounded-lg bg-primary text-on-primary text-xs font-bold whitespace-nowrap cursor-pointer'
                 : 'px-3 py-1.5 rounded-lg bg-surface-container text-on-surface-variant hover:text-on-surface text-xs font-medium whitespace-nowrap cursor-pointer'"
             >
-              الخصوصية
+              {{ t.profile.tabPrivacy }}
+            </button>
+            <button
+              type="button"
+              (click)="account.activeSettingsSection.set('site'); account.settingsError.set(null); account.settingsSuccess.set(null)"
+              [class]="account.activeSettingsSection() === 'site'
+                ? 'px-3 py-1.5 rounded-lg bg-primary text-on-primary text-xs font-bold whitespace-nowrap cursor-pointer'
+                : 'px-3 py-1.5 rounded-lg bg-surface-container text-on-surface-variant hover:text-on-surface text-xs font-medium whitespace-nowrap cursor-pointer'"
+            >
+              {{ t.profile.tabSite }}
             </button>
             <button
               type="button"
@@ -577,7 +631,7 @@
                 ? 'px-3 py-1.5 rounded-lg bg-secondary text-on-secondary text-xs font-bold whitespace-nowrap cursor-pointer'
                 : 'px-3 py-1.5 rounded-lg bg-surface-container text-on-surface-variant hover:text-on-surface text-xs font-medium whitespace-nowrap cursor-pointer'"
             >
-              طلب كاتب
+              {{ t.profile.tabWriter }}
             </button>
             <button
               type="button"
@@ -586,7 +640,7 @@
                 ? 'px-3 py-1.5 rounded-lg bg-rose-700 text-white text-xs font-bold whitespace-nowrap cursor-pointer'
                 : 'px-3 py-1.5 rounded-lg bg-surface-container text-on-surface-variant hover:text-on-surface text-xs font-medium whitespace-nowrap cursor-pointer'"
             >
-              الحساب والأمان
+              {{ t.profile.tabSecurity }}
             </button>
             @if (account.ownWriterStatus().isAdmin) {
               <button
@@ -596,10 +650,10 @@
                   ? 'px-3 py-1.5 rounded-lg bg-emerald-700 text-white text-xs font-bold whitespace-nowrap cursor-pointer flex items-center gap-1'
                   : 'px-3 py-1.5 rounded-lg bg-surface-container text-on-surface-variant hover:text-on-surface text-xs font-medium whitespace-nowrap cursor-pointer flex items-center gap-1'"
               >
-                <span>مراجعة الطلبات</span>
+                <span>{{ t.profile.tabAdmin }}</span>
                 @if (account.pendingAdminApplications().length > 0) {
                   <span class="px-1.5 py-0.2 rounded-full bg-white/20 text-[10px]">
-                    {{ account.pendingAdminApplications().length }}
+                    {{ lib.i18n.formatNumber(account.pendingAdminApplications().length) }}
                   </span>
                 }
               </button>
@@ -631,22 +685,24 @@
 
                 <!-- Media Upload & Interactive Preview -->
                 <div class="p-4 rounded-2xl bg-surface-container border border-surface-variant/40 space-y-4">
-                  <span class="text-xs font-bold text-on-surface block">صور الحساب والغلاف (معاينة وضبط قبل الحفظ)</span>
+                  <span class="text-xs font-bold text-on-surface block">
+                    {{ lib.i18n.lang() === 'en' ? 'Avatar & Banner Framing (Preview Before Saving)' : 'صور الحساب والغلاف (معاينة وضبط قبل الحفظ)' }}
+                  </span>
 
                   <!-- Banner Picker & Preview -->
                   <div class="space-y-2">
                     <div class="flex items-center justify-between text-xs">
-                      <span class="text-on-surface-variant">صورة الغلاف (1500×800)</span>
+                      <span class="text-on-surface-variant">{{ t.profile.coverLabel }} (1500×800)</span>
                       <label
                         for="banner-file-input"
                         class="px-3 py-1 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-secondary font-semibold cursor-pointer border border-surface-variant/40 transition-colors"
                       >
-                        تغيير الغلاف
+                        {{ t.profile.uploadCover }}
                       </label>
                       <input
                         id="banner-file-input"
                         type="file"
-                        accept="image/*"
+                        accept="image/jpeg,image/png,image/webp"
                         class="hidden"
                         (change)="onSelectProfileImage($event, 'banner')"
                       />
@@ -655,7 +711,7 @@
                     <div class="relative w-full aspect-[15/8] rounded-xl overflow-hidden bg-surface-container-lowest border border-surface-variant/40">
                       <img
                         [src]="bannerDraft()?.previewDataUrl || profile.coverURL || '/images/writers_sanctuary_bg.jpg'"
-                        alt="معاينة الغلاف"
+                        [alt]="t.profile.coverLabel"
                         class="w-full h-full object-cover"
                         referrerpolicy="no-referrer"
                       />
@@ -666,14 +722,18 @@
                             (click)="activeCropperKind.set(activeCropperKind() === 'banner' ? null : 'banner')"
                             class="px-2.5 py-1 rounded-lg bg-black/75 text-white text-[11px] font-semibold cursor-pointer"
                           >
-                            {{ activeCropperKind() === 'banner' ? 'إخفاء أداة القص' : 'تحريك وتكبير الغلاف' }}
+                            {{
+                              activeCropperKind() === 'banner'
+                                ? (lib.i18n.lang() === 'en' ? 'Hide Cropper' : 'إخفاء أداة القص')
+                                : (lib.i18n.lang() === 'en' ? 'Pan & Zoom Banner' : 'تحريك وتكبير الغلاف')
+                            }}
                           </button>
                           <button
                             type="button"
                             (click)="discardImageDraft('banner')"
                             class="px-2.5 py-1 rounded-lg bg-rose-700/90 text-white text-[11px] cursor-pointer"
                           >
-                            إلغاء المسودة
+                            {{ lib.i18n.lang() === 'en' ? 'Discard Draft' : 'إلغاء المسودة' }}
                           </button>
                         </div>
                       }
@@ -682,7 +742,9 @@
                     <!-- Interactive Pan & Zoom Box for Banner -->
                     @if (activeCropperKind() === 'banner' && bannerDraft()) {
                       <div class="p-3 rounded-xl bg-surface-container-low border border-secondary/35 space-y-3">
-                        <span class="text-[11px] text-secondary font-semibold block">اسحب الصورة لتحديد الإطار المطلوب أو استخدم شريط التكبير:</span>
+                        <span class="text-[11px] text-secondary font-semibold block">
+                          {{ lib.i18n.lang() === 'en' ? 'Drag to frame the banner or adjust zoom:' : 'اسحب الصورة لتحديد الإطار المطلوب أو استخدم شريط التكبير:' }}
+                        </span>
                         <div
                           class="relative w-full aspect-[15/8] rounded-lg overflow-hidden bg-black cursor-grab active:cursor-grabbing touch-none border border-secondary/40 select-none"
                           (pointerdown)="onCropperPointerDown($event, 'banner')"
@@ -692,13 +754,15 @@
                         >
                           <img
                             [src]="bannerDraft()!.sourceUrl"
-                            alt="ضبط إطار الغلاف"
+                            [alt]="t.profile.coverLabel"
                             class="w-full h-full object-cover pointer-events-none select-none transition-transform duration-75"
                             [style.transform]="activeBannerCropperTransform()"
                           />
                         </div>
                         <div class="flex items-center gap-3 text-xs">
-                          <label for="banner-zoom-slider" class="text-outline shrink-0">التكبير:</label>
+                          <label for="banner-zoom-slider" class="text-outline shrink-0">
+                            {{ lib.i18n.lang() === 'en' ? 'Zoom:' : 'التكبير:' }}
+                          </label>
                           <input
                             id="banner-zoom-slider"
                             type="range"
@@ -714,7 +778,7 @@
                             (click)="resetCropperFraming('banner')"
                             class="text-[11px] text-primary hover:underline shrink-0 cursor-pointer"
                           >
-                            توسيط
+                            {{ lib.i18n.lang() === 'en' ? 'Center' : 'توسيط' }}
                           </button>
                         </div>
                       </div>
@@ -729,7 +793,7 @@
                           @if (avatarDraft()?.previewDataUrl || profile.photoURL) {
                             <img
                               [src]="avatarDraft()?.previewDataUrl || profile.photoURL"
-                              alt="معاينة الصورة الشخصية"
+                              [alt]="t.profile.avatarLabel"
                               class="w-full h-full object-cover"
                               referrerpolicy="no-referrer"
                             />
@@ -738,8 +802,10 @@
                           }
                         </div>
                         <div>
-                          <span class="text-xs font-semibold text-on-surface block">الصورة الشخصية</span>
-                          <span class="text-[11px] text-outline">صورة دائرية متداخلة مع الغلاف</span>
+                          <span class="text-xs font-semibold text-on-surface block">{{ t.profile.avatarLabel }}</span>
+                          <span class="text-[11px] text-outline">
+                            {{ lib.i18n.lang() === 'en' ? 'Circular portrait overlapping banner edge' : 'صورة دائرية متداخلة مع الغلاف' }}
+                          </span>
                         </div>
                       </div>
 
@@ -748,12 +814,12 @@
                           for="avatar-file-input"
                           class="px-3 py-1.5 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-primary text-xs font-semibold cursor-pointer border border-surface-variant/40 transition-colors"
                         >
-                          اختيار صورة
+                          {{ t.profile.uploadAvatar }}
                         </label>
                         <input
                           id="avatar-file-input"
                           type="file"
-                          accept="image/*"
+                          accept="image/jpeg,image/png,image/webp"
                           class="hidden"
                           (change)="onSelectProfileImage($event, 'avatar')"
                         />
@@ -767,21 +833,27 @@
                           (click)="activeCropperKind.set(activeCropperKind() === 'avatar' ? null : 'avatar')"
                           class="text-secondary font-semibold hover:underline cursor-pointer"
                         >
-                          {{ activeCropperKind() === 'avatar' ? 'إغلاق أداة قص الصورة الشخصية' : 'قص وتحريك الصورة الشخصية' }}
+                          {{
+                            activeCropperKind() === 'avatar'
+                              ? (lib.i18n.lang() === 'en' ? 'Hide Avatar Cropper' : 'إغلاق أداة قص الصورة الشخصية')
+                              : (lib.i18n.lang() === 'en' ? 'Crop & Pan Avatar' : 'قص وتحريك الصورة الشخصية')
+                          }}
                         </button>
                         <button
                           type="button"
                           (click)="discardImageDraft('avatar')"
                           class="text-rose-600 dark:text-rose-400 hover:underline cursor-pointer"
                         >
-                          إلغاء الصورة المختارة
+                          {{ lib.i18n.lang() === 'en' ? 'Discard Image' : 'إلغاء الصورة المختارة' }}
                         </button>
                       </div>
                     }
 
                     @if (activeCropperKind() === 'avatar' && avatarDraft()) {
                       <div class="p-3 rounded-xl bg-surface-container-low border border-primary/35 space-y-3">
-                        <span class="text-[11px] text-primary font-semibold block">اسحب الصورة داخل الدائرة واضبط التكبير:</span>
+                        <span class="text-[11px] text-primary font-semibold block">
+                          {{ lib.i18n.lang() === 'en' ? 'Drag portrait inside circle and adjust zoom:' : 'اسحب الصورة داخل الدائرة واضبط التكبير:' }}
+                        </span>
                         <div class="flex justify-center">
                           <div
                             class="relative w-40 h-40 rounded-full overflow-hidden bg-black cursor-grab active:cursor-grabbing touch-none border-2 border-primary/60 select-none"
@@ -792,14 +864,16 @@
                           >
                             <img
                               [src]="avatarDraft()!.sourceUrl"
-                              alt="ضبط الصورة الشخصية"
+                              [alt]="t.profile.avatarLabel"
                               class="w-full h-full object-cover pointer-events-none select-none transition-transform duration-75"
                               [style.transform]="activeAvatarCropperTransform()"
                             />
                           </div>
                         </div>
                         <div class="flex items-center gap-3 text-xs">
-                          <label for="avatar-zoom-slider" class="text-outline shrink-0">التكبير:</label>
+                          <label for="avatar-zoom-slider" class="text-outline shrink-0">
+                            {{ lib.i18n.lang() === 'en' ? 'Zoom:' : 'التكبير:' }}
+                          </label>
                           <input
                             id="avatar-zoom-slider"
                             type="range"
@@ -815,7 +889,7 @@
                             (click)="resetCropperFraming('avatar')"
                             class="text-[11px] text-secondary hover:underline shrink-0 cursor-pointer"
                           >
-                            توسيط
+                            {{ lib.i18n.lang() === 'en' ? 'Center' : 'توسيط' }}
                           </button>
                         </div>
                       </div>
@@ -825,20 +899,20 @@
 
                 <!-- Display Name -->
                 <div class="space-y-1.5">
-                  <label for="edit-display-name" class="text-xs font-semibold text-on-surface block">الاسم الظاهر</label>
+                  <label for="edit-display-name" class="text-xs font-semibold text-on-surface block">{{ t.profile.displayNameLabel }}</label>
                   <input
                     id="edit-display-name"
                     type="text"
                     formControlName="displayName"
-                    placeholder="اكتب اسمك كما يظهر للقراء"
+                    [placeholder]="t.auth.displayNamePlaceholder"
                     class="w-full p-3 rounded-xl bg-surface-container border border-surface-variant/60 text-sm text-on-surface focus:outline-none focus:border-primary"
                   />
                 </div>
 
-                <!-- Username (@username) with Real-Time Check + Optional Suggestions -->
+                <!-- Username (@username) -->
                 <div class="space-y-1.5">
                   <label for="edit-username" class="text-xs font-semibold text-on-surface block">
-                    اسم المستخدم الفريد (&#64;username)
+                    {{ t.profile.usernameLabel }}
                   </label>
                   <div class="flex items-center bg-surface-container rounded-xl px-3 border border-surface-variant/60 focus-within:border-secondary" dir="ltr">
                     <span class="text-secondary font-mono font-bold text-sm select-none">&#64;</span>
@@ -851,9 +925,7 @@
                       class="w-full p-2.5 bg-transparent text-sm font-mono text-on-surface focus:outline-none"
                     />
                   </div>
-                  <p class="text-[11px] text-outline">
-                    أحرف إنجليزية، أرقام، وشرطة سفلية (_) فقط، دون حساسية لحالة الأحرف (٣ إلى ٢٤ حرفاً).
-                  </p>
+                  <p class="text-[11px] text-outline">{{ t.profile.usernameHint }}</p>
 
                   @if (account.usernameCheck().status !== 'idle') {
                     <div
@@ -880,7 +952,9 @@
 
                   @if (account.usernameCheck().suggestions.length > 0) {
                     <div class="flex items-center gap-2 flex-wrap pt-1 text-xs">
-                      <span class="text-[11px] text-outline">أمثلة متاحة اختيارية:</span>
+                      <span class="text-[11px] text-outline">
+                        {{ lib.i18n.lang() === 'en' ? 'Available suggestions:' : 'أمثلة متاحة اختيارية:' }}
+                      </span>
                       @for (sug of account.usernameCheck().suggestions; track sug) {
                         <button
                           type="button"
@@ -897,12 +971,12 @@
 
                 <!-- Bio -->
                 <div class="space-y-1.5">
-                  <label for="edit-bio" class="text-xs font-semibold text-on-surface block">النبذة التعريفية</label>
+                  <label for="edit-bio" class="text-xs font-semibold text-on-surface block">{{ t.profile.bioLabel }}</label>
                   <textarea
                     id="edit-bio"
                     rows="3"
                     formControlName="bio"
-                    placeholder="اكتب نبذة مختصرة عن ذوقك القرائي أو رحلتك مع الأدب..."
+                    [placeholder]="lib.i18n.lang() === 'en' ? 'Write a short note about your reading taste or literary journey...' : 'اكتب نبذة مختصرة عن ذوقك القرائي أو رحلتك مع الأدب...'"
                     class="w-full p-3 rounded-xl bg-surface-container border border-surface-variant/60 text-xs sm:text-sm text-on-surface focus:outline-none focus:border-primary leading-relaxed"
                   ></textarea>
                 </div>
@@ -913,7 +987,7 @@
                     (click)="closeSettingsDrawer()"
                     class="px-4 py-2.5 rounded-xl bg-surface-container text-on-surface-variant text-xs font-semibold cursor-pointer"
                   >
-                    إلغاء
+                    {{ t.modals.publishCancel }}
                   </button>
                   <button
                     type="submit"
@@ -922,10 +996,10 @@
                   >
                     @if (account.isSavingProfile()) {
                       <span class="material-symbols-outlined animate-spin text-[16px]">progress_activity</span>
-                      <span>جارٍ الحفظ والرفع...</span>
+                      <span>{{ t.profile.saving }}</span>
                     } @else {
                       <span class="material-symbols-outlined text-[16px]">save</span>
-                      <span>حفظ التغييرات</span>
+                      <span>{{ t.profile.saveProfileBtn }}</span>
                     }
                   </button>
                 </div>
@@ -938,29 +1012,35 @@
                 <div class="p-4 rounded-2xl bg-surface-container border border-surface-variant/40 space-y-4">
                   <label class="flex items-start justify-between gap-3 cursor-pointer">
                     <div>
-                      <span class="text-sm font-bold text-on-surface block">جعل الحساب عاماً</span>
+                      <span class="text-sm font-bold text-on-surface block">{{ t.profile.privacyPublicLabel }}</span>
                       <span class="text-xs text-outline leading-relaxed block mt-0.5">
-                        عند الإيقاف يصبح الحساب خاصاً، ولن يظهر للزوار سوى رسالة «هذا الحساب خاص» دون عرض أي بيانات شخصية.
+                        {{
+                          lib.i18n.lang() === 'en'
+                            ? 'When turned off, your profile becomes private and visitors only see a private notice.'
+                            : 'عند الإيقاف يصبح الحساب خاصاً، ولن يظهر للزوار سوى رسالة «هذا الحساب خاص» دون عرض أي بيانات شخصية.'
+                        }}
                       </span>
                     </div>
                     <input type="checkbox" formControlName="isPublic" class="mt-1 w-4 h-4 accent-primary cursor-pointer shrink-0" />
                   </label>
 
                   <div class="border-t border-surface-variant/30 pt-3 space-y-3">
-                    <span class="text-xs font-bold text-secondary block">ضوابط العناصر المرئية في الحساب العام</span>
+                    <span class="text-xs font-bold text-secondary block">
+                      {{ lib.i18n.lang() === 'en' ? 'Public Profile Visibility Controls' : 'ضوابط العناصر المرئية في الحساب العام' }}
+                    </span>
 
                     <label class="flex items-center justify-between gap-3 cursor-pointer text-xs">
-                      <span class="text-on-surface">إظهار الروايات المحفوظة وعددها للزوار</span>
+                      <span class="text-on-surface">{{ t.profile.privacyShowSavedLabel }}</span>
                       <input type="checkbox" formControlName="showSavedNovels" class="w-4 h-4 accent-secondary cursor-pointer" />
                     </label>
 
                     <label class="flex items-center justify-between gap-3 cursor-pointer text-xs">
-                      <span class="text-on-surface">إظهار عدد الفصول المقروءة للزوار</span>
+                      <span class="text-on-surface">{{ t.profile.privacyShowHistoryLabel }}</span>
                       <input type="checkbox" formControlName="showReadingHistory" class="w-4 h-4 accent-secondary cursor-pointer" />
                     </label>
 
                     <label class="flex items-center justify-between gap-3 cursor-pointer text-xs">
-                      <span class="text-on-surface">إظهار النبذة والمعلومات التعريفية للزوار</span>
+                      <span class="text-on-surface">{{ t.profile.privacyShowInfoLabel }}</span>
                       <input type="checkbox" formControlName="showProfileInfo" class="w-4 h-4 accent-secondary cursor-pointer" />
                     </label>
                   </div>
@@ -969,7 +1049,11 @@
                 <div class="p-3.5 rounded-xl bg-secondary/10 border border-secondary/30 text-[11px] text-on-surface-variant flex items-start gap-2">
                   <span class="material-symbols-outlined text-secondary text-[18px] shrink-0">public</span>
                   <span>
-                    ملاحظة: الأعمال والروايات التي تنشرها بصفتك كاتباً معتمداً تبقى متاحة للقراءة العامة في الموقع حتى عند تحويل الحساب الشخصي إلى خاص.
+                    {{
+                      lib.i18n.lang() === 'en'
+                        ? 'Note: Works you publish as a verified author remain accessible in the public catalog even if your personal profile is set to private.'
+                        : 'ملاحظة: الأعمال والروايات التي تنشرها بصفتك كاتباً معتمداً تبقى متاحة للقراءة العامة في الموقع حتى عند تحويل الحساب الشخصي إلى خاص.'
+                    }}
                   </span>
                 </div>
 
@@ -980,13 +1064,110 @@
                 >
                   @if (account.isSavingPrivacy()) {
                     <span class="material-symbols-outlined animate-spin text-[16px]">progress_activity</span>
-                    <span>جارٍ تطبيق الخصوصية...</span>
+                    <span>{{ t.profile.saving }}</span>
                   } @else {
                     <span class="material-symbols-outlined text-[16px]">shield</span>
-                    <span>حفظ إعدادات الخصوصية</span>
+                    <span>{{ t.profile.savePrivacyBtn }}</span>
                   }
                 </button>
               </form>
+            }
+
+            <!-- SECTION SITE: LANGUAGE & APPEARANCE -->
+            @if (account.activeSettingsSection() === 'site') {
+              <div class="space-y-5">
+                <div class="p-4 rounded-2xl bg-surface-container border border-surface-variant/40 space-y-3">
+                  <div>
+                    <h3 class="text-xs font-bold text-on-surface flex items-center gap-1.5">
+                      <span class="material-symbols-outlined text-[16px] text-secondary">translate</span>
+                      <span>{{ t.siteSettings.languageLabel }}</span>
+                    </h3>
+                    <p class="text-[11px] text-outline mt-1 leading-relaxed">{{ t.siteSettings.languageHint }}</p>
+                  </div>
+
+                  <div class="grid grid-cols-1 gap-2.5">
+                    <button
+                      type="button"
+                      (click)="lib.setSiteLanguage('ar')"
+                      [class]="lib.i18n.lang() === 'ar'
+                        ? 'border-primary bg-primary/10 text-on-surface ring-1 ring-primary/40'
+                        : 'border-surface-variant/60 bg-surface-container-low hover:border-primary/40 text-on-surface-variant'"
+                      class="p-3.5 rounded-xl border text-start transition-all cursor-pointer flex items-center justify-between gap-2"
+                    >
+                      <div>
+                        <div class="text-xs font-bold text-on-surface">{{ t.siteSettings.arabicOption }}</div>
+                        <div class="text-[11px] text-outline mt-0.5">{{ t.siteSettings.arabicDesc }}</div>
+                      </div>
+                      @if (lib.i18n.lang() === 'ar') {
+                        <span class="material-symbols-outlined text-primary text-[18px]">check_circle</span>
+                      }
+                    </button>
+
+                    <button
+                      type="button"
+                      (click)="lib.setSiteLanguage('en')"
+                      [class]="lib.i18n.lang() === 'en'
+                        ? 'border-primary bg-primary/10 text-on-surface ring-1 ring-primary/40'
+                        : 'border-surface-variant/60 bg-surface-container-low hover:border-primary/40 text-on-surface-variant'"
+                      class="p-3.5 rounded-xl border text-start transition-all cursor-pointer flex items-center justify-between gap-2"
+                    >
+                      <div>
+                        <div class="text-xs font-bold text-on-surface">{{ t.siteSettings.englishOption }}</div>
+                        <div class="text-[11px] text-outline mt-0.5">{{ t.siteSettings.englishDesc }}</div>
+                      </div>
+                      @if (lib.i18n.lang() === 'en') {
+                        <span class="material-symbols-outlined text-primary text-[18px]">check_circle</span>
+                      }
+                    </button>
+                  </div>
+                </div>
+
+                <div class="p-4 rounded-2xl bg-surface-container border border-surface-variant/40 space-y-3">
+                  <div>
+                    <h3 class="text-xs font-bold text-on-surface flex items-center gap-1.5">
+                      <span class="material-symbols-outlined text-[16px] text-secondary">contrast</span>
+                      <span>{{ t.siteSettings.themeLabel }}</span>
+                    </h3>
+                    <p class="text-[11px] text-outline mt-1 leading-relaxed">{{ t.siteSettings.themeHint }}</p>
+                  </div>
+
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      (click)="!lib.themeService.isDark() ? lib.themeService.toggleThemeWithPaperReveal() : null"
+                      [class]="lib.themeService.isDark()
+                        ? 'border-secondary bg-secondary/10 text-on-surface ring-1 ring-secondary/40'
+                        : 'border-surface-variant/60 bg-surface-container-low hover:border-secondary/40 text-on-surface-variant'"
+                      class="p-3 rounded-xl border text-start transition-all cursor-pointer flex items-center justify-between gap-2"
+                    >
+                      <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-secondary text-[18px]">dark_mode</span>
+                        <span class="text-xs font-bold text-on-surface">{{ t.siteSettings.darkLabel }}</span>
+                      </div>
+                      @if (lib.themeService.isDark()) {
+                        <span class="material-symbols-outlined text-secondary text-[17px]">check_circle</span>
+                      }
+                    </button>
+
+                    <button
+                      type="button"
+                      (click)="lib.themeService.isDark() ? lib.themeService.toggleThemeWithPaperReveal() : null"
+                      [class]="!lib.themeService.isDark()
+                        ? 'border-secondary bg-secondary/10 text-on-surface ring-1 ring-secondary/40'
+                        : 'border-surface-variant/60 bg-surface-container-low hover:border-secondary/40 text-on-surface-variant'"
+                      class="p-3 rounded-xl border text-start transition-all cursor-pointer flex items-center justify-between gap-2"
+                    >
+                      <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-secondary text-[18px]">light_mode</span>
+                        <span class="text-xs font-bold text-on-surface">{{ t.siteSettings.lightLabel }}</span>
+                      </div>
+                      @if (!lib.themeService.isDark()) {
+                        <span class="material-symbols-outlined text-secondary text-[17px]">check_circle</span>
+                      }
+                    </button>
+                  </div>
+                </div>
+              </div>
             }
 
             <!-- SECTION C: WRITER APPLICATION -->
@@ -996,10 +1177,10 @@
                   <div class="p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/35 space-y-3">
                     <div class="flex items-center gap-2 text-emerald-700 dark:text-emerald-400 font-bold text-sm">
                       <span class="material-symbols-outlined text-[22px]">verified</span>
-                      <span>حسابك معتمد ككاتب في أروقة الخلود</span>
+                      <span>{{ t.profile.writerApprovedBadge }}</span>
                     </div>
                     <p class="text-xs text-on-surface-variant leading-relaxed">
-                      تحمل شارة الكاتب المعتمد وتملك صلاحية نشر الروايات والأعمال وإدارتها مباشرة.
+                      {{ t.profile.writerApprovedDesc }}
                     </p>
                     <button
                       type="button"
@@ -1007,22 +1188,31 @@
                       class="btn-tactile px-4 py-2 rounded-xl bg-primary text-on-primary text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
                     >
                       <span class="material-symbols-outlined text-[16px]">publish</span>
-                      <span>نشر عمل جديد</span>
+                      <span>{{ t.profile.publishBtn }}</span>
                     </button>
                   </div>
                 } @else if (account.ownApplicationStatus() === 'pending') {
                   <div class="p-5 rounded-2xl bg-secondary/10 border border-secondary/35 space-y-3">
                     <div class="flex items-center gap-2 text-secondary font-bold text-sm">
                       <span class="material-symbols-outlined text-[22px]">hourglass_top</span>
-                      <span>طلبك قيد المراجعة</span>
+                      <span>{{ t.profile.writerPendingBadge }}</span>
                     </div>
                     <p class="text-xs text-on-surface-variant leading-relaxed">
-                      تم إرسال طلب الانضمام ككاتب إلى الإدارة، ولا يمكن إرسال طلب مكرر أثناء بقاء الطلب قيد المراجعة.
+                      {{
+                        lib.i18n.lang() === 'en'
+                          ? 'Your writer request has been sent to our editorial team. Duplicate requests cannot be submitted while review is pending.'
+                          : 'تم إرسال طلب الانضمام ككاتب إلى الإدارة، ولا يمكن إرسال طلب مكرر أثناء بقاء الطلب قيد المراجعة.'
+                      }}
                     </p>
                     @if (account.ownApplication()) {
                       <div class="p-3 rounded-xl bg-surface-container text-xs space-y-1 border border-surface-variant/30">
-                        <div><strong>الاسم الأدبي:</strong> {{ account.ownApplication()!.penName }}</div>
-                        <div><strong>التصنيفات:</strong> {{ account.ownApplication()!.genres.join('، ') }}</div>
+                        <div><strong>{{ t.profile.penNameLabel }}:</strong> {{ account.ownApplication()!.penName }}</div>
+                        <div>
+                          <strong>{{ t.modals.filterGenreLabel }}:</strong>
+                          @for (g of account.ownApplication()!.genres; track g; let last = $last) {
+                            <span>{{ lib.i18n.displayGenre(g) }}@if (!last) {<span>{{ lib.i18n.lang() === 'en' ? ', ' : '، ' }}</span>}</span>
+                          }
+                        </div>
                       </div>
                     }
                   </div>
@@ -1031,28 +1221,30 @@
                     <div class="p-4 rounded-xl bg-rose-500/10 border border-rose-500/35 text-xs space-y-1 text-rose-700 dark:text-rose-300">
                       <div class="font-bold flex items-center gap-1.5">
                         <span class="material-symbols-outlined text-[17px]">cancel</span>
-                        <span>تم رفض الطلب السابق — يمكنك التعديل وإعادة الإرسال</span>
+                        <span>{{ t.profile.writerRejectedBadge }}</span>
                       </div>
                       @if (account.ownApplication()?.reviewNote) {
-                        <p class="opacity-90">ملاحظة المراجع: {{ account.ownApplication()!.reviewNote }}</p>
+                        <p class="opacity-90">
+                          {{ lib.i18n.lang() === 'en' ? 'Reviewer note:' : 'ملاحظة المراجع:' }} {{ account.ownApplication()!.reviewNote }}
+                        </p>
                       }
                     </div>
                   }
 
                   <form [formGroup]="writerForm" (ngSubmit)="submitWriterRequest()" class="space-y-4">
                     <div class="space-y-1.5">
-                      <label for="writer-pen-name" class="text-xs font-semibold text-on-surface block">الاسم الأدبي / اسم القلم</label>
+                      <label for="writer-pen-name" class="text-xs font-semibold text-on-surface block">{{ t.profile.penNameLabel }}</label>
                       <input
                         id="writer-pen-name"
                         type="text"
                         formControlName="penName"
-                        placeholder="الاسم الذي تكتب وتنشر به"
+                        [placeholder]="lib.i18n.lang() === 'en' ? 'Your literary pen name' : 'الاسم الذي تكتب وتنشر به'"
                         class="w-full p-3 rounded-xl bg-surface-container border border-surface-variant/60 text-sm text-on-surface focus:outline-none focus:border-secondary"
                       />
                     </div>
 
                     <div class="space-y-1.5">
-                      <span class="text-xs font-semibold text-on-surface block">التصنيفات الأدبية (حتى ٣ تصنيفات)</span>
+                      <span class="text-xs font-semibold text-on-surface block">{{ t.profile.writerGenresLabel }}</span>
                       <div class="flex flex-wrap gap-1.5">
                         @for (g of genreOptions; track g) {
                           <button
@@ -1062,30 +1254,30 @@
                               ? 'px-3 py-1 rounded-full bg-secondary text-on-secondary text-xs font-bold cursor-pointer'
                               : 'px-3 py-1 rounded-full bg-surface-container text-on-surface-variant hover:text-on-surface text-xs border border-surface-variant/40 cursor-pointer'"
                           >
-                            {{ g }}
+                            {{ lib.i18n.displayGenre(g) }}
                           </button>
                         }
                       </div>
                     </div>
 
                     <div class="space-y-1.5">
-                      <label for="writer-short-bio" class="text-xs font-semibold text-on-surface block">نبذة تعريفية عن أسلوبك وتجربتك</label>
+                      <label for="writer-short-bio" class="text-xs font-semibold text-on-surface block">{{ t.profile.writerBioLabel }}</label>
                       <textarea
                         id="writer-short-bio"
                         rows="2"
                         formControlName="shortBio"
-                        placeholder="نبذة موجزة عن خلفيتك الأدبية واهتماماتك السردية..."
+                        [placeholder]="lib.i18n.lang() === 'en' ? 'Share a brief overview of your literary background...' : 'نبذة موجزة عن خلفيتك الأدبية واهتماماتك السردية...'"
                         class="w-full p-3 rounded-xl bg-surface-container border border-surface-variant/60 text-xs text-on-surface focus:outline-none focus:border-secondary"
                       ></textarea>
                     </div>
 
                     <div class="space-y-1.5">
-                      <label for="writer-sample" class="text-xs font-semibold text-on-surface block">نموذج كتابي / مقتطف قصير</label>
+                      <label for="writer-sample" class="text-xs font-semibold text-on-surface block">{{ t.profile.writerSampleLabel }}</label>
                       <textarea
                         id="writer-sample"
                         rows="4"
                         formControlName="writingSample"
-                        placeholder="اكتب مقطعاً أدبياً قصيراً يعكس أسلوبك في السرد واللغة..."
+                        [placeholder]="lib.i18n.lang() === 'en' ? 'Write a short literary excerpt reflecting your prose style...' : 'اكتب مقطعاً أدبياً قصيراً يعكس أسلوبك في السرد واللغة...'"
                         class="w-full p-3 rounded-xl bg-surface-container border border-surface-variant/60 text-xs text-on-surface focus:outline-none focus:border-secondary leading-relaxed"
                       ></textarea>
                     </div>
@@ -1097,10 +1289,10 @@
                     >
                       @if (account.isSubmittingApplication()) {
                         <span class="material-symbols-outlined animate-spin text-[16px]">progress_activity</span>
-                        <span>جارٍ إرسال الطلب...</span>
+                        <span>{{ t.profile.saving }}</span>
                       } @else {
                         <span class="material-symbols-outlined text-[16px]">send</span>
-                        <span>{{ account.ownApplicationStatus() === 'rejected' ? 'إعادة إرسال الطلب' : 'إرسال طلب التقديم ككاتب' }}</span>
+                        <span>{{ t.profile.submitWriterBtn }}</span>
                       }
                     </button>
                   </form>
@@ -1112,10 +1304,14 @@
             @if (account.activeSettingsSection() === 'security') {
               <div class="space-y-5">
                 <div class="p-4 rounded-2xl bg-surface-container border border-surface-variant/40 space-y-2">
-                  <span class="text-xs font-bold text-on-surface block">الحساب المرتبط</span>
+                  <span class="text-xs font-bold text-on-surface block">
+                    {{ lib.i18n.lang() === 'en' ? 'Linked Account' : 'الحساب المرتبط' }}
+                  </span>
                   <div class="flex items-center justify-between text-xs">
-                    <span class="text-outline">البريد الإلكتروني:</span>
-                    <span dir="ltr" class="font-mono text-on-surface font-semibold">{{ auth.displayEmail() || 'غير متوفر' }}</span>
+                    <span class="text-outline">{{ t.auth.emailLabel }}:</span>
+                    <span dir="ltr" class="font-mono text-on-surface font-semibold">
+                      {{ auth.displayEmail() || (lib.i18n.lang() === 'en' ? 'Unavailable' : 'غير متوفر') }}
+                    </span>
                   </div>
                 </div>
 
@@ -1123,8 +1319,10 @@
                 <div class="p-4 rounded-2xl bg-surface-container border border-surface-variant/40 space-y-3">
                   <div class="flex items-center justify-between gap-3">
                     <div>
-                      <span class="text-xs font-bold text-on-surface block">تسجيل الخروج</span>
-                      <span class="text-[11px] text-outline">إنهاء الجلسة الحالية بأمان</span>
+                      <span class="text-xs font-bold text-on-surface block">{{ t.profile.logoutBtn }}</span>
+                      <span class="text-[11px] text-outline">
+                        {{ lib.i18n.lang() === 'en' ? 'Safely end your current session' : 'إنهاء الجلسة الحالية بأمان' }}
+                      </span>
                     </div>
                     @if (!confirmLogoutPrompt()) {
                       <button
@@ -1132,26 +1330,28 @@
                         (click)="confirmLogoutPrompt.set(true)"
                         class="px-4 py-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-semibold cursor-pointer border border-surface-variant/40"
                       >
-                        تسجيل الخروج
+                        {{ t.profile.logoutBtn }}
                       </button>
                     }
                   </div>
                   @if (confirmLogoutPrompt()) {
                     <div class="flex items-center justify-end gap-2 pt-2 border-t border-surface-variant/30 text-xs">
-                      <span class="text-outline ml-auto">تأكيد الخروج؟</span>
+                      <span class="text-outline me-auto">
+                        {{ lib.i18n.lang() === 'en' ? 'Confirm sign out?' : 'تأكيد الخروج؟' }}
+                      </span>
                       <button
                         type="button"
                         (click)="confirmLogoutPrompt.set(false)"
                         class="px-3 py-1.5 rounded-lg bg-surface-container-high text-on-surface cursor-pointer"
                       >
-                        تراجع
+                        {{ t.modals.publishCancel }}
                       </button>
                       <button
                         type="button"
                         (click)="performLogout()"
                         class="px-3 py-1.5 rounded-lg bg-primary text-on-primary font-bold cursor-pointer"
                       >
-                        نعم، خروج
+                        {{ t.profile.logoutBtn }}
                       </button>
                     </div>
                   }
@@ -1162,10 +1362,10 @@
                   <div class="space-y-1">
                     <span class="text-xs font-bold text-rose-700 dark:text-rose-400 flex items-center gap-1.5">
                       <span class="material-symbols-outlined text-[18px]">delete_forever</span>
-                      <span>حذف الحساب نهائياً</span>
+                      <span>{{ t.profile.deleteAccountTitle }}</span>
                     </span>
                     <p class="text-[11px] text-on-surface-variant leading-relaxed">
-                      يؤدي هذا الإجراء إلى حذف ملفك الشخصي، واسم المستخدم المحجوز، والصور المرفوعة، وسجلات القراءة والمفضلات، وسجل دخولك من هذا التطبيق فقط (دون المساس بحسابك على Google).
+                      {{ t.profile.deleteAccountWarning }}
                     </p>
                   </div>
 
@@ -1175,24 +1375,24 @@
                       (click)="showDeleteConfirmModal.set(true)"
                       class="px-4 py-2 rounded-xl bg-rose-700 hover:bg-rose-800 text-white text-xs font-bold cursor-pointer"
                     >
-                      طلب الحذف النهائي للحساب
+                      {{ t.profile.deleteBtn }}
                     </button>
                   } @else {
                     <div class="p-3.5 rounded-xl bg-surface-container-low border border-rose-500/40 space-y-3">
                       <label for="delete-confirm-word" class="text-xs font-semibold text-on-surface block">
-                        اكتب كلمة <strong class="text-rose-700 dark:text-rose-400">حذف</strong> للتأكيد:
+                        {{ t.profile.deleteConfirmPrompt }}
                       </label>
                       <input
                         id="delete-confirm-word"
                         type="text"
                         [formControl]="deleteConfirmText"
-                        placeholder="حذف"
+                        [placeholder]="t.profile.deleteConfirmWord"
                         class="w-full p-2.5 rounded-xl bg-surface-container border border-rose-500/40 text-xs text-on-surface focus:outline-none"
                       />
 
                       @if (usesEmailPasswordProvider()) {
                         <label for="delete-reauth-pass" class="text-xs font-semibold text-on-surface block">
-                          كلمة المرور (لإعادة التحقق الأمني):
+                          {{ t.profile.deletePasswordLabel }}
                         </label>
                         <input
                           id="delete-reauth-pass"
@@ -1209,7 +1409,7 @@
                           (click)="showDeleteConfirmModal.set(false)"
                           class="px-3.5 py-2 rounded-xl bg-surface-container text-xs text-on-surface-variant cursor-pointer"
                         >
-                          إلغاء
+                          {{ t.modals.publishCancel }}
                         </button>
                         <button
                           type="button"
@@ -1219,9 +1419,9 @@
                         >
                           @if (account.isDeletingAccount()) {
                             <span class="material-symbols-outlined animate-spin text-[15px]">progress_activity</span>
-                            <span>جارٍ الحذف...</span>
+                            <span>{{ t.profile.saving }}</span>
                           } @else {
-                            <span>تأكيد الحذف النهائي</span>
+                            <span>{{ t.profile.deleteBtn }}</span>
                           }
                         </button>
                       </div>
@@ -1235,28 +1435,38 @@
             @if (account.activeSettingsSection() === 'admin' && account.ownWriterStatus().isAdmin) {
               <div class="space-y-4">
                 <div class="space-y-1">
-                  <span class="text-xs font-bold text-on-surface block">طلبات الانضمام ككاتب قيد المراجعة</span>
-                  <p class="text-[11px] text-outline">الموافقة تمنح شارة الكاتب وصلاحية النشر مباشرة في قاعدة البيانات.</p>
+                  <span class="text-xs font-bold text-on-surface block">{{ t.profile.adminPendingTitle }}</span>
+                  <p class="text-[11px] text-outline">
+                    {{
+                      lib.i18n.lang() === 'en'
+                        ? 'Approving grants the Verified Author badge and direct publishing permissions.'
+                        : 'الموافقة تمنح شارة الكاتب وصلاحية النشر مباشرة في قاعدة البيانات.'
+                    }}
+                  </p>
                 </div>
 
                 <input
                   type="text"
                   [formControl]="adminNoteControl"
-                  aria-label="ملاحظة المراجع الاختيارية"
-                  placeholder="ملاحظة مراجعة اختيارية قبل القبول أو الرفض..."
+                  [attr.aria-label]="lib.i18n.lang() === 'en' ? 'Optional reviewer note' : 'ملاحظة المراجع الاختيارية'"
+                  [placeholder]="lib.i18n.lang() === 'en' ? 'Optional reviewer note before approving or declining...' : 'ملاحظة مراجعة اختيارية قبل القبول أو الرفض...'"
                   class="w-full p-2.5 rounded-xl bg-surface-container border border-surface-variant/50 text-xs text-on-surface focus:outline-none"
                 />
 
                 @if (account.pendingAdminApplications().length === 0) {
                   <div class="p-6 rounded-2xl bg-surface-container text-center text-xs text-outline">
-                    لا توجد طلبات معلقة للمراجعة حالياً.
+                    {{ t.profile.adminNoPending }}
                   </div>
                 } @else {
                   @for (req of account.pendingAdminApplications(); track req.userId) {
                     <div class="p-4 rounded-2xl bg-surface-container border border-surface-variant/40 space-y-2.5 text-xs">
-                      <div class="flex items-center justify-between">
+                      <div class="flex items-center justify-between gap-2">
                         <strong class="text-sm text-on-surface">{{ req.penName }}</strong>
-                        <span class="text-[11px] text-secondary">{{ req.genres.join('، ') }}</span>
+                        <span class="text-[11px] text-secondary">
+                          @for (g of req.genres; track g; let last = $last) {
+                            <span>{{ lib.i18n.displayGenre(g) }}@if (!last) {<span>{{ lib.i18n.lang() === 'en' ? ', ' : '، ' }}</span>}</span>
+                          }
+                        </span>
                       </div>
                       <p class="text-on-surface-variant leading-relaxed">{{ req.shortBio }}</p>
                       <div class="p-2.5 rounded-xl bg-surface-container-low text-on-surface-variant/90 leading-relaxed max-h-28 overflow-y-auto">
@@ -1268,14 +1478,14 @@
                           (click)="handleAdminReview(req.userId, 'rejected')"
                           class="px-3.5 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-700 dark:text-rose-300 font-bold cursor-pointer"
                         >
-                          رفض
+                          {{ t.profile.adminReject }}
                         </button>
                         <button
                           type="button"
                           (click)="handleAdminReview(req.userId, 'approved')"
                           class="px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold cursor-pointer"
                         >
-                          موافقة ومنح الشارة
+                          {{ t.profile.adminApprove }}
                         </button>
                       </div>
                     </div>

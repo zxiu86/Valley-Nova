@@ -3,11 +3,13 @@ import { isPlatformBrowser } from '@angular/common';
 import { FormControl, FormGroup } from '@angular/forms';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router } from '@angular/router';
-import { filter } from 'rxjs';
+import { Subscription, filter } from 'rxjs';
 import {
   AppView,
   ChapterItem,
+  ChapterLanguage,
   CorridorId,
+  ExploreLanguageScope,
   LiterarySalon,
   NovelCard,
   ProfileQuote,
@@ -17,11 +19,17 @@ import {
   ReaderFontFamilyId,
   ReaderThemeId,
   SerendipityNovel,
+  SiteLanguage,
 } from '../models/library.models';
 import { compressToMtx, decompressFromMtx } from '../mtx-codec';
 import { MTX_LITERARY_PRESETS } from '../mtx-presets';
-import { INITIAL_EXPLORE_CATALOG } from '../mtx-catalog-data';
-import { ChapterTextContent, getChapterProse } from '../mtx-reader-chapters';
+import { INITIAL_EXPLORE_CATALOG, isArabicCatalogNovel } from '../mtx-catalog-data';
+import {
+  ChapterTextContent,
+  getChapterProse,
+  getChaptersForNovel,
+  getDefaultChapterLanguageForNovel,
+} from '../mtx-reader-chapters';
 import {
   fetchAllPublishedNovels,
   fetchCloudVaultBooks,
@@ -35,6 +43,7 @@ import {
 import { AuthSessionService } from './auth-session.service';
 import { AccountService } from './account.service';
 import { ThemeService } from './theme.service';
+import { I18nService } from './i18n.service';
 
 const NAV_STORAGE_KEY = 'mtx_nav_state_v1';
 
@@ -45,6 +54,7 @@ export class LibraryStateService {
   readonly authSession = inject(AuthSessionService);
   readonly accountService = inject(AccountService);
   readonly themeService = inject(ThemeService);
+  readonly i18n = inject(I18nService);
 
   // Navigation & View State ('novels' | 'details' | 'explore' | 'auth' | 'profile' | 'reader')
   readonly currentView = signal<AppView>('novels');
@@ -71,6 +81,7 @@ export class LibraryStateService {
   readonly isBookmarksOpen = signal<boolean>(false);
   readonly isProfileOpen = signal<boolean>(false);
   readonly isMobileNavOpen = signal<boolean>(false);
+  readonly isSiteSettingsOpen = signal<boolean>(false);
   readonly readerFontSize = signal<'sm' | 'md' | 'lg'>('md');
   readonly activeSortOrder = signal<'popular' | 'rating' | 'pages' | 'alphabetical'>('popular');
   readonly filterGenre = signal<string>('الكل');
@@ -100,6 +111,8 @@ export class LibraryStateService {
   private autoScrollInterval: ReturnType<typeof setInterval> | null = null;
   private lastScrollTop = 0;
   private saveProgressTimeout: ReturnType<typeof setTimeout> | null = null;
+  private routerEventsSub: Subscription | null = null;
+  private soundscapeStopTimer: ReturnType<typeof setTimeout> | null = null;
   private initialized = false;
 
   // Search Control & Forms
@@ -118,6 +131,8 @@ export class LibraryStateService {
   readonly isIntegrityDocOpen = signal<boolean>(false);
   readonly isManuscriptPreviewOpen = signal<boolean>(false);
   readonly readingProgressPercent = signal<number>(17);
+  readonly selectedChapterLang = signal<ChapterLanguage>('ar');
+  readonly selectedChapterLangProgressPercent = signal<number>(0);
 
   // Explore View State
   readonly exploreSearchControl = new FormControl('', { nonNullable: true });
@@ -129,11 +144,12 @@ export class LibraryStateService {
   readonly explorePage = signal<number>(1);
   readonly explorePageSize = 12;
 
+  readonly exploreLanguageScope = signal<ExploreLanguageScope>('all');
   readonly exploreFilterOriginal = signal<boolean>(true);
   readonly exploreFilterTranslated = signal<boolean>(true);
   readonly exploreFilterManuscripts = signal<boolean>(false);
   readonly exploreFilterStatus = signal<'all' | 'completed' | 'ongoing'>('all');
-  readonly exploreFilterReadingTime = signal<'short' | 'medium' | 'long'>('medium');
+  readonly exploreFilterReadingTime = signal<'all' | 'short' | 'medium' | 'long'>('all');
   readonly exploreFilterLanguage = signal<string>('الكل');
   readonly exploreFilterMood = signal<string>('all');
 
@@ -259,6 +275,11 @@ export class LibraryStateService {
     author: 'الشيخ جلال الدين الموصلي',
     genre: 'رواق الروايات والخيال السردي',
     subGenre: 'في دهاليز الفلك والبارود',
+    originLanguage: 'عربي أصيل',
+    languageCode: 'ar',
+    availableChapterLanguages: ['ar', 'en'],
+    readingHours: 9,
+    isCompleted: true,
     coverUrl:
       'https://lh3.googleusercontent.com/aida-public/AB6AXuCIF5pF45h_OR2lIwskuFNX2Fw9AdCINz_hC0Qvf-3zDmpWivbiit8SYF0sS6HhU3kibG9nYM4UcKVC0H4WjgF5VCuxaffvcfC-XrgbjG-oKc3LAqtSqS0Z4LaimKNUeF3EoVGDctyrjracP07ZuLn2ljBOsPpbTDJjrRrRNFZcjHkBoy1Kk-OM5UlnYWhwvMPbjaubWOshxoIfGO98nNuL5FfI-ZO153_wRqE_7CwhTblHyOK8tSyR_Q',
     coverAlt: 'غلاف رواية أصداء سمرقند الفلكية والتاريخية',
@@ -709,12 +730,13 @@ export class LibraryStateService {
     const novel = this.selectedNovel() || this.defaultEchoesSamarkand;
     const g = (novel.genre || '').toLowerCase();
     const t = (novel.title || '').toLowerCase();
+    const isEn = this.i18n.lang() === 'en';
 
     if (g.includes('ملحم') || g.includes('ملاحم') || t.includes('تنانين') || t.includes('الجدار') || t.includes('رماد')) {
       return {
         realmId: 'epics' as const,
         realmName: 'Mythic Bronze',
-        realmArabicName: 'رواق الملاحم والبطولات',
+        realmArabicName: isEn ? 'Corridor of Epics & Legends' : 'رواق الملاحم والبطولات',
         primaryColor: this.themeService.isDark() ? '#e9c349' : '#9A7209',
         primaryDim: '#af8d11',
         primaryBg: 'bg-secondary',
@@ -723,14 +745,14 @@ export class LibraryStateService {
         glowGradient: 'from-[#e9c349]/25 via-[#af8d11]/12 to-transparent',
         badgeBg: 'bg-amber-500/15 dark:bg-[#af8d11]/30 text-amber-800 dark:text-[#e9c349] border-amber-600/30 dark:border-[#e9c349]/40',
         btnBg: 'bg-[#9A7209] hover:bg-[#b5870d] dark:bg-[#af8d11] dark:hover:bg-[#e9c349] text-white dark:text-black font-bold shadow-[0_10px_25px_rgba(154,114,9,0.28)]',
-        volumeNumber: 'السِّفْرُ الثَّانِي — المجلد الثالث',
+        volumeNumber: isEn ? 'VOLUME II — CHRONICLE OF EMPIRES' : 'السِّفْرُ الثَّانِي — المجلد الثالث',
         archiveCode: 'MTX-774-EPC',
       };
-    } else if (g.includes('حكمة') || g.includes('فلسف') || g.includes('نفسي') || t.includes('مرآة') || t.includes('شظايا')) {
+    } else if (g.includes('حكمة') || g.includes('فلسف') || g.includes('نفسي') || t.includes('مرآة') || t.includes('شظايا') || t.includes('dorian')) {
       return {
         realmId: 'wisdom' as const,
         realmName: 'Ivory Philosophy',
-        realmArabicName: 'رواق الحكمة والتأمل الفلسفي',
+        realmArabicName: isEn ? 'Corridor of Wisdom & Philosophy' : 'رواق الحكمة والتأمل الفلسفي',
         primaryColor: this.themeService.isDark() ? '#e5e1e4' : '#211D2B',
         primaryDim: '#8a8589',
         primaryBg: 'bg-on-surface',
@@ -739,14 +761,14 @@ export class LibraryStateService {
         glowGradient: 'from-on-surface/15 via-surface-variant/20 to-transparent',
         badgeBg: 'bg-surface-container-high text-on-surface border-surface-variant',
         btnBg: 'bg-on-surface text-surface hover:opacity-90 font-bold shadow-lg',
-        volumeNumber: 'السِّفْرُ الأَوَّل — حِكْمَةُ المَشْرِق',
+        volumeNumber: isEn ? 'VOLUME I — PHILOSOPHICAL TREATISE' : 'السِّفْرُ الأَوَّل — حِكْمَةُ المَشْرِق',
         archiveCode: 'MTX-312-WSD',
       };
     } else if (g.includes('تراث') || g.includes('مخطوط') || g.includes('أندلس') || t.includes('قرطبة') || t.includes('شيراز')) {
       return {
         realmId: 'heritage' as const,
         realmName: 'Manuscript Emerald',
-        realmArabicName: 'رواق التراث والمخطوطات النادرة',
+        realmArabicName: isEn ? 'Corridor of Heritage & Manuscripts' : 'رواق التراث والمخطوطات النادرة',
         primaryColor: this.themeService.isDark() ? '#7bd8b1' : '#0D7A5A',
         primaryDim: '#005039',
         primaryBg: 'bg-tertiary',
@@ -755,14 +777,14 @@ export class LibraryStateService {
         glowGradient: 'from-[#7bd8b1]/25 via-[#005039]/15 to-transparent',
         badgeBg: 'bg-emerald-500/15 dark:bg-[#005039]/40 text-emerald-800 dark:text-[#7bd8b1] border-emerald-600/30 dark:border-[#7bd8b1]/40',
         btnBg: 'bg-[#0D7A5A] hover:bg-[#095C44] dark:bg-[#005039] dark:hover:bg-[#006e4e] text-white dark:text-[#7bd8b1] font-bold shadow-[0_10px_25px_rgba(13,122,90,0.28)]',
-        volumeNumber: 'المَخْطُوطُ الرَّابِع — خَزَانَةُ التِّبْر',
+        volumeNumber: isEn ? 'CODEX IV — ARCHIVAL COLLECTION' : 'المَخْطُوطُ الرَّابِع — خَزَانَةُ التِّبْر',
         archiveCode: 'MTX-941-EMR',
       };
     } else {
       return {
         realmId: 'novels' as const,
         realmName: 'Crimson Noir',
-        realmArabicName: 'رواق الروايات والخيال السردي',
+        realmArabicName: isEn ? 'Corridor of Novels & Fiction' : 'رواق الروايات والخيال السردي',
         primaryColor: this.themeService.isDark() ? '#ffb2bd' : '#9E1B42',
         primaryDim: '#881337',
         primaryBg: 'bg-primary',
@@ -771,11 +793,28 @@ export class LibraryStateService {
         glowGradient: 'from-primary/20 via-primary-container/25 to-transparent',
         badgeBg: 'bg-primary-container/80 dark:bg-[#881337]/40 text-on-primary-container dark:text-[#ffb2bd] border-primary/30',
         btnBg: 'bg-[#881337] hover:bg-[#9f1239] text-white font-bold shadow-[0_10px_25px_rgba(136,19,55,0.35)]',
-        volumeNumber: 'المُجَلَّدُ الأَوَّل — الطَّبْعَةُ السِّينَمَائِيَّة',
+        volumeNumber: isEn ? 'VOLUME I — VERIFIED CINEMATIC EDITION' : 'المُجَلَّدُ الأَوَّل — الطَّبْعَةُ السِّينَمَائِيَّة',
         archiveCode: 'MTX-853-SMQ',
       };
     }
   });
+
+  // Bilingual Novel Chapters Computed Signals
+  readonly availableChaptersForNovel = computed<ChapterItem[]>(() => {
+    const novel = this.selectedNovel() || this.defaultEchoesSamarkand;
+    return getChaptersForNovel(novel.id, this.selectedChapterLang(), novel);
+  });
+
+  readonly oppositeChapterLang = computed<ChapterLanguage>(() =>
+    this.selectedChapterLang() === 'ar' ? 'en' : 'ar'
+  );
+
+  readonly oppositeChaptersCount = computed<number>(() => {
+    const novel = this.selectedNovel() || this.defaultEchoesSamarkand;
+    return getChaptersForNovel(novel.id, this.oppositeChapterLang(), novel).length;
+  });
+
+  readonly hasOppositeChapterLang = computed<boolean>(() => this.oppositeChaptersCount() > 0);
 
   // Explore Computed Signals
   readonly filteredExploreBooks = computed<NovelCard[]>(() => {
@@ -785,9 +824,16 @@ export class LibraryStateService {
     const status = this.exploreFilterStatus();
     const timeFilter = this.exploreFilterReadingTime();
     const lang = this.exploreFilterLanguage();
+    const scope = this.exploreLanguageScope();
     const mood = this.exploreFilterMood();
 
     let list = [...this.exploreBooksList()];
+
+    if (scope === 'non-ar') {
+      list = list.filter((b) => !isArabicCatalogNovel(b));
+    } else if (scope === 'ar') {
+      list = list.filter((b) => isArabicCatalogNovel(b));
+    }
 
     if (q) {
       list = list.filter(
@@ -796,6 +842,7 @@ export class LibraryStateService {
           (b.author && b.author.toLowerCase().includes(q)) ||
           b.genre.toLowerCase().includes(q) ||
           (b.description && b.description.toLowerCase().includes(q)) ||
+          (b.originLanguage && b.originLanguage.toLowerCase().includes(q)) ||
           (b.tags && b.tags.some((t) => t.toLowerCase().includes(q)))
       );
     }
@@ -826,8 +873,9 @@ export class LibraryStateService {
       list = list.filter((b) => b.tags && b.tags.includes(mood));
     }
 
+    const locale = this.i18n.lang() === 'en' ? 'en' : 'ar';
     if (sort === 'alphabetical') {
-      list.sort((a, b) => a.title.localeCompare(b.title, 'ar'));
+      list.sort((a, b) => a.title.localeCompare(b.title, locale));
     } else if (sort === 'immersion') {
       list.sort((a, b) => (b.readingHours || 0) - (a.readingHours || 0));
     } else if (sort === 'revered') {
@@ -1015,22 +1063,26 @@ export class LibraryStateService {
   });
 
   readonly filteredReaderChapters = computed(() => {
+    const chaptersPool = this.availableChaptersForNovel();
     const query = (this.readerChapterSearchSignal() || '').trim().toLowerCase();
-    if (!query) return this.chapters;
-    return this.chapters.filter(
-      (c) => c.title.toLowerCase().includes(query) || c.arabicNumber.includes(query)
+    if (!query) return chaptersPool;
+    return chaptersPool.filter(
+      (c) =>
+        c.title.toLowerCase().includes(query) ||
+        c.arabicNumber.includes(query) ||
+        (c.chapterNumber ?? c.id).toString().includes(query)
     );
   });
 
   readonly filteredChaptersList = computed<ChapterItem[]>(() => {
     const query = (this.chapterSearchSignal() || '').trim().toLowerCase();
-    let list = this.chapters;
+    let list = this.availableChaptersForNovel();
     if (query) {
       list = list.filter(
         (c) =>
           c.title.toLowerCase().includes(query) ||
           c.arabicNumber.includes(query) ||
-          c.id.toString().includes(query) ||
+          (c.chapterNumber ?? c.id).toString().includes(query) ||
           c.publishDate.toLowerCase().includes(query)
       );
     }
@@ -1056,6 +1108,7 @@ export class LibraryStateService {
     if (this.initialized) return;
     this.initialized = true;
 
+    this.i18n.init();
     this.themeService.init();
 
     if (!isPlatformBrowser(this.platformId)) return;
@@ -1063,17 +1116,22 @@ export class LibraryStateService {
     this.restoreLocalBookmarks();
     this.loadSavedReaderSettings();
     this.restoreNavigationState();
+    this.i18n.syncDocumentMeta(this.currentView());
 
     // Sync view signal with Angular Router NavigationEnd events (Back/Forward browser buttons)
-    this.router.events
+    this.routerEventsSub?.unsubscribe();
+    this.routerEventsSub = this.router.events
       .pipe(filter((ev): ev is NavigationEnd => ev instanceof NavigationEnd))
       .subscribe((ev) => {
         const view = this.routeUrlToView(ev.urlAfterRedirects);
         if (this.currentView() !== view) {
           this.currentView.set(view);
         }
+        this.i18n.syncDocumentMeta(view);
         if (view === 'reader' && !this.readerActiveChapterContent()) {
-          const fallbackChap = this.chapters.find((c) => c.status === 'current') || this.chapters[0];
+          const pool = this.availableChaptersForNovel();
+          const fallbackChap =
+            pool.find((c) => c.status === 'current') || pool[0] || this.chapters[0];
           this.loadChapterContent(fallbackChap);
         }
       });
@@ -1116,6 +1174,8 @@ export class LibraryStateService {
           authorId: n.authorId,
           genre: n.genre,
           categoryGroup: n.categoryGroup,
+          originLanguage: n.originLanguage || 'عربي أصيل',
+          languageCode: n.languageCode || (n.originLanguage === 'الإنجليزية' ? 'en' : 'ar'),
           coverUrl: n.coverUrl || '/images/writers_sanctuary_bg.jpg',
           coverAlt: n.title,
           description: n.description,
@@ -1135,8 +1195,14 @@ export class LibraryStateService {
   }
 
   destroy(): void {
+    this.routerEventsSub?.unsubscribe();
+    this.routerEventsSub = null;
+    if (this.soundscapeStopTimer) {
+      clearTimeout(this.soundscapeStopTimer);
+      this.soundscapeStopTimer = null;
+    }
     this.authSession.destroy();
-    this.stopSoundscape();
+    this.stopSoundscape(true);
     this.stopAutoScroll();
     if (this.saveProgressTimeout) {
       clearTimeout(this.saveProgressTimeout);
@@ -1151,14 +1217,14 @@ export class LibraryStateService {
 
   toArabicNumber(n: number): string {
     if (n === -1) return '...';
-    const digits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-    return n.toString().replace(/\d/g, (d) => digits[+d]);
+    return this.i18n.formatNumber(n);
   }
 
   navigateToOwnProfile(smoothScroll = true): void {
     this.currentView.set('profile');
     this.isMobileNavOpen.set(false);
     this.persistNavigationState();
+    this.i18n.syncDocumentMeta('profile');
 
     const username = this.accountService.ownProfile()?.username;
     const targetPath = username ? `/profile/${username}` : '/profile';
@@ -1180,6 +1246,7 @@ export class LibraryStateService {
     this.currentView.set(view);
     this.isMobileNavOpen.set(false);
     this.persistNavigationState();
+    this.i18n.syncDocumentMeta(view);
 
     const routeMap: Record<AppView, string> = {
       novels: '/',
@@ -1283,6 +1350,68 @@ export class LibraryStateService {
   }
 
   // ================= NAVIGATION & EXPLORE HANDLERS =================
+  private isEn(): boolean {
+    return this.i18n.lang() === 'en';
+  }
+
+  openSiteSettings(): void {
+    this.closeAllModals();
+    this.isSiteSettingsOpen.set(true);
+  }
+
+  closeSiteSettings(): void {
+    this.isSiteSettingsOpen.set(false);
+  }
+
+  setSiteLanguage(lang: SiteLanguage): void {
+    this.i18n.setLanguage(lang, true);
+    this.i18n.syncDocumentMeta(this.currentView());
+    this.showToast(
+      lang === 'en'
+        ? this.i18n.copy().siteSettings.languageChangedEn
+        : this.i18n.copy().siteSettings.languageChangedAr
+    );
+  }
+
+  toggleSiteLanguage(): void {
+    const next: SiteLanguage = this.i18n.lang() === 'ar' ? 'en' : 'ar';
+    this.setSiteLanguage(next);
+  }
+
+  setExploreLanguageScope(scope: ExploreLanguageScope): void {
+    this.exploreLanguageScope.set(scope);
+    this.explorePage.set(1);
+  }
+
+  openExploreByHeroLanguage(): void {
+    const uiLang = this.i18n.lang();
+    const targetScope: ExploreLanguageScope = uiLang === 'ar' ? 'non-ar' : 'ar';
+    this.closeAllModals();
+    this.selectedNovel.set(null);
+    this.exploreSearchControl.setValue('');
+    this.exploreCategory.set('all');
+    this.exploreFilterOriginal.set(true);
+    this.exploreFilterTranslated.set(true);
+    this.exploreFilterManuscripts.set(false);
+    this.exploreFilterStatus.set('all');
+    this.exploreFilterReadingTime.set('all');
+    this.exploreFilterLanguage.set('الكل');
+    this.exploreFilterMood.set('all');
+    this.exploreSortOrder.set('latest');
+    this.exploreLanguageScope.set(targetScope);
+    this.explorePage.set(1);
+    this.navigateToView('explore');
+    this.showToast(
+      targetScope === 'non-ar'
+        ? this.isEn()
+          ? 'Filtered catalog to non-Arabic / English works'
+          : 'تمت تصفية الخزانة لعرض الروايات غير العربية فقط'
+        : this.isEn()
+          ? 'Filtered catalog to Arabic works'
+          : 'تمت تصفية الخزانة لعرض الروايات العربية فقط'
+    );
+  }
+
   goToExploreWithSearch(query?: string | null): void {
     const q = (query ?? this.searchControl.value ?? '').trim();
     if (q) {
@@ -1293,9 +1422,13 @@ export class LibraryStateService {
     this.selectedNovel.set(null);
     this.navigateToView('explore');
     if (q) {
-      this.showToast(`تم الانتقال لصفحة الاستكشاف بالبحث عن: «${q}»`);
+      this.showToast(
+        this.isEn() ? `Exploring results for: "${q}"` : `تم الانتقال لصفحة الاستكشاف بالبحث عن: «${q}»`
+      );
     } else {
-      this.showToast('أنت الآن في الخزانة المركزية العامة للاستكشاف');
+      this.showToast(
+        this.isEn() ? 'Opened the Central Explore Catalog' : 'أنت الآن في الخزانة المركزية العامة للاستكشاف'
+      );
     }
   }
 
@@ -1309,7 +1442,9 @@ export class LibraryStateService {
       this.exploreCategory.set('all');
       this.exploreSearchControl.setValue('');
       this.exploreFilterMood.set('all');
-      this.showToast('استعراض كافة أعمال خزانة الاستكشاف');
+      this.showToast(
+        this.isEn() ? 'Showing all works in Explore catalog' : 'استعراض كافة أعمال خزانة الاستكشاف'
+      );
       return;
     }
 
@@ -1334,7 +1469,9 @@ export class LibraryStateService {
     }
 
     this.exploreSearchControl.setValue(cleanTag);
-    this.showToast(`تم الانتقال لصفحة الاستكشاف بالوسم: «${cleanTag}»`);
+    this.showToast(
+      this.isEn() ? `Exploring tag: "${cleanTag}"` : `تم الانتقال لصفحة الاستكشاف بالوسم: «${cleanTag}»`
+    );
   }
 
   setGenre(pill: string): void {
@@ -1350,7 +1487,7 @@ export class LibraryStateService {
     this.selectedNovel.set(null);
     this.isMobileFilterDrawerOpen.set(true);
     this.navigateToView('explore');
-    this.showToast('تم الانتقال إلى صفحة الاستكشاف وتفعيل التصفية');
+    this.showToast(this.isEn() ? 'Opened Explore filters' : 'تم الانتقال إلى صفحة الاستكشاف وتفعيل التصفية');
   }
 
   onMobileSearchClick(): void {
@@ -1363,7 +1500,10 @@ export class LibraryStateService {
 
   applyMobileFilters(): void {
     this.isMobileFilterDrawerOpen.set(false);
-    this.showToast(`تم تطبيق التصفية — معروض ${this.filteredExploreBooks().length} عملاً`);
+    const count = this.filteredExploreBooks().length;
+    this.showToast(
+      this.isEn() ? `Filters applied — ${count} works shown` : `تم تطبيق التصفية — معروض ${count} عملاً`
+    );
   }
 
   applyFastFilter(type: 'longest' | 'translated' | 'completed' | 'short' | 'alphabetical'): void {
@@ -1375,24 +1515,24 @@ export class LibraryStateService {
       case 'longest':
         this.exploreSortOrder.set('immersion');
         this.exploreFilterReadingTime.set('long');
-        this.showToast('تمت تصفية الاستكشاف: حسب الأطول صفحات وانغماساً');
+        this.showToast(this.isEn() ? 'Filtered: Longest immersive works' : 'تمت تصفية الاستكشاف: حسب الأطول صفحات وانغماساً');
         break;
       case 'translated':
         this.exploreFilterTranslated.set(true);
         this.exploreFilterOriginal.set(false);
-        this.showToast('تمت تصفية الاستكشاف: روايات مترجمة عالمية');
+        this.showToast(this.isEn() ? 'Filtered: Translated world classics' : 'تمت تصفية الاستكشاف: روايات مترجمة عالمية');
         break;
       case 'completed':
         this.exploreFilterStatus.set('completed');
-        this.showToast('تمت تصفية الاستكشاف: أعمال سردية مكتملة');
+        this.showToast(this.isEn() ? 'Filtered: Completed works' : 'تمت تصفية الاستكشاف: أعمال سردية مكتملة');
         break;
       case 'short':
         this.exploreFilterReadingTime.set('short');
-        this.showToast('تمت تصفية الاستكشاف: قراءات قصيرة ومكثفة (أقل من ٣ ساعات)');
+        this.showToast(this.isEn() ? 'Filtered: Concise reads (≤ 3 hrs)' : 'تمت تصفية الاستكشاف: قراءات قصيرة ومكثفة (أقل من ٣ ساعات)');
         break;
       case 'alphabetical':
         this.exploreSortOrder.set('alphabetical');
-        this.showToast('تمت تصفية الاستكشاف: الترتيب الأبجدي التليد (أ - ي)');
+        this.showToast(this.isEn() ? 'Sorted alphabetically' : 'تمت تصفية الاستكشاف: الترتيب الأبجدي التليد (أ - ي)');
         break;
     }
   }
@@ -1403,13 +1543,21 @@ export class LibraryStateService {
     this.closeAllModals();
     this.selectedNovel.set(null);
     this.navigateToView('explore');
-    const names: Record<CorridorId, string> = {
+    const namesAr: Record<CorridorId, string> = {
       novels: 'روايات وخيال سردي',
       epics: 'ملاحم وأساطير',
       wisdom: 'فلسفة وحكمة',
       heritage: 'تراث ومخطوطات',
     };
-    this.showToast(`تمت التصفية والانتقال إلى: ${names[corridor]}`);
+    const namesEn: Record<CorridorId, string> = {
+      novels: 'Novels & Fiction',
+      epics: 'Epics & Legends',
+      wisdom: 'Philosophy & Wisdom',
+      heritage: 'Heritage & Manuscripts',
+    };
+    this.showToast(
+      this.isEn() ? `Filtered to: ${namesEn[corridor]}` : `تمت التصفية والانتقال إلى: ${namesAr[corridor]}`
+    );
   }
 
   goToExploreWithSort(order: 'popular' | 'rating' | 'pages' | 'alphabetical'): void {
@@ -1424,14 +1572,14 @@ export class LibraryStateService {
     this.closeAllModals();
     this.selectedNovel.set(null);
     this.navigateToView('explore');
-    this.showToast('تم ترتيب الأعمال والانتقال لصفحة الاستكشاف');
+    this.showToast(this.isEn() ? 'Sorted catalog in Explore' : 'تم ترتيب الأعمال والانتقال لصفحة الاستكشاف');
   }
 
   applyModalFilterAndGoToExplore(): void {
     this.closeAllModals();
     this.selectedNovel.set(null);
     this.navigateToView('explore');
-    this.showToast('تم تطبيق التصفية في صفحة الاستكشاف');
+    this.showToast(this.isEn() ? 'Filters applied in Explore' : 'تم تطبيق التصفية في صفحة الاستكشاف');
   }
 
   shuffleSerendipity(): void {
@@ -1440,15 +1588,118 @@ export class LibraryStateService {
       const shuffled = [...this.serendipityPool].sort(() => Math.random() - 0.5);
       this.activeSerendipity.set(shuffled);
       this.isShuffling.set(false);
-      this.showToast('تم استحضار اختيارات عشوائية جديدة من دهاليز السرد');
+      this.showToast(this.isEn() ? 'Curated new serendipitous picks' : 'تم استحضار اختيارات عشوائية جديدة من دهاليز السرد');
     }, 400);
   }
 
+  private resolveCanonicalNovel(novel: NovelCard): NovelCard {
+    if (!novel) return this.defaultEchoesSamarkand;
+    const match =
+      this.allNovelsList().find((n) => n.id === novel.id) ||
+      this.featuredMasterpieces.find((n) => n.id === novel.id);
+    if (!match) return novel;
+    return {
+      ...match,
+      ...novel,
+      author: novel.author || match.author,
+      originLanguage: novel.originLanguage || match.originLanguage,
+      languageCode: novel.languageCode || match.languageCode,
+      readingHours: novel.readingHours ?? match.readingHours,
+      isCompleted: novel.isCompleted ?? match.isCompleted,
+      quote: novel.quote || match.quote,
+    };
+  }
+
   openNovelDetails(novel: NovelCard): void {
-    this.selectedNovel.set(novel);
+    const resolved = this.resolveCanonicalNovel(novel);
+    this.selectedNovel.set(resolved);
+    const scope = this.exploreLanguageScope();
+    const preferred: ChapterLanguage | undefined =
+      scope === 'non-ar' ? 'en' : scope === 'ar' ? 'ar' : this.i18n.lang();
+    const initialChapLang = getDefaultChapterLanguageForNovel(resolved, preferred);
+    this.selectedChapterLang.set(initialChapLang);
+    this.chapterSearchControl.setValue('');
+    this.syncNovelChapterProgress(resolved, initialChapLang);
     this.closeAllModals();
     this.navigateToView('details');
-    this.prepareSilentDecompression(novel);
+    this.prepareSilentDecompression(resolved);
+  }
+
+  setNovelChapterLanguage(lang: ChapterLanguage): void {
+    const novel = this.selectedNovel() || this.defaultEchoesSamarkand;
+    const prevChapter = this.activeReadingChapter();
+    this.selectedChapterLang.set(lang);
+    this.chapterSearchControl.setValue('');
+    this.syncNovelChapterProgress(novel, lang);
+
+    const nextPool = this.availableChaptersForNovel();
+    if (this.currentView() === 'reader' && prevChapter) {
+      const prevChNum = prevChapter.chapterNumber ?? prevChapter.id;
+      const linked = nextPool.find((c) => (c.chapterNumber ?? c.id) === prevChNum) || nextPool[0];
+      if (linked) {
+        this.loadChapterContent(linked);
+      }
+    }
+
+    if (nextPool.length === 0) {
+      this.showToast(
+        this.isEn()
+          ? 'No chapters are available in the selected language yet.'
+          : 'لا توجد فصول متوفرة بهذه اللغة حالياً لهذا العمل.'
+      );
+    } else if (lang === 'en') {
+      this.showToast(
+        this.isEn()
+          ? `Switched novel chapters to English (${nextPool.length} chapters)`
+          : `تم تحويل فصول الرواية إلى الإنجليزية (${nextPool.length} فصول متاحة)`
+      );
+    } else {
+      this.showToast(
+        this.isEn()
+          ? `Switched novel chapters to Arabic (${nextPool.length} chapters)`
+          : `تم تحويل فصول الرواية إلى العربية (${nextPool.length} فصلاً متاحاً)`
+      );
+    }
+  }
+
+  toggleNovelChapterLanguage(): void {
+    const nextLang: ChapterLanguage = this.selectedChapterLang() === 'ar' ? 'en' : 'ar';
+    this.setNovelChapterLanguage(nextLang);
+  }
+
+  private getChapterProgressStorageKey(novelId: string, lang: ChapterLanguage, chapterNumber: number): string {
+    return `mtx_read_pct_${novelId}_${lang}_${chapterNumber}`;
+  }
+
+  private getLastChapterStorageKey(novelId: string, lang: ChapterLanguage): string {
+    return `mtx_last_chap_${novelId}_${lang}`;
+  }
+
+  private syncNovelChapterProgress(novel: NovelCard, lang: ChapterLanguage): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      this.selectedChapterLangProgressPercent.set(0);
+      return;
+    }
+    const chapters = getChaptersForNovel(novel.id, lang, novel);
+    if (chapters.length === 0) {
+      this.selectedChapterLangProgressPercent.set(0);
+      return;
+    }
+    try {
+      const lastChRaw = localStorage.getItem(this.getLastChapterStorageKey(novel.id, lang));
+      const lastChNum = lastChRaw ? Number(lastChRaw) : 0;
+      if (lastChNum > 0) {
+        const idx = chapters.findIndex((c) => (c.chapterNumber ?? c.id) === lastChNum);
+        const pctSaved = Number(localStorage.getItem(this.getChapterProgressStorageKey(novel.id, lang, lastChNum)) || '0');
+        const chapterWeight = Math.max(0, idx) + Math.min(1, Math.max(0, pctSaved / 100));
+        const overall = Math.min(100, Math.round((chapterWeight / chapters.length) * 100));
+        this.selectedChapterLangProgressPercent.set(overall);
+        return;
+      }
+      this.selectedChapterLangProgressPercent.set(0);
+    } catch {
+      this.selectedChapterLangProgressPercent.set(0);
+    }
   }
 
   returnToNovels(): void {
@@ -1461,20 +1712,33 @@ export class LibraryStateService {
     this.closeAllModals();
     this.selectedNovel.set(null);
     this.navigateToView('explore');
-    this.showToast('أنت الآن في الخزانة المركزية العامة للاستكشاف');
+    this.showToast(
+      this.isEn() ? 'Opened the Central Explore Catalog' : 'أنت الآن في الخزانة المركزية العامة للاستكشاف'
+    );
   }
 
   setExploreCategory(category: string): void {
     this.exploreCategory.set(category);
     this.explorePage.set(1);
-    const labels: Record<string, string> = {
+    const labelsAr: Record<string, string> = {
       all: 'جميع المصنفات',
       novels: 'روايات وخيال سردي',
       epics: 'ملاحم وأساطير',
       wisdom: 'فلسفة وحكمة',
       heritage: 'تراث ومخطوطات',
     };
-    this.showToast(`تم فرز الخزانة: ${labels[category] || category}`);
+    const labelsEn: Record<string, string> = {
+      all: 'All Works',
+      novels: 'Novels & Fiction',
+      epics: 'Epics & Legends',
+      wisdom: 'Philosophy & Wisdom',
+      heritage: 'Heritage & Manuscripts',
+    };
+    this.showToast(
+      this.isEn()
+        ? `Category: ${labelsEn[category] || category}`
+        : `تم فرز الخزانة: ${labelsAr[category] || category}`
+    );
   }
 
   setExploreViewMode(mode: 'grid' | 'list'): void {
@@ -1489,13 +1753,19 @@ export class LibraryStateService {
       | 'alphabetical';
     this.exploreSortOrder.set(val);
     this.explorePage.set(1);
-    const labels = {
+    const labelsAr = {
       latest: 'الأحدث إيداعاً',
       immersion: 'الأعلى قراءة وانغماساً',
       revered: 'الأكثر تقديراً وتوثيقاً',
       alphabetical: 'أبجدياً (أ - ي)',
     };
-    this.showToast(`تم ترتيب الأعمال: ${labels[val]}`);
+    const labelsEn = {
+      latest: 'Recently Deposited',
+      immersion: 'Longest & Deepest',
+      revered: 'Most Verified & Complete',
+      alphabetical: 'Alphabetical (A - Z)',
+    };
+    this.showToast(this.isEn() ? `Sorted by: ${labelsEn[val]}` : `تم ترتيب الأعمال: ${labelsAr[val]}`);
   }
 
   setExplorePage(p: number): void {
@@ -1525,16 +1795,17 @@ export class LibraryStateService {
   resetExploreFilters(): void {
     this.exploreSearchControl.setValue('');
     this.exploreCategory.set('all');
+    this.exploreLanguageScope.set('all');
     this.exploreFilterOriginal.set(true);
     this.exploreFilterTranslated.set(true);
     this.exploreFilterManuscripts.set(false);
     this.exploreFilterStatus.set('all');
-    this.exploreFilterReadingTime.set('medium');
+    this.exploreFilterReadingTime.set('all');
     this.exploreFilterLanguage.set('الكل');
     this.exploreFilterMood.set('all');
     this.exploreSortOrder.set('latest');
     this.explorePage.set(1);
-    this.showToast('تمت إعادة ضبط جميع فلاتر الخزانة');
+    this.showToast(this.isEn() ? 'All catalog filters have been reset' : 'تمت إعادة ضبط جميع فلاتر الخزانة');
   }
 
   toggleExploreMobileFilters(): void {
@@ -1553,7 +1824,9 @@ export class LibraryStateService {
 
     if (current.has(novel.id)) {
       current.delete(novel.id);
-      this.showToast('تمت إزالة الرواية من الألواح المحفوظة');
+      this.showToast(
+        this.isEn() ? 'Removed novel from saved tablets' : 'تمت إزالة الرواية من الألواح المحفوظة'
+      );
       if (user) {
         removeBookmarkFromFirestore(user.uid, novel.id, current.size).catch((err) => {
           console.warn('Bookmark removal warning:', err);
@@ -1561,7 +1834,9 @@ export class LibraryStateService {
       }
     } else {
       current.add(novel.id);
-      this.showToast('تم حفظ الرواية في ألواحك المفضلة بنجاح');
+      this.showToast(
+        this.isEn() ? 'Saved novel to your library shelf' : 'تم حفظ الرواية في ألواحك المفضلة بنجاح'
+      );
       if (user) {
         saveBookmarkToFirestore(user.uid, novel, current.size).catch((err) => {
           console.warn('Bookmark save warning:', err);
@@ -1571,23 +1846,23 @@ export class LibraryStateService {
         const text = novel.description || novel.title;
         const compressed = await compressToMtx(text, {
           title: novel.title,
-          author: novel.author || 'أروقة الخلود',
-          chapterTitle: 'المطلع التحريري',
+          author: novel.author || this.i18n.copy().site.brand,
+          chapterTitle: this.isEn() ? 'Opening Excerpt' : 'المطلع التحريري',
           chapterIndex: 1,
           createdAt: new Date().toISOString(),
         });
         await saveToCloudVault({
           id: novel.id,
           title: novel.title,
-          author: novel.author || 'أروقة الخلود',
-          chapterTitle: 'المطلع التحريري',
+          author: novel.author || this.i18n.copy().site.brand,
+          chapterTitle: this.isEn() ? 'Opening Excerpt' : 'المطلع التحريري',
           originalBytes: compressed.originalUtf8Bytes,
           compressedBytes: compressed.compressedBytes,
           savingsPercent: compressed.savingsPercent,
           b64Payload: '',
           checksum: compressed.checksum,
           crc32Checksum: compressed.crc32Checksum,
-          version: '2.2',
+          version: '2.5',
           createdAt: new Date().toISOString(),
         });
       } catch {
@@ -1635,10 +1910,14 @@ export class LibraryStateService {
       this.profileActiveTab.set('vault');
       this.vaultFilter.set('bookmarked');
       this.navigateToView('profile');
-      this.showToast('أنت الآن في قائمة مفضلاتك المحفوظة بخزانتك');
+      this.showToast(
+        this.isEn() ? 'Viewing your saved shelf in your sanctuary' : 'أنت الآن في قائمة مفضلاتك المحفوظة بخزانتك'
+      );
     } else {
       this.navigateToView('auth');
-      this.showToast('سجّل دخولك أو أنشئ حسابك للانتقال إلى خزانة مفضلاتك');
+      this.showToast(
+        this.isEn() ? 'Sign in or create an account to access your library shelf' : 'سجّل دخولك أو أنشئ حسابك للانتقال إلى خزانة مفضلاتك'
+      );
     }
   }
 
@@ -1648,7 +1927,9 @@ export class LibraryStateService {
       this.navigateToView('profile');
     } else {
       this.navigateToView('auth');
-      this.showToast('سجّل دخولك أو أنشئ حسابك للوصول إلى ديوانك وسادن الرواق');
+      this.showToast(
+        this.isEn() ? 'Sign in to access your personal sanctuary' : 'سجّل دخولك أو أنشئ حسابك للوصول إلى ديوانك وسادن الرواق'
+      );
     }
   }
 
@@ -1656,7 +1937,7 @@ export class LibraryStateService {
   async handleEmailLogin(): Promise<void> {
     const user = await this.authSession.loginWithEmailForm();
     if (user) {
-      this.showToast('تم تسجيل الدخول بنجاح، مرحباً بك في ديوانك الشخصي');
+      this.showToast(this.isEn() ? 'Signed in successfully' : 'تم تسجيل الدخول بنجاح، مرحباً بك في ديوانك الشخصي');
       this.navigateToView('profile');
     }
   }
@@ -1664,7 +1945,7 @@ export class LibraryStateService {
   async handleEmailRegister(): Promise<void> {
     const user = await this.authSession.registerWithEmailForm();
     if (user) {
-      this.showToast('تم إنشاء حسابك وتدشين ديوانك الشخصي بنجاح');
+      this.showToast(this.isEn() ? 'Account created successfully' : 'تم إنشاء حسابك وتدشين ديوانك الشخصي بنجاح');
       this.navigateToView('profile');
     }
   }
@@ -1672,14 +1953,18 @@ export class LibraryStateService {
   async handleGoogleLogin(): Promise<void> {
     const user = await this.authSession.loginWithGoogleProvider();
     if (user) {
-      this.showToast(`مرحباً بك ${user.displayName || 'في ديوانك القرائي'}`);
+      this.showToast(
+        this.isEn()
+          ? `Welcome ${user.displayName || 'to your reading sanctuary'}`
+          : `مرحباً بك ${user.displayName || 'في ديوانك القرائي'}`
+      );
       this.navigateToView('profile');
     }
   }
 
   async handleLogout(): Promise<void> {
     await this.authSession.logout();
-    this.showToast('تم تسجيل الخروج بنجاح من صرح أروقة الخلود');
+    this.showToast(this.isEn() ? 'Signed out cleanly' : 'تم تسجيل الخروج بنجاح من صرح أروقة الخلود');
     this.navigateToView('novels');
   }
 
@@ -1694,10 +1979,8 @@ export class LibraryStateService {
   copyQuote(text: string): void {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
       navigator.clipboard.writeText(text).catch(() => false);
-      this.showToast('تم نسخ الاقتباس إلى الحافظة بنجاح');
-    } else {
-      this.showToast('تم نسخ الاقتباس الأدبي المذهب');
     }
+    this.showToast(this.isEn() ? 'Quote copied to clipboard' : 'تم نسخ الاقتباس إلى الحافظة بنجاح');
   }
 
   // Modals & Drawers
@@ -1739,35 +2022,55 @@ export class LibraryStateService {
     this.isBookmarksOpen.set(false);
     this.isProfileOpen.set(false);
     this.isMobileNavOpen.set(false);
+    this.isSiteSettingsOpen.set(false);
   }
 
   switchCorridor(corridor: CorridorId): void {
     this.activeCorridor.set(corridor);
     this.returnToNovels();
-    const names: Record<CorridorId, string> = {
+    const namesAr: Record<CorridorId, string> = {
       novels: 'رواق الروايات (Crimson Noir)',
       epics: 'رواق الملاحم (Mythic Bronze)',
       wisdom: 'رواق الحكمة (Ivory Sanctuary)',
       heritage: 'رواق التراث (Manuscript Emerald)',
     };
-    this.showToast(`تم الانتقال إلى ${names[corridor]}`);
+    const namesEn: Record<CorridorId, string> = {
+      novels: 'Corridor of Novels (Crimson Noir)',
+      epics: 'Corridor of Epics (Mythic Bronze)',
+      wisdom: 'Corridor of Wisdom (Ivory Sanctuary)',
+      heritage: 'Corridor of Heritage (Manuscript Emerald)',
+    };
+    this.showToast(
+      this.isEn() ? `Switched to ${namesEn[corridor]}` : `تم الانتقال إلى ${namesAr[corridor]}`
+    );
   }
 
   setReaderFontSize(size: 'sm' | 'md' | 'lg'): void {
     this.readerFontSize.set(size);
-    const labels = { sm: 'دقيق', md: 'قياسي', lg: 'وافر' };
-    this.showToast(`تم تعيين خط القراءة: ${labels[size]}`);
+    const labelsAr = { sm: 'دقيق', md: 'قياسي', lg: 'وافر' };
+    const labelsEn = { sm: 'Compact', md: 'Standard', lg: 'Large' };
+    this.showToast(
+      this.isEn() ? `Reader size: ${labelsEn[size]}` : `تم تعيين خط القراءة: ${labelsAr[size]}`
+    );
   }
 
   setSortOrder(order: 'popular' | 'rating' | 'pages' | 'alphabetical'): void {
     this.activeSortOrder.set(order);
-    const labels = {
+    const labelsAr = {
       popular: 'الأكثر قراءة',
       rating: 'الأعلى نقاءً',
       pages: 'الأطول صفحات',
       alphabetical: 'الأبجدي',
     };
-    this.showToast(`تم ترتيب الأعمال بحسب: ${labels[order]}`);
+    const labelsEn = {
+      popular: 'Most Read',
+      rating: 'Highest Rated',
+      pages: 'Longest',
+      alphabetical: 'Alphabetical',
+    };
+    this.showToast(
+      this.isEn() ? `Sorted by: ${labelsEn[order]}` : `تم ترتيب الأعمال بحسب: ${labelsAr[order]}`
+    );
     this.isFilterOpen.set(false);
   }
 
@@ -1794,7 +2097,9 @@ export class LibraryStateService {
     } catch {
       // Ignore storage error
     }
-    this.showToast('تم تفريغ جميع الألواح المحفوظة');
+    this.showToast(
+      this.isEn() ? 'All saved tablets have been cleared' : 'تم تفريغ جميع الألواح المحفوظة'
+    );
   }
 
   applySearchTag(tag: string): void {
@@ -1806,29 +2111,40 @@ export class LibraryStateService {
   }
 
   toggleAuthorFollow(): void {
+    const novel = this.selectedNovel() || this.defaultEchoesSamarkand;
+    const authorName = novel.author || (this.isEn() ? 'the author' : 'الشيخ جلال الدين الموصلي');
     const current = this.isAuthorFollowed();
     this.isAuthorFollowed.set(!current);
     if (!current) {
-      this.showToast('تتابع الشيخ جلال الدين الموصلي حالياً');
+      this.showToast(
+        this.isEn() ? `Following ${authorName}` : `تتابع ${authorName} حالياً`
+      );
     } else {
-      this.showToast('تم إلغاء متابعة الكاتب');
+      this.showToast(this.isEn() ? 'Unfollowed author' : 'تم إلغاء متابعة الكاتب');
     }
   }
 
   private loadChapterContent(chapter: ChapterItem): void {
+    const chapLang: ChapterLanguage = chapter.language || this.selectedChapterLang();
+    if (this.selectedChapterLang() !== chapLang) {
+      this.selectedChapterLang.set(chapLang);
+    }
     this.activeReadingChapter.set(chapter);
     const novel = this.selectedNovel() || this.defaultEchoesSamarkand;
-    const content = getChapterProse(novel.title, chapter);
+    const content = getChapterProse(novel.title, chapter, novel);
     this.readerActiveChapterContent.set(content);
     this.activeChapterText.set(content.paragraphs.join('\n\n'));
 
-    const progressKey = `mtx_read_pct_${novel.id}_${chapter.id}`;
+    const chNum = chapter.chapterNumber ?? chapter.id;
+    const progressKey = this.getChapterProgressStorageKey(novel.id, chapLang, chNum);
     try {
       const savedPct = localStorage.getItem(progressKey);
       this.readerProgressPercent.set(savedPct ? Number(savedPct) : 0);
+      localStorage.setItem(this.getLastChapterStorageKey(novel.id, chapLang), String(chNum));
     } catch {
       this.readerProgressPercent.set(0);
     }
+    this.syncNovelChapterProgress(novel, chapLang);
   }
 
   openChapter(chapter: ChapterItem): void {
@@ -1858,7 +2174,7 @@ export class LibraryStateService {
         user.uid,
         novel.id,
         novel.title,
-        chapter.id,
+        chapter.chapterNumber ?? chapter.id,
         chapter.title
       )
         .then((count) => {
@@ -1877,7 +2193,7 @@ export class LibraryStateService {
         .catch(() => undefined);
     }
 
-    this.showToast(`قراءة: ${chapter.title}`);
+    this.showToast(this.isEn() ? `Reading: ${chapter.title}` : `قراءة: ${chapter.title}`);
   }
 
   closeChapterReader(): void {
@@ -1898,22 +2214,30 @@ export class LibraryStateService {
   nextChapter(): void {
     const current = this.activeReadingChapter();
     if (!current) return;
-    const next = this.chapters.find((c) => c.id === current.id + 1);
+    const currentNum = current.chapterNumber ?? current.id;
+    const pool = this.availableChaptersForNovel();
+    const next = pool.find((c) => (c.chapterNumber ?? c.id) === currentNum + 1);
     if (next) {
       this.openChapter(next);
     } else {
-      this.showToast('بلغت الفصل الأخير من هذا السفر');
+      this.showToast(
+        this.isEn() ? 'You have reached the final available chapter.' : 'بلغت الفصل الأخير المتاح من هذا السفر'
+      );
     }
   }
 
   prevChapter(): void {
     const current = this.activeReadingChapter();
     if (!current) return;
-    const prev = this.chapters.find((c) => c.id === current.id - 1);
+    const currentNum = current.chapterNumber ?? current.id;
+    const pool = this.availableChaptersForNovel();
+    const prev = pool.find((c) => (c.chapterNumber ?? c.id) === currentNum - 1);
     if (prev) {
       this.openChapter(prev);
     } else {
-      this.showToast('أنت في مطلع الفصل الأول');
+      this.showToast(
+        this.isEn() ? 'You are already at the opening chapter.' : 'أنت في مطلع الفصل الأول'
+      );
     }
   }
 
@@ -1933,8 +2257,15 @@ export class LibraryStateService {
         const novel = this.selectedNovel() || this.defaultEchoesSamarkand;
         const chap = this.activeReadingChapter();
         if (novel && chap) {
+          const lang: ChapterLanguage = chap.language || this.selectedChapterLang();
+          const chNum = chap.chapterNumber ?? chap.id;
           try {
-            localStorage.setItem(`mtx_read_pct_${novel.id}_${chap.id}`, pct.toString());
+            localStorage.setItem(
+              this.getChapterProgressStorageKey(novel.id, lang, chNum),
+              pct.toString()
+            );
+            localStorage.setItem(this.getLastChapterStorageKey(novel.id, lang), String(chNum));
+            this.syncNovelChapterProgress(novel, lang);
           } catch {
             // Ignore storage errors
           }
@@ -1958,19 +2289,27 @@ export class LibraryStateService {
   setReaderTheme(theme: ReaderThemeId): void {
     this.readerTheme.set(theme);
     this.saveCurrentReaderSettings();
-    const names: Record<ReaderThemeId, string> = {
+    const namesAr: Record<ReaderThemeId, string> = {
       andalusian: 'السواد الأندلسي',
       parchment: 'رق البردي',
       ivory: 'العاجي',
       daylight: 'النهاري',
     };
-    this.showToast(`سِمة القراءة: ${names[theme]}`);
+    const namesEn: Record<ReaderThemeId, string> = {
+      andalusian: 'Andalusian Noir',
+      parchment: 'Ancient Parchment',
+      ivory: 'Warm Ivory',
+      daylight: 'Crisp Daylight',
+    };
+    this.showToast(
+      this.isEn() ? `Reader theme: ${namesEn[theme]}` : `سِمة القراءة: ${namesAr[theme]}`
+    );
   }
 
   setReaderFontFamily(font: ReaderFontFamilyId): void {
     this.readerFontFamily.set(font);
     this.saveCurrentReaderSettings();
-    const names: Record<ReaderFontFamilyId, string> = {
+    const namesAr: Record<ReaderFontFamilyId, string> = {
       amiri: 'الخط الأميري (نسخ كلاسيكي)',
       naskh: 'خط النسخ (عصري وواضح)',
       aref: 'خط الرقعة (أصيل وفني)',
@@ -1979,7 +2318,18 @@ export class LibraryStateService {
       kufi: 'خط الكوفي (رصانة وهيبة)',
       alexandria: 'خط الإسكندرية (حداثي رقمي)',
     };
-    this.showToast(`نوع الخط: ${names[font] || font}`);
+    const namesEn: Record<ReaderFontFamilyId, string> = {
+      amiri: 'Amiri (Classical Serif)',
+      naskh: 'Noto Naskh (Editorial)',
+      aref: 'Aref Ruqaa (Calligraphic)',
+      almarai: 'Almarai (Geometric)',
+      tajawal: 'Tajawal (Modern Sans)',
+      kufi: 'Noto Kufi (Display)',
+      alexandria: 'Alexandria (Clean Sans)',
+    };
+    this.showToast(
+      this.isEn() ? `Typeface: ${namesEn[font] || font}` : `نوع الخط: ${namesAr[font] || font}`
+    );
   }
 
   setReaderFontSizePx(px: number): void {
@@ -1990,60 +2340,94 @@ export class LibraryStateService {
 
   adjustReaderFontSize(delta: number): void {
     this.setReaderFontSizePx(this.readerFontSizePx() + delta);
-    this.showToast(`حجم الخط: ${this.readerFontSizePx()} نقطة`);
+    this.showToast(
+      this.isEn()
+        ? `Font size: ${this.readerFontSizePx()}pt`
+        : `حجم الخط: ${this.readerFontSizePx()} نقطة`
+    );
   }
 
   setReaderLineHeight(lh: number): void {
     this.readerLineHeight.set(lh);
     this.saveCurrentReaderSettings();
-    const labels: Record<number, string> = {
+    const labelsAr: Record<number, string> = {
       1.75: 'ضيق (١.٧٥)',
       2.1: 'متوازن (٢.١)',
       2.4: 'رحب (٢.٤)',
       2.8: 'فسيح (٢.٨)',
     };
-    this.showToast(`ارتفاع السطر: ${labels[lh] || lh}`);
+    const labelsEn: Record<number, string> = {
+      1.75: 'Compact (1.75)',
+      2.1: 'Balanced (2.1)',
+      2.4: 'Relaxed (2.4)',
+      2.8: 'Generous (2.8)',
+    };
+    this.showToast(
+      this.isEn()
+        ? `Line spacing: ${labelsEn[lh] || lh}`
+        : `ارتفاع السطر: ${labelsAr[lh] || lh}`
+    );
   }
 
   setReaderMeasure(measure: 'compact' | 'balanced' | 'wide' | 'fluid'): void {
     this.readerMeasure.set(measure);
     this.saveCurrentReaderSettings();
-    const names = {
+    const namesAr = {
       compact: 'مركّز (ضيق)',
       balanced: 'معياري (متوازن)',
       wide: 'عريض (رحب)',
       fluid: 'ملء العرض (تلقائي)',
     };
-    this.showToast(`عرض المسطرة: ${names[measure]}`);
+    const namesEn = {
+      compact: 'Compact',
+      balanced: 'Balanced',
+      wide: 'Wide',
+      fluid: 'Full Width',
+    };
+    this.showToast(
+      this.isEn() ? `Column width: ${namesEn[measure]}` : `عرض المسطرة: ${namesAr[measure]}`
+    );
   }
 
   setReaderTextAlign(align: 'justify' | 'right'): void {
     this.readerTextAlign.set(align);
     this.saveCurrentReaderSettings();
-    this.showToast(`محاذاة النص: ${align === 'justify' ? 'مضبوط بكشيدة' : 'محاذاة لليمين'}`);
+    this.showToast(
+      this.isEn()
+        ? `Alignment: ${align === 'justify' ? 'Justified' : 'Natural Edge'}`
+        : `محاذاة النص: ${align === 'justify' ? 'مضبوط بكشيدة' : 'محاذاة طبيعية للحافة'}`
+    );
   }
 
   setReaderParagraphSpacing(spacing: 'compact' | 'normal' | 'relaxed'): void {
     this.readerParagraphSpacing.set(spacing);
     this.saveCurrentReaderSettings();
-    const names = { compact: 'متقارب', normal: 'متوازن', relaxed: 'متباعد' };
-    this.showToast(`تباعد الفقرات: ${names[spacing]}`);
+    const namesAr = { compact: 'متقارب', normal: 'متوازن', relaxed: 'متباعد' };
+    const namesEn = { compact: 'Compact', normal: 'Normal', relaxed: 'Relaxed' };
+    this.showToast(
+      this.isEn()
+        ? `Paragraph spacing: ${namesEn[spacing]}`
+        : `تباعد الفقرات: ${namesAr[spacing]}`
+    );
   }
 
   setReaderPadding(padding: 'compact' | 'balanced' | 'generous'): void {
     this.readerPadding.set(padding);
     this.saveCurrentReaderSettings();
-    const names = { compact: 'هوامش ضيقة', balanced: 'هوامش متوازنة', generous: 'هوامش رحبة' };
-    this.showToast(`الهوامش الجانبية: ${names[padding]}`);
+    const namesAr = { compact: 'هوامش ضيقة', balanced: 'هوامش متوازنة', generous: 'هوامش رحبة' };
+    const namesEn = { compact: 'Compact', balanced: 'Balanced', generous: 'Generous' };
+    this.showToast(
+      this.isEn() ? `Side margins: ${namesEn[padding]}` : `الهوامش الجانبية: ${namesAr[padding]}`
+    );
   }
 
   toggleAutoScroll(): void {
     if (this.readerAutoScrollActive()) {
       this.stopAutoScroll();
-      this.showToast('تم إيقاف التمرير التلقائي');
+      this.showToast(this.isEn() ? 'Auto-scroll paused' : 'تم إيقاف التمرير التلقائي');
     } else {
       this.startAutoScroll();
-      this.showToast('بدأ التمرير التلقائي الهادئ');
+      this.showToast(this.isEn() ? 'Calm auto-scroll started' : 'بدأ التمرير التلقائي الهادئ');
     }
   }
 
@@ -2059,7 +2443,7 @@ export class LibraryStateService {
       if (container) {
         if (container.scrollTop + container.clientHeight >= container.scrollHeight - 5) {
           this.stopAutoScroll();
-          this.showToast('بلغت نهاية الفصل');
+          this.showToast(this.isEn() ? 'End of chapter reached' : 'بلغت نهاية الفصل');
           return;
         }
         container.scrollTop += stepPx;
@@ -2080,8 +2464,11 @@ export class LibraryStateService {
     if (this.readerAutoScrollActive()) {
       this.startAutoScroll();
     }
-    const labels = { 1: 'هادئ (١x)', 2: 'متوسط (٢x)', 3: 'سريع (٣x)' };
-    this.showToast(`سرعة التمرير: ${labels[speed]}`);
+    const labelsAr = { 1: 'هادئ (١x)', 2: 'متوسط (٢x)', 3: 'سريع (٣x)' };
+    const labelsEn = { 1: 'Calm (1x)', 2: 'Moderate (2x)', 3: 'Brisk (3x)' };
+    this.showToast(
+      this.isEn() ? `Scroll speed: ${labelsEn[speed]}` : `سرعة التمرير: ${labelsAr[speed]}`
+    );
   }
 
   toggleFullscreen(): void {
@@ -2090,17 +2477,17 @@ export class LibraryStateService {
         .requestFullscreen()
         .then(() => {
           this.readerIsFullscreen.set(true);
-          this.showToast('وضع الشاشة الكاملة مفعّل');
+          this.showToast(this.isEn() ? 'Fullscreen enabled' : 'وضع الشاشة الكاملة مفعّل');
         })
         .catch(() => {
-          this.showToast('تعذر تفعيل الشاشة الكاملة');
+          this.showToast(this.isEn() ? 'Could not enter fullscreen' : 'تعذر تفعيل الشاشة الكاملة');
         });
     } else {
       document
         .exitFullscreen()
         .then(() => {
           this.readerIsFullscreen.set(false);
-          this.showToast('الخروج من الشاشة الكاملة');
+          this.showToast(this.isEn() ? 'Exited fullscreen' : 'الخروج من الشاشة الكاملة');
         })
         .catch(() => false);
     }
@@ -2136,26 +2523,36 @@ export class LibraryStateService {
 
     const content = this.readerActiveChapterContent();
     const excerpt = content?.paragraphs[0]?.slice(0, 75) + '...' || chap.title;
+    const chapLang: ChapterLanguage = chap.language || this.selectedChapterLang();
     const newBm: ReaderBookmarkItem = {
       id: 'bm_' + Date.now(),
-      chapterId: chap.id,
+      chapterId: chap.chapterNumber ?? chap.id,
       chapterTitle: chap.title,
+      language: chapLang,
       excerpt,
       percent: this.readerProgressPercent(),
-      date: new Date().toLocaleDateString('ar-SA'),
+      date: new Date().toLocaleDateString(this.isEn() ? 'en-US' : 'ar-SA'),
     };
 
     this.readerBookmarks.update((list) => [newBm, ...list]);
-    this.showToast(`حُفظت علامة مرجعية عند ${this.readerProgressPercent()}% من الفصل`);
+    this.showToast(
+      this.isEn()
+        ? `Bookmark saved at ${this.readerProgressPercent()}%`
+        : `حُفظت علامة مرجعية عند ${this.readerProgressPercent()}% من الفصل`
+    );
   }
 
   removeBookmark(bmId: string): void {
     this.readerBookmarks.update((list) => list.filter((b) => b.id !== bmId));
-    this.showToast('تم حذف العلامة المرجعية');
+    this.showToast(this.isEn() ? 'Bookmark removed' : 'تم حذف العلامة المرجعية');
   }
 
-  jumpToBookmark(bm: { chapterId: number; percent: number }): void {
-    const target = this.chapters.find((c) => c.id === bm.chapterId);
+  jumpToBookmark(bm: { chapterId: number; percent: number; language?: ChapterLanguage }): void {
+    if (bm.language && bm.language !== this.selectedChapterLang()) {
+      this.selectedChapterLang.set(bm.language);
+    }
+    const pool = this.availableChaptersForNovel();
+    const target = pool.find((c) => (c.chapterNumber ?? c.id) === bm.chapterId) || pool[0];
     if (target) {
       this.openChapter(target);
       this.readerBookmarksDrawerOpen.set(false);
@@ -2179,7 +2576,7 @@ export class LibraryStateService {
     this.readerParagraphSpacing.set('normal');
     this.readerPadding.set('balanced');
     this.saveCurrentReaderSettings();
-    this.showToast('تمت استعادة الإعدادات الافتراضية للقراءة');
+    this.showToast(this.isEn() ? 'Reader settings reset to defaults' : 'تمت استعادة الإعدادات الافتراضية للقراءة');
   }
 
   saveCurrentReaderSettings(): void {
@@ -2220,8 +2617,22 @@ export class LibraryStateService {
   }
 
   startReadingNovel(novel: NovelCard): void {
-    this.selectedNovel.set(novel);
-    const targetChap = this.chapters.find((c) => c.status === 'current') || this.chapters[0];
+    const resolved = this.resolveCanonicalNovel(novel);
+    this.selectedNovel.set(resolved);
+    const scope = this.exploreLanguageScope();
+    const preferred: ChapterLanguage | undefined =
+      scope === 'non-ar' ? 'en' : scope === 'ar' ? 'ar' : this.i18n.lang();
+    const chapLang = getDefaultChapterLanguageForNovel(resolved, preferred);
+    this.selectedChapterLang.set(chapLang);
+    const pool = getChaptersForNovel(resolved.id, chapLang, resolved);
+    const targetChap = pool.find((c) => c.status === 'current') || pool[0];
+    if (!targetChap) {
+      this.openNovelDetails(resolved);
+      this.showToast(
+        this.isEn() ? 'No chapters available in this language yet.' : 'لا توجد فصول متوفرة بهذه اللغة حالياً.'
+      );
+      return;
+    }
     this.openChapter(targetChap);
   }
 
@@ -2241,8 +2652,8 @@ export class LibraryStateService {
       const rawText = this.activeChapterText() || novel.description || novel.quote || novel.title;
       const compression = await compressToMtx(rawText, {
         title: novel.title,
-        author: novel.author || 'أروقة الخلود',
-        chapterTitle: 'الفصل المحقق',
+        author: novel.author || this.i18n.copy().site.brand,
+        chapterTitle: this.isEn() ? 'Verified Chapter' : 'الفصل المحقق',
         chapterIndex: 1,
         genre: novel.genre,
         createdAt: new Date().toISOString(),
@@ -2266,23 +2677,35 @@ export class LibraryStateService {
       const anchor = document.createElement('a');
       anchor.href = url;
       const safeTitle = novel.title.replace(/[\\/?%*:|"<>]/g, '_').trim();
-      anchor.download = `${safeTitle}_محقق.mtx`;
+      anchor.download = this.isEn() ? `${safeTitle}_verified.mtx` : `${safeTitle}_محقق.mtx`;
       document.body.appendChild(anchor);
       anchor.click();
       document.body.removeChild(anchor);
       URL.revokeObjectURL(url);
 
-      this.showToast(`تم تنزيل «${novel.title}» محققة بصيغة MTX v2.2 وحفظها في الذاكرة دون اتصال`);
+      this.showToast(
+        this.isEn()
+          ? `Downloaded "${novel.title}" as verified MTX v2.5 for offline reading`
+          : `تم تنزيل «${novel.title}» محققة بصيغة MTX v2.5 وحفظها في الذاكرة دون اتصال`
+      );
     } catch (err) {
       console.error('Download offline error:', err);
-      this.showToast('حدث خطأ أثناء تشفير المخطوطة وتنزيلها');
+      this.showToast(
+        this.isEn()
+          ? 'Could not encode and download the manuscript'
+          : 'حدث خطأ أثناء تشفير المخطوطة وتنزيلها'
+      );
     }
   }
 
   async shareBook(): Promise<void> {
     const novel = this.selectedNovel();
-    const shareTitle = novel ? novel.title : 'أروقة الخلود';
-    const shareText = novel ? `اقرأ سفر «${novel.title}» في صرح أروقة الخلود:` : 'صرح أروقة الخلود للسرد الأدبي';
+    const shareTitle = novel ? novel.title : this.i18n.copy().site.brand;
+    const shareText = novel
+      ? this.isEn()
+        ? `Read "${novel.title}" on Eternity Corridors:`
+        : `اقرأ سفر «${novel.title}» في صرح أروقة الخلود:`
+      : this.i18n.copy().site.brand;
     const shareUrl = typeof window !== 'undefined' ? window.location.href : '';
 
     if (typeof navigator !== 'undefined' && navigator.share) {
@@ -2292,7 +2715,7 @@ export class LibraryStateService {
           text: shareText,
           url: shareUrl,
         });
-        this.showToast('تمت مشاركة المخطوطة بنجاح');
+        this.showToast(this.isEn() ? 'Work link shared' : 'تمت مشاركة المخطوطة بنجاح');
         return;
       } catch {
         // Fallback to clipboard
@@ -2302,12 +2725,12 @@ export class LibraryStateService {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
       try {
         await navigator.clipboard.writeText(shareUrl);
-        this.showToast('تم نسخ رابط الرواية المباشر لمشاركتها');
+        this.showToast(this.isEn() ? 'Link copied to clipboard' : 'تم نسخ رابط الرواية المباشر لمشاركتها');
       } catch {
-        this.showToast('تم نسخ رابط الرواية لمشاركتها مع القرّاء');
+        this.showToast(this.isEn() ? 'Link ready to share' : 'تم نسخ رابط الرواية لمشاركتها مع القرّاء');
       }
     } else {
-      this.showToast('تم نسخ رابط الرواية لمشاركتها مع القرّاء');
+      this.showToast(this.isEn() ? 'Link ready to share' : 'تم نسخ رابط الرواية لمشاركتها مع القرّاء');
     }
   }
 
@@ -2319,18 +2742,53 @@ export class LibraryStateService {
       authorName: this.authSession.displayName(),
     });
     this.isPublishModalOpen.set(true);
-    this.showToast(`تم فتح مسودة «${work.title}» في محرر النشر`);
+    this.showToast(
+      this.isEn()
+        ? `Opened draft "${work.title}" in the publishing editor`
+        : `تم فتح مسودة «${work.title}» في محرر النشر`
+    );
   }
 
   sponsorNewSalon(): void {
-    const salonNames = [
-      { title: 'ملتقى حكمة قرطبة وفلسفة ابن رشد', desc: 'مدارسة مخطوطات الفلسفة والتنوير الأندلسي — حلقة نشطة' },
-      { title: 'ديوان ملاحم الرماد وتدوين الأساطير', desc: 'حلقة تحقيق نصوص البطولات والملاحم الشرقية القديمة' },
-      { title: 'مجلس نقد السرد والرمزية المعاصرة', desc: 'جلسات تحليل التراكيب السردية والبلاغية الرفيعة' },
-      { title: 'ندوة خزائن التراث والمخطوط المرقوم', desc: 'استقراء الوثائق التاريخية والنصوص المحققة الأصيلة' },
-    ];
+    const salonNames = this.isEn()
+      ? [
+          {
+            title: 'Cordoba Wisdom & Averroes Circle',
+            desc: 'Studying Andalusian philosophy manuscripts — Active Salon',
+          },
+          {
+            title: 'Chronicle of Ashes & Epics Circle',
+            desc: 'Philological review of heroic and mythic literature',
+          },
+          {
+            title: 'Contemporary Narrative & Symbolism Council',
+            desc: 'Close readings of modern rhetorical prose',
+          },
+          {
+            title: 'Heritage Folios & Verified Manuscripts Seminar',
+            desc: 'Inspecting historical folios and curated texts',
+          },
+        ]
+      : [
+          {
+            title: 'ملتقى حكمة قرطبة وفلسفة ابن رشد',
+            desc: 'مدارسة مخطوطات الفلسفة والتنوير الأندلسي — حلقة نشطة',
+          },
+          {
+            title: 'ديوان ملاحم الرماد وتدوين الأساطير',
+            desc: 'حلقة تحقيق نصوص البطولات والملاحم الشرقية القديمة',
+          },
+          {
+            title: 'مجلس نقد السرد والرمزية المعاصرة',
+            desc: 'جلسات تحليل التراكيب السردية والبلاغية الرفيعة',
+          },
+          {
+            title: 'ندوة خزائن التراث والمخطوط المرقوم',
+            desc: 'استقراء الوثائق التاريخية والنصوص المحققة الأصيلة',
+          },
+        ];
     const count = this.literarySalons().length;
-    const nextTemplate = salonNames[(count - 2) % salonNames.length];
+    const nextTemplate = salonNames[Math.abs(count - 2) % salonNames.length];
     const newSalon: LiterarySalon = {
       id: `salon_${Date.now()}`,
       title: nextTemplate.title,
@@ -2339,7 +2797,11 @@ export class LibraryStateService {
       isActive: true,
     };
     this.literarySalons.update((list) => [...list, newSalon]);
-    this.showToast(`تم تدشين «${newSalon.title}» ورعايته بنجاح`);
+    this.showToast(
+      this.isEn()
+        ? `Sponsored "${newSalon.title}" successfully`
+        : `تم تدشين «${newSalon.title}» ورعايته بنجاح`
+    );
   }
 
   scrollToSection(id: string): void {
@@ -2353,8 +2815,14 @@ export class LibraryStateService {
     const el = document.getElementById(containerId);
     if (!el) return;
     const distance = Math.max(280, Math.round(el.clientWidth * 0.72));
-    const amount = direction === 'next' ? -distance : distance;
-    el.scrollBy({ left: amount, behavior: 'smooth' });
+    const sign = this.i18n.isRtl()
+      ? direction === 'next'
+        ? -1
+        : 1
+      : direction === 'next'
+        ? 1
+        : -1;
+    el.scrollBy({ left: sign * distance, behavior: 'smooth' });
   }
 
   // Soundscape Synth Engine
@@ -2365,10 +2833,14 @@ export class LibraryStateService {
   toggleSoundscape(): void {
     if (this.soundscapeActive()) {
       this.stopSoundscape();
-      this.showToast('تم إيقاف المقطع الصوتي الافتتاحي');
+      this.showToast(this.isEn() ? 'Ambient soundscape muted' : 'تم إيقاف المقطع الصوتي الافتتاحي');
     } else {
       this.startSoundscape();
-      this.showToast('يتم الآن عزف المقطع الصوتي التحريري المهيب (Soundscape)');
+      this.showToast(
+        this.isEn()
+          ? 'Playing ambient soundscape'
+          : 'يتم الآن عزف المقطع الصوتي التحريري المهيب (Soundscape)'
+      );
     }
   }
 
@@ -2387,7 +2859,7 @@ export class LibraryStateService {
       if (this.audioCtx.state === 'suspended') {
         this.audioCtx.resume();
       }
-      this.stopSoundscape();
+      this.stopSoundscape(true);
 
       const masterGain = this.audioCtx.createGain();
       masterGain.gain.setValueAtTime(0.01, this.audioCtx.currentTime);
@@ -2416,7 +2888,30 @@ export class LibraryStateService {
     }
   }
 
-  private stopSoundscape(): void {
+  private stopSoundscape(immediate = false): void {
+    if (this.soundscapeStopTimer) {
+      clearTimeout(this.soundscapeStopTimer);
+      this.soundscapeStopTimer = null;
+    }
+
+    const cleanupOscillators = () => {
+      this.soundscapeOscillators.forEach((osc) => {
+        try {
+          osc.stop();
+          osc.disconnect();
+        } catch {
+          // Safe disconnect
+        }
+      });
+      this.soundscapeOscillators = [];
+    };
+
+    if (immediate) {
+      cleanupOscillators();
+      this.soundscapeActive.set(false);
+      return;
+    }
+
     if (this.soundscapeGain && this.audioCtx) {
       try {
         this.soundscapeGain.gain.setValueAtTime(
@@ -2428,16 +2923,9 @@ export class LibraryStateService {
         // Safe fallback
       }
     }
-    setTimeout(() => {
-      this.soundscapeOscillators.forEach((osc) => {
-        try {
-          osc.stop();
-          osc.disconnect();
-        } catch {
-          // Safe disconnect
-        }
-      });
-      this.soundscapeOscillators = [];
+    this.soundscapeStopTimer = setTimeout(() => {
+      cleanupOscillators();
+      this.soundscapeStopTimer = null;
     }, 1000);
     this.soundscapeActive.set(false);
   }
@@ -2445,12 +2933,20 @@ export class LibraryStateService {
   openPublishModal(): void {
     const user = this.authSession.currentUser();
     if (!user) {
-      this.showToast('يرجى تسجيل الدخول أولاً قبل التقديم أو النشر');
+      this.showToast(
+        this.isEn()
+          ? 'Please sign in first before applying or publishing'
+          : 'يرجى تسجيل الدخول أولاً قبل التقديم أو النشر'
+      );
       this.navigateToView('auth');
       return;
     }
     if (!this.accountService.ownWriterStatus().canPublish) {
-      this.showToast('النشر متاح فقط للحسابات الحاصلة على صلاحية كاتب معتمد. قدّم طلبك من إعدادات الحساب.');
+      this.showToast(
+        this.isEn()
+          ? 'Publishing requires verified author approval. Apply via Account Settings.'
+          : 'النشر متاح فقط للحسابات الحاصلة على صلاحية كاتب معتمد. قدّم طلبك من إعدادات الحساب.'
+      );
       this.accountService.activeSettingsSection.set('writer');
       this.accountService.isSettingsOpen.set(true);
       this.navigateToOwnProfile();
@@ -2482,6 +2978,8 @@ export class LibraryStateService {
       authorId: rec.authorId,
       genre: rec.genre,
       categoryGroup: rec.categoryGroup,
+      originLanguage: rec.originLanguage,
+      languageCode: rec.languageCode,
       coverUrl: rec.coverUrl || '/images/writers_sanctuary_bg.jpg',
       coverAlt: rec.title,
       description: rec.description,
@@ -2495,17 +2993,26 @@ export class LibraryStateService {
   async submitPublish(): Promise<void> {
     const user = this.authSession.currentUser();
     if (!user || !this.accountService.ownWriterStatus().canPublish) {
-      this.showToast('ليست لديك صلاحية نشر معتمدة في قاعدة البيانات.');
+      this.showToast(
+        this.isEn()
+          ? 'Verified author permissions are required.'
+          : 'ليست لديك صلاحية نشر معتمدة في قاعدة البيانات.'
+      );
       return;
     }
 
     const val = this.publishForm.getRawValue();
     if (!val.title.trim() || !val.synopsis.trim()) {
-      this.showToast('يرجى كتابة عنوان المصنف وملخصه الأدبي');
+      this.showToast(
+        this.isEn()
+          ? 'Please enter the work title and synopsis'
+          : 'يرجى كتابة عنوان المصنف وملخصه الأدبي'
+      );
       return;
     }
 
     const now = new Date().toISOString();
+    const isEnglishOrigin = val.originLanguage === 'الإنجليزية' || val.originLanguage === 'English';
     const record: PublishedNovelRecord = {
       id: 'usr-' + Date.now(),
       title: val.title.trim(),
@@ -2513,6 +3020,8 @@ export class LibraryStateService {
       authorName: val.authorName.trim() || this.authSession.displayName(),
       genre: val.genreLabel || 'رواية أدبية معاصرة',
       categoryGroup: val.categoryGroup || 'novels',
+      originLanguage: val.originLanguage || 'عربي أصيل',
+      languageCode: isEnglishOrigin ? 'en' : 'ar',
       coverUrl: val.coverUrl.trim() || '/images/writers_sanctuary_bg.jpg',
       description: val.synopsis.trim(),
       readingHours: val.readingHours || 4,
@@ -2524,7 +3033,11 @@ export class LibraryStateService {
     try {
       await publishNovelToFirestore(record);
     } catch {
-      this.showToast('تعذر حفظ العمل في قاعدة البيانات. تحقق من صلاحيات الكاتب.');
+      this.showToast(
+        this.isEn()
+          ? 'Could not publish work. Please verify writer permissions.'
+          : 'تعذر حفظ العمل في قاعدة البيانات. تحقق من صلاحيات الكاتب.'
+      );
       return;
     }
 
@@ -2535,6 +3048,8 @@ export class LibraryStateService {
       authorId: record.authorId,
       genre: record.genre,
       categoryGroup: record.categoryGroup,
+      originLanguage: record.originLanguage,
+      languageCode: record.languageCode,
       description: record.description,
       coverUrl: record.coverUrl,
       coverAlt: record.title,
@@ -2550,7 +3065,7 @@ export class LibraryStateService {
     this.publishedSuccessSpec.set({
       book: newBook,
       archiveCode: 'MTX-DEP-' + Math.floor(100 + Math.random() * 900),
-      depositDate: new Date().toLocaleDateString('ar-SA'),
+      depositDate: new Date().toLocaleDateString(this.isEn() ? 'en-US' : 'ar-SA'),
     });
     this.isPublishModalOpen.set(false);
     this.publishForm.reset({
@@ -2561,7 +3076,11 @@ export class LibraryStateService {
       readingHours: 5,
       originLanguage: 'عربي أصيل',
     });
-    this.showToast('تم إيداع المصنف الأدبي بنجاح واعتماده في خزائن الصرح');
+    this.showToast(
+      this.isEn()
+        ? 'Your work has been deposited and published cleanly!'
+        : 'تم إيداع المصنف الأدبي بنجاح واعتماده في خزائن الصرح'
+    );
   }
 
   openIntegrityDoc(): void {
@@ -2581,7 +3100,16 @@ export class LibraryStateService {
   }
 
   startPureReading(): void {
-    const targetChap = this.chapters.find((c) => c.status === 'current') || this.chapters[0];
+    const pool = this.availableChaptersForNovel();
+    const targetChap = pool.find((c) => c.status === 'current') || pool[0];
+    if (!targetChap) {
+      this.showToast(
+        this.isEn()
+          ? 'No chapters are available in this language yet.'
+          : 'لا توجد فصول متوفرة بهذه اللغة حالياً لهذا العمل.'
+      );
+      return;
+    }
     this.openChapter(targetChap);
   }
 

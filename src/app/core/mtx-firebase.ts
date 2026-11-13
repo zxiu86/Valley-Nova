@@ -128,7 +128,9 @@ const RESERVED_USERNAMES = new Set([
   'author',
 ]);
 
-const DESIGNATED_ADMIN_EMAILS = new Set(['alsaid66900@gmail.com', 'zly30257@gmail.com']);
+export const ADMIN_EXCLUSIVE_USERNAME = 'zid';
+
+const DESIGNATED_ADMIN_EMAILS = new Set(['zly30257@gmail.com']);
 
 let appInstance: FirebaseApp | null = null;
 let dbInstance: Firestore | null = null;
@@ -160,6 +162,12 @@ export function getFirebaseAuth(): Auth {
     authInstance.languageCode = 'ar';
   }
   return authInstance;
+}
+
+export function setFirebaseAuthLanguage(lang: 'ar' | 'en'): void {
+  if (authInstance) {
+    authInstance.languageCode = lang;
+  }
 }
 
 export function getFirebaseStorage(): FirebaseStorage {
@@ -320,7 +328,10 @@ export function normalizeUsername(raw: string): string {
   return raw.trim().replace(/^@+/, '').toLowerCase();
 }
 
-export function validateUsernameFormat(raw: string): {
+export function validateUsernameFormat(
+  raw: string,
+  options?: { isAdmin?: boolean }
+): {
   valid: boolean;
   normalized: string;
   reserved?: boolean;
@@ -330,18 +341,29 @@ export function validateUsernameFormat(raw: string): {
   if (!normalized) {
     return { valid: false, normalized, reason: 'يرجى كتابة اسم مستخدم.' };
   }
-  if (normalized.length < 3 || normalized.length > 24) {
-    return {
-      valid: false,
-      normalized,
-      reason: 'يجب أن يتراوح طول اسم المستخدم بين ٣ و٢٤ حرفاً.',
-    };
-  }
   if (!/^[a-z0-9_]+$/.test(normalized)) {
     return {
       valid: false,
       normalized,
       reason: 'يُسمح فقط بالأحرف اللاتينية (a-z) والأرقام والشرطة السفلية (_).',
+    };
+  }
+  if (normalized === ADMIN_EXCLUSIVE_USERNAME) {
+    if (options?.isAdmin) {
+      return { valid: true, normalized };
+    }
+    return {
+      valid: false,
+      normalized,
+      reserved: true,
+      reason: 'اسم المستخدم @zid محجوز حصرياً للإدارة الرسمية ولا يمكن استخدامه.',
+    };
+  }
+  if (normalized.length < 4 || normalized.length > 24) {
+    return {
+      valid: false,
+      normalized,
+      reason: 'يجب أن يتراوح طول اسم المستخدم بين ٤ و٢٤ حرفاً.',
     };
   }
   if (RESERVED_USERNAMES.has(normalized)) {
@@ -358,9 +380,10 @@ export function validateUsernameFormat(raw: string): {
 export async function checkUsernameAvailability(
   rawUsername: string,
   currentUid?: string,
-  currentSavedUsername?: string
+  currentSavedUsername?: string,
+  isAdmin = false
 ): Promise<UsernameCheckResult> {
-  const validation = validateUsernameFormat(rawUsername);
+  const validation = validateUsernameFormat(rawUsername, { isAdmin });
   if (!validation.normalized) {
     return {
       status: 'idle',
@@ -421,7 +444,7 @@ export async function checkUsernameAvailability(
 
     const base = validation.normalized.slice(0, 20);
     const candidateExamples = [`${base}5`, `${base}_5`, `${base}2`].filter(
-      (s) => s.length <= 24 && !RESERVED_USERNAMES.has(s)
+      (s) => s.length >= 4 && s.length <= 24 && !RESERVED_USERNAMES.has(s) && s !== ADMIN_EXCLUSIVE_USERNAME
     );
     const suggestions: string[] = [];
     for (const candidate of candidateExamples) {
@@ -458,7 +481,10 @@ export async function resolveUsernameToUid(rawUsername: string): Promise<{
   redirectedTo?: string;
 }> {
   const normalized = normalizeUsername(rawUsername);
-  if (!normalized || !/^[a-z0-9_]{3,24}$/.test(normalized)) {
+  if (
+    !normalized ||
+    (normalized !== ADMIN_EXCLUSIVE_USERNAME && !/^[a-z0-9_]{4,24}$/.test(normalized))
+  ) {
     return { uid: null };
   }
   const db = getDb();
@@ -751,8 +777,15 @@ export async function saveAccountProfileChanges(
   const nextRaw = updates.username.trim();
   let nextNorm = prevNorm;
 
+  const isCallerAdmin =
+    Boolean(auth.currentUser) &&
+    auth.currentUser?.uid === uid &&
+    ((auth.currentUser?.emailVerified === true &&
+      Boolean(auth.currentUser?.email && DESIGNATED_ADMIN_EMAILS.has(auth.currentUser.email))) ||
+      (await getVerifiedWriterStatus(uid).then((s) => s.isAdmin).catch(() => false)));
+
   if (nextRaw) {
-    const validation = validateUsernameFormat(nextRaw);
+    const validation = validateUsernameFormat(nextRaw, { isAdmin: isCallerAdmin });
     if (!validation.valid) {
       throw new Error(validation.reason || 'اسم المستخدم غير صالح.');
     }
@@ -995,18 +1028,24 @@ export async function uploadProfileImageAsset(
     throw new Error('انقطع الاتصال بالإنترنت أثناء رفع الصورة. يرجى المحاولة لاحقاً.');
   }
 
+  // Fallback to compact rasterized WebP/PNG/JPEG data URI only (reject SVG/scripts)
+  const isSafeRasterFallback =
+    typeof fallbackDataUrl === 'string' &&
+    fallbackDataUrl.length <= 420000 &&
+    /^data:image\/(webp|png|jpeg);base64,/i.test(fallbackDataUrl);
+
   try {
     const storage = getFirebaseStorage();
     const path = `users/${uid}/${kind}_${Date.now()}.webp`;
     const fileRef = storageRef(storage, path);
 
     const uploadTask = uploadBytes(fileRef, blob, {
-      contentType: blob.type || 'image/webp',
+      contentType: 'image/webp',
       cacheControl: 'public, max-age=31536000',
     });
 
     const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('STORAGE_TIMEOUT')), 2000)
+      setTimeout(() => reject(new Error('STORAGE_TIMEOUT')), 2500)
     );
 
     const snap = await Promise.race([uploadTask, timeoutPromise]);
@@ -1021,11 +1060,10 @@ export async function uploadProfileImageAsset(
     }
     return url;
   } catch {
-    // Seamless fallback to compact WebP data URI when Cloud Storage is not enabled or requires Blaze plan
-    if (fallbackDataUrl && fallbackDataUrl.length <= 420000) {
+    if (isSafeRasterFallback) {
       return fallbackDataUrl;
     }
-    throw new Error('تعذر معالجة الصورة. يرجى تجربة ملف أصغر حجماً.');
+    throw new Error('تعذر معالجة الصورة. يرجى تجربة ملف أصغر حجماً بصيغة JPG أو PNG أو WebP.');
   }
 }
 
@@ -1332,6 +1370,14 @@ export async function reviewWriterApplicationAsAdmin(
   adminUid: string,
   reviewNote = ''
 ): Promise<void> {
+  const auth = getFirebaseAuth();
+  if (!auth.currentUser || auth.currentUser.uid !== adminUid) {
+    throw new Error('غير مصرح بتنفيذ هذا الإجراء الإداري.');
+  }
+  const callerStatus = await getVerifiedWriterStatus(adminUid);
+  if (!callerStatus.isAdmin) {
+    throw new Error('صلاحيات المشرف الرسمي مطلوبة لمراجعة طلبات الكتاب.');
+  }
   const db = getDb();
   const now = new Date().toISOString();
   const batch = writeBatch(db);

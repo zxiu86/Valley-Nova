@@ -1,14 +1,15 @@
 @let novel = lib.selectedNovel() || lib.defaultEchoesSamarkand;
 @let theme = lib.activeNovelTheme();
+@let t = lib.i18n.copy();
 
 <div class="flex flex-col w-full animate-fadeIn" id="book-details">
   <!-- Decorative Ambient Backdrops Dynamic to Realm Theme -->
   <div class="relative w-full overflow-hidden bg-surface">
     <div
-      [class]="'absolute -top-40 right-1/4 w-[700px] h-[700px] rounded-full blur-[140px] pointer-events-none transition-all duration-700 opacity-20 dark:opacity-25 bg-gradient-to-tr ' + theme.glowGradient"
+      [class]="'absolute -top-40 end-1/4 w-[700px] h-[700px] rounded-full blur-[140px] pointer-events-none transition-all duration-700 opacity-20 dark:opacity-25 bg-gradient-to-tr ' + theme.glowGradient"
     ></div>
     <div
-      [class]="'absolute top-96 left-10 w-[550px] h-[550px] rounded-full blur-[120px] pointer-events-none transition-all duration-700 opacity-15 dark:opacity-20 bg-gradient-to-tr ' + theme.glowGradient"
+      [class]="'absolute top-96 start-10 w-[550px] h-[550px] rounded-full blur-[120px] pointer-events-none transition-all duration-700 opacity-15 dark:opacity-20 bg-gradient-to-tr ' + theme.glowGradient"
     ></div>
 
     <!-- ================= PROVENANCE BREADCRUMBS & TOP NAVIGATION ================= -->
@@ -18,16 +19,18 @@
         (click)="lib.returnToNovels()"
         class="btn-tactile flex items-center gap-2 text-on-surface hover:text-primary transition-colors text-xs sm:text-sm font-semibold cursor-pointer group"
       >
-        <span class="material-symbols-outlined text-[18px] sm:text-[20px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
-        <span>العودة إلى {{ theme.realmArabicName }}</span>
+        <span class="material-symbols-outlined text-[18px] sm:text-[20px] transition-transform">
+          {{ lib.i18n.isRtl() ? 'arrow_forward' : 'arrow_back' }}
+        </span>
+        <span>{{ t.details.backToCorridor }}</span>
       </button>
 
-      <nav aria-label="مسار التوثيق" class="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-outline overflow-x-auto whitespace-nowrap pl-2">
-        <button type="button" class="hover:text-on-surface cursor-pointer bg-transparent border-none p-0 text-inherit text-[11px] sm:text-xs" (click)="lib.returnToNovels()">أروقة الخلود</button>
+      <nav [attr.aria-label]="t.details.genreArchive" class="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-outline overflow-x-auto whitespace-nowrap ps-2">
+        <button type="button" class="hover:text-on-surface cursor-pointer bg-transparent border-none p-0 text-inherit text-[11px] sm:text-xs" (click)="lib.returnToNovels()">{{ t.site.brand }}</button>
         <span class="opacity-40">/</span>
         <span [class]="theme.textColor + ' font-bold'">{{ theme.realmArabicName }}</span>
         <span class="hidden sm:inline opacity-40">/</span>
-        <span class="hidden sm:inline text-on-surface-variant">المصنفات النادرة والمحققة</span>
+        <span class="hidden sm:inline text-on-surface-variant">{{ t.details.genreArchive }}</span>
         <span class="opacity-40">/</span>
         <span class="text-on-surface font-medium truncate max-w-[140px] sm:max-w-none">{{ theme.volumeNumber }}</span>
       </nav>
@@ -58,21 +61,21 @@
               />
 
               <!-- Spine Lighting and Depth Shading -->
-              <div class="absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-black/80 via-black/30 to-transparent pointer-events-none"></div>
-              <div class="absolute inset-y-0 right-0 w-1 bg-white/20 pointer-events-none"></div>
+              <div class="absolute inset-y-0 end-0 w-8 bg-gradient-to-l from-black/80 via-black/30 to-transparent pointer-events-none"></div>
+              <div class="absolute inset-y-0 end-0 w-1 bg-white/20 pointer-events-none"></div>
 
               <!-- Ambient Editorial Texture Gradient Overlay -->
               <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/15 to-black/30 pointer-events-none"></div>
 
               <!-- Golden Bookmark Ribbon Hanging from Top -->
-              <div class="absolute top-0 right-8 w-6 h-20 bg-gradient-to-b from-amber-200 via-amber-400 to-amber-700 shadow-md transform -translate-y-1">
+              <div class="absolute top-0 end-8 w-6 h-20 bg-gradient-to-b from-amber-200 via-amber-400 to-amber-700 shadow-md transform -translate-y-1">
                 <div class="w-full h-3 border-b-2 border-amber-900/40"></div>
               </div>
 
               <!-- Bottom Specimen Title Label on Cover -->
-              <div class="absolute bottom-4 inset-x-4 p-2 rounded-lg bg-black/65 backdrop-blur-md border border-white/10 flex items-center justify-between text-white text-xs">
+              <div class="absolute bottom-4 inset-x-4 p-2 rounded-lg bg-black/65 backdrop-blur-md border border-white/10 flex items-center justify-between text-white text-xs gap-2">
                 <span class="font-bold truncate">{{ novel.title }}</span>
-                <span class="text-[10px] text-amber-300 font-serif">طبعة أروقة الخلود</span>
+                <span class="text-[10px] text-amber-300 shrink-0">{{ t.site.brand }}</span>
               </div>
             </div>
 
@@ -80,9 +83,9 @@
             <div class="w-3/4 h-5 mx-auto mt-2 rounded-full bg-black/35 dark:bg-black/80 blur-md"></div>
 
             <!-- Floating Verified Provenance Seal Badge -->
-            <div class="absolute -bottom-3 left-4 px-3.5 py-1.5 rounded-xl bg-surface-container-low dark:bg-surface-container-highest shadow-xl flex items-center gap-2 border border-surface-variant/60 backdrop-blur-md">
+            <div class="absolute -bottom-3 start-4 px-3.5 py-1.5 rounded-xl bg-surface-container-low dark:bg-surface-container-highest shadow-xl flex items-center gap-2 border border-surface-variant/60 backdrop-blur-md">
               <span class="material-symbols-outlined text-amber-600 dark:text-amber-400 text-[18px]">verified</span>
-              <span class="text-xs text-on-surface font-bold">طبعة الأروقة المحققة — المعتمدة رسمياً</span>
+              <span class="text-xs text-on-surface font-bold">{{ t.details.verifiedNovel }}</span>
             </div>
           </div>
 
@@ -94,18 +97,18 @@
               class="btn-tactile flex-1 py-2.5 px-3 rounded-xl bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer text-xs sm:text-sm font-semibold border border-surface-variant/40"
             >
               <span class="material-symbols-outlined text-[18px] text-tertiary">download_for_offline</span>
-              <span>تحميل أوفلاين (.mtx)</span>
+              <span>{{ t.details.downloadMtx }}</span>
             </button>
 
             <button
               type="button"
               (click)="lib.shareBook()"
-              aria-label="مشاركة السفر"
+              [attr.aria-label]="t.details.share"
               class="btn-tactile flex-1 py-2.5 px-3 rounded-xl bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer text-xs sm:text-sm font-semibold border border-surface-variant/40"
-              title="مشاركة رابط الرواية"
+              [title]="t.details.share"
             >
               <span class="material-symbols-outlined text-[18px] text-secondary">share</span>
-              <span>مشاركة السفر</span>
+              <span>{{ t.details.share }}</span>
             </button>
           </div>
         </div>
@@ -118,33 +121,36 @@
               [class]="'px-3 py-1 rounded-full text-xs font-bold tracking-wide flex items-center gap-1.5 shadow-sm border ' + theme.badgeBg"
             >
               <span class="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></span>
-              {{ novel.genre }}
+              {{ lib.i18n.displayGenre(novel.genre) }}
             </span>
 
             <span class="px-3 py-1 rounded-full bg-surface-container-high text-on-surface-variant text-xs flex items-center gap-1.5 border border-surface-variant/40">
               <span class="material-symbols-outlined text-[15px] text-emerald-600 dark:text-emerald-400">check_circle</span>
-              مكتمل بالكامل (٢٤ فصلاً)
+              <span>
+                {{ novel.isCompleted ? t.details.specCompleted : t.details.specOngoing }}
+                ({{ lib.i18n.formatNumber(lib.availableChaptersForNovel().length) }} {{ t.details.chapterCountUnit }})
+              </span>
             </span>
 
             <span class="px-3 py-1 rounded-full bg-surface-container-high text-amber-700 dark:text-amber-300 text-xs flex items-center gap-1.5 border border-surface-variant/40">
-              <span class="material-symbols-outlined text-[15px]">hotel_class</span>
-              اختيار ديوان النقّاد
+              <span class="material-symbols-outlined text-[15px]">translate</span>
+              <span>{{ lib.selectedChapterLang() === 'en' ? t.details.languageBadgeEn : t.details.languageBadgeAr }}</span>
             </span>
           </div>
 
-          <!-- Grand Title -->
+          <!-- Grand Title (NEVER auto-translated) -->
           <h1 class="font-display-hero text-2xl sm:text-4xl lg:text-5xl text-on-surface tracking-tight mb-2 font-bold leading-tight">
             {{ novel.title }}
           </h1>
 
-          <!-- Subtitle / Citation & Verified Author -->
+          <!-- Subtitle & Verified Author (Author NEVER auto-translated) -->
           <span [class]="'text-sm sm:text-base font-medium mb-2 block ' + theme.textColor">
-            {{ novel.subGenre || 'SAMARKAND RESONANCES: In the Labyrinths of Astronomy & Gunpowder' }}
+            {{ novel.subGenre || theme.volumeNumber }}
           </span>
           @if (novel.author) {
             <div class="flex items-center gap-2 flex-wrap mb-5 text-xs sm:text-sm text-on-surface-variant">
               <span class="material-symbols-outlined text-[17px] text-secondary">ink_pen</span>
-              <span>بقلم: <strong class="text-on-surface">{{ novel.author }}</strong></span>
+              <strong class="text-on-surface">{{ novel.author }}</strong>
               <app-writer-badge [authorId]="novel.authorId" [compact]="false" />
             </div>
           } @else {
@@ -152,31 +158,40 @@
           }
 
           <!-- Quick Metrics Bento Bar -->
-          <div class="grid grid-cols-3 gap-3 p-4 sm:p-5 rounded-2xl bg-surface-container-low shadow-sm mb-6 border border-surface-variant/40 text-center sm:text-right">
+          <div class="grid grid-cols-3 gap-3 p-4 sm:p-5 rounded-2xl bg-surface-container-low shadow-sm mb-6 border border-surface-variant/40 text-center sm:text-start">
             <div class="flex flex-col">
-              <span class="text-xs text-on-surface-variant font-medium">حجم السفر</span>
-              <span class="text-base sm:text-lg font-bold text-on-surface font-mono tabular-nums">٢٤ فصلاً</span>
+              <span class="text-xs text-on-surface-variant font-medium">{{ t.details.specChapters }}</span>
+              <span class="text-base sm:text-lg font-bold text-on-surface font-mono tabular-nums">
+                {{ lib.i18n.formatNumber(lib.availableChaptersForNovel().length) }}
+              </span>
             </div>
             <div class="flex flex-col">
-              <span class="text-xs text-on-surface-variant font-medium">المريدون والقرّاء</span>
-              <span [class]="'text-base sm:text-lg font-bold font-mono tabular-nums ' + theme.textColor">٤٨.٢ ألف</span>
+              <span class="text-xs text-on-surface-variant font-medium">{{ t.details.specDuration }}</span>
+              <span [class]="'text-base sm:text-lg font-bold font-mono tabular-nums ' + theme.textColor">
+                {{ lib.i18n.formatNumber(novel.readingHours || 8) }} {{ t.details.specHours }}
+              </span>
             </div>
             <div class="flex flex-col">
-              <span class="text-xs text-on-surface-variant font-medium">آخر تدقيق وإجازة</span>
-              <span class="text-base sm:text-lg font-bold text-on-surface">شعبان ١٤٤٦</span>
+              <span class="text-xs text-on-surface-variant font-medium">{{ t.details.specEdition }}</span>
+              <span class="text-base sm:text-lg font-bold text-on-surface">
+                {{ lib.selectedChapterLang() === 'en' ? t.details.editionTagEn : t.details.editionTagAr }}
+              </span>
             </div>
           </div>
 
           <!-- ================= CORE ACTION BUTTONS ================= -->
           <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
-            <!-- 1. Primary Action: بدء القراءة النقية -->
+            <!-- 1. Primary Action: Start Reading -->
             <button
               type="button"
+              [disabled]="lib.availableChaptersForNovel().length === 0"
               (click)="lib.startPureReading()"
-              [class]="'btn-tactile sm:col-span-2 lg:col-span-1 py-3.5 px-5 rounded-xl flex items-center justify-center gap-2 transition-all font-bold text-sm sm:text-base cursor-pointer shadow-lg group ' + theme.btnBg"
+              [class]="'btn-tactile sm:col-span-2 lg:col-span-1 py-3.5 px-5 rounded-xl flex items-center justify-center gap-2 transition-all font-bold text-sm sm:text-base cursor-pointer shadow-lg group disabled:opacity-50 disabled:cursor-not-allowed ' + theme.btnBg"
             >
-              <span>بدء القراءة النقية</span>
-              <span class="material-symbols-outlined text-[20px] group-hover:-translate-x-1 transition-transform">arrow_left_alt</span>
+              <span>{{ lib.availableChaptersForNovel().length === 0 ? t.details.unavailableReading : t.details.startReading }}</span>
+              <span class="material-symbols-outlined text-[20px] transition-transform">
+                {{ lib.i18n.isRtl() ? 'arrow_left_alt' : 'arrow_right_alt' }}
+              </span>
             </button>
 
             <!-- 2. Save in Vault -->
@@ -190,7 +205,7 @@
               <span class="material-symbols-outlined text-[18px]">
                 {{ lib.isBookmarked(novel.id) ? 'bookmark_added' : 'bookmark' }}
               </span>
-              <span>{{ lib.isBookmarked(novel.id) ? 'محفوظ بالخزانة' : 'حفظ بالخزانة' }}</span>
+              <span>{{ lib.isBookmarked(novel.id) ? t.details.savedInShelf : t.details.saveToShelf }}</span>
             </button>
 
             <!-- 3. Manuscript Specimen Preview -->
@@ -200,25 +215,25 @@
               class="btn-tactile sm:col-span-2 lg:col-span-1 py-3.5 px-4 rounded-xl bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer border border-surface-variant/40"
             >
               <span class="material-symbols-outlined text-[18px] text-secondary">menu_book</span>
-              <span>معاينة الرقيم والمخطوط</span>
+              <span>{{ t.details.manuscriptBtn }}</span>
             </button>
           </div>
 
           <!-- ================= THE GOLDEN EDITORIAL PULL-QUOTE ================= -->
           <div class="p-5 sm:p-6 rounded-2xl bg-surface-container-high/60 shadow-md relative overflow-hidden border border-secondary/35">
-            <div class="absolute -right-4 -bottom-6 text-secondary/10 select-none pointer-events-none">
+            <div class="absolute -end-4 -bottom-6 text-secondary/10 select-none pointer-events-none">
               <span class="material-symbols-outlined text-[120px]">format_quote</span>
             </div>
             <div class="relative z-10 flex flex-col gap-2">
               <div class="flex items-center justify-between">
                 <span class="text-xs text-secondary font-bold tracking-widest uppercase flex items-center gap-1.5">
                   <span class="w-2 h-2 rounded-full bg-secondary"></span>
-                  مستهل الملحمة • ديوان الرواق التحريري
+                  <span>{{ t.details.synopsisPrefix }}</span>
                 </span>
-                <span class="text-[11px] text-outline font-serif">طبعة موثقة</span>
+                <span class="text-[11px] text-outline">{{ t.details.verifiedNovel }}</span>
               </div>
               <p class="font-amiri text-base sm:text-lg lg:text-xl text-on-surface italic font-normal leading-relaxed text-justify pt-1">
-                {{ novel.quote || '«حين يمتزج صهيل خيول التيموريين بأسرار المراصد الفلكية الشاهقة، ينبض عالم سري من الألغاز والمخطوطات المحرمة، حيث النجوم ليست مجرد ضياء، بل خرائط دمٍ وبقاء.»' }}
+                {{ novel.quote || novel.description }}
               </p>
             </div>
           </div>
@@ -229,61 +244,66 @@
     <!-- ================= 2. PUBLISHER PROVENANCE & INTEGRITY CARD ================= -->
     <section class="w-full px-4 sm:px-6 lg:px-8 py-4 max-w-[1400px] mx-auto">
       <div class="relative w-full rounded-2xl overflow-hidden shadow-lg dark:shadow-2xl border border-surface-variant/50 bg-surface-container-low group">
-        <!-- Theme-aware Atmospheric Gradient Overlay -->
         <div class="absolute inset-0 w-full h-full pointer-events-none select-none overflow-hidden">
           <div class="absolute inset-0 bg-gradient-to-l from-surface-container-low/95 via-surface-container/80 to-surface-container-low/60"></div>
           <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(154,114,9,0.12),transparent_70%)] dark:bg-[radial-gradient(circle_at_top_right,rgba(233,195,73,0.12),transparent_70%)]"></div>
         </div>
 
-        <!-- Foreground Content -->
         <div class="relative z-10 p-5 sm:p-7 lg:p-8 flex flex-col lg:flex-row items-center justify-between gap-6">
-          <div class="flex flex-col sm:flex-row items-center sm:items-center gap-5 text-center sm:text-right w-full lg:w-auto">
-            <!-- Site User Icon / Avatar -->
+          <div class="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-start w-full lg:w-auto">
             <div class="relative shrink-0">
-              <div
-                class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-primary flex items-center justify-center text-on-primary font-bold shadow-[0_0_28px_rgba(158,27,66,0.22)] dark:shadow-[0_0_35px_rgba(255,178,189,0.35)] ring-4 ring-primary/25 text-2xl sm:text-3xl transition-transform hover:scale-105"
-                title="أيقونة المستخدم في الموقع"
-              >
-                <span class="material-symbols-outlined text-[32px] sm:text-[40px]">person</span>
+              <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-primary flex items-center justify-center text-on-primary font-bold shadow-[0_0_28px_rgba(158,27,66,0.22)] ring-4 ring-primary/25 text-2xl sm:text-3xl transition-transform hover:scale-105">
+                <span class="material-symbols-outlined text-[32px] sm:text-[40px]">history_edu</span>
               </div>
-              <span class="absolute -bottom-1 -left-1 w-6 h-6 rounded-full bg-emerald-600 dark:bg-emerald-500 border-2 border-surface flex items-center justify-center text-white shadow" title="ناشر موثق ومعتمد">
+              <span class="absolute -bottom-1 -end-1 w-6 h-6 rounded-full bg-emerald-600 dark:bg-emerald-500 border-2 border-surface flex items-center justify-center text-white shadow">
                 <span class="material-symbols-outlined text-[14px]">verified</span>
               </span>
             </div>
 
-            <!-- Publisher Name & Provenance Details -->
             <div class="flex flex-col gap-1.5">
               <div class="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
-                <span class="text-xs text-secondary font-bold tracking-wider">دار النشر والتوثيق المعتمدة</span>
+                <span class="text-xs text-secondary font-bold tracking-wider">{{ t.details.authorSection }}</span>
                 <span class="px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 text-[11px] font-bold border border-emerald-600/30 flex items-center gap-1">
                   <span class="w-1.5 h-1.5 rounded-full bg-emerald-600 dark:bg-emerald-400 animate-pulse"></span>
-                  ناشر موثق
+                  {{ t.details.verifiedNovel }}
                 </span>
               </div>
 
               <h3 class="text-xl sm:text-2xl font-bold text-on-surface flex items-center justify-center sm:justify-start gap-2">
-                <span>دار صرح الخلود للطباعة والنشر التحريري</span>
+                <span>{{ novel.author || t.site.brand }}</span>
               </h3>
 
               <span class="text-xs text-secondary font-mono tracking-wide">
-                رقم الإيداع التحريري: {{ theme.archiveCode }} / ح-١٤٤٦
+                MTX: {{ theme.archiveCode }}
               </span>
 
               <p class="text-xs sm:text-sm text-on-surface-variant max-w-2xl leading-relaxed pt-0.5">
-                «ميثاق أروقة الخلود التحريري: محتوى مدقق لغوياً وتاريخياً، خالٍ ١٠٠٪ من أي إعلانات أو متتبعات تجارية، متاح بصيغة MTX الثنائية الفائقة النقاء.»
+                {{ t.details.integrityBody }}
               </p>
             </div>
           </div>
 
-          <!-- Button to Open Integrity Document -->
-          <button
-            type="button"
-            (click)="lib.openIntegrityDoc()"
-            class="btn-tactile shrink-0 px-5 py-3 rounded-xl bg-surface-container-high/90 hover:bg-surface-container-highest text-on-surface text-xs sm:text-sm font-bold flex items-center gap-2.5 border border-surface-variant/50 shadow-md backdrop-blur-md transition-all cursor-pointer hover:border-secondary/40"
-          >
-            <span class="material-symbols-outlined text-secondary text-[20px]">verified</span>
-            <span>الاطلاع على وثيقة الإيداع والتحقيق</span>
-          </button>
+          <div class="flex flex-wrap items-center gap-3 shrink-0">
+            <button
+              type="button"
+              (click)="lib.toggleAuthorFollow()"
+              class="btn-tactile px-4 py-3 rounded-xl bg-surface-container hover:bg-surface-container-high text-on-surface text-xs sm:text-sm font-semibold flex items-center gap-2 border border-surface-variant/50 transition-all cursor-pointer"
+            >
+              <span class="material-symbols-outlined text-[18px] text-primary">
+                {{ lib.isAuthorFollowed() ? 'person_check' : 'person_add' }}
+              </span>
+              <span>{{ lib.isAuthorFollowed() ? t.details.followingAuthor : t.details.followAuthor }}</span>
+            </button>
+
+            <button
+              type="button"
+              (click)="lib.openIntegrityDoc()"
+              class="btn-tactile px-5 py-3 rounded-xl bg-surface-container-high/90 hover:bg-surface-container-highest text-on-surface text-xs sm:text-sm font-bold flex items-center gap-2.5 border border-surface-variant/50 shadow-md backdrop-blur-md transition-all cursor-pointer hover:border-secondary/40"
+            >
+              <span class="material-symbols-outlined text-secondary text-[20px]">verified</span>
+              <span>{{ t.details.integrityBtn }}</span>
+            </button>
+          </div>
         </div>
       </div>
     </section>
@@ -291,105 +311,115 @@
     <!-- ================= 3. EDITORIAL BENTO SPECS (6x6 GRID MATRIX) ================= -->
     <section class="w-full px-4 sm:px-6 lg:px-8 py-6 max-w-[1400px] mx-auto">
       <div class="parent w-full border border-surface-variant/50 rounded-2xl overflow-hidden bg-surface-container-low shadow-lg">
-        <!-- Card 1: .div1 -->
+        <!-- Card 1 -->
         <div class="div1 novel-card-interactive p-4 sm:p-5 border border-surface-variant/25 hover:bg-surface-container transition-all flex flex-col justify-between overflow-hidden">
           <div class="flex items-start gap-3">
             <div class="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0 shadow-sm border border-amber-500/25">
-              <span class="material-symbols-outlined text-[22px]">calendar_month</span>
+              <span class="material-symbols-outlined text-[22px]">menu_book</span>
             </div>
             <div class="flex flex-col min-w-0">
-              <span class="text-[11px] text-on-surface-variant font-semibold">تاريخ النشر والتدوين</span>
-              <h4 class="text-xs sm:text-sm font-bold text-on-surface truncate">رجب ١٤٤٦ هـ / الطبعة التذكارية الأولى</h4>
+              <span class="text-[11px] text-on-surface-variant font-semibold">{{ t.details.specChapters }}</span>
+              <h4 class="text-xs sm:text-sm font-bold text-on-surface truncate font-mono tabular-nums">
+                {{ lib.i18n.formatNumber(lib.availableChaptersForNovel().length) }} {{ t.details.chapterCountUnit }}
+              </h4>
             </div>
           </div>
           <div class="pt-2 border-t border-surface-variant/25 mt-2">
-            <p class="text-[11px] text-on-surface-variant leading-relaxed line-clamp-2">الطباعة الورقية والمحققة رقمياً في ديوان صرح الخلود.</p>
+            <p class="text-[11px] text-on-surface-variant leading-relaxed line-clamp-2">{{ theme.volumeNumber }}</p>
           </div>
         </div>
 
-        <!-- Card 2: .div2 -->
+        <!-- Card 2 -->
         <div class="div2 novel-card-interactive p-4 sm:p-5 border border-surface-variant/25 hover:bg-surface-container transition-all flex flex-col justify-between overflow-hidden">
           <div class="flex items-start gap-3">
             <div class="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-emerald-700 dark:text-emerald-400 shrink-0 shadow-sm border border-emerald-500/25">
               <span class="material-symbols-outlined text-[22px]">hourglass_top</span>
             </div>
             <div class="flex flex-col min-w-0">
-              <span class="text-[11px] text-on-surface-variant font-semibold">الحجم والمخطوط المكتمل</span>
-              <h4 class="text-xs sm:text-sm font-bold text-on-surface truncate font-mono tabular-nums">٢٤ فصلاً • ٤٨,٢٠٠ كلمة مشكولة</h4>
+              <span class="text-[11px] text-on-surface-variant font-semibold">{{ t.details.specDuration }}</span>
+              <h4 class="text-xs sm:text-sm font-bold text-on-surface truncate font-mono tabular-nums">
+                {{ lib.i18n.formatNumber(novel.readingHours || 8) }} {{ t.details.specHours }}
+              </h4>
             </div>
           </div>
           <div class="pt-2 border-t border-surface-variant/25 mt-2">
-            <p class="text-[11px] text-on-surface-variant leading-relaxed line-clamp-2">قراءة مسترسلة ونقية مباشرة دون مقاطعة أو إعلانات تجارية.</p>
+            <p class="text-[11px] text-on-surface-variant leading-relaxed line-clamp-2">{{ t.details.genreArchive }}</p>
           </div>
         </div>
 
-        <!-- Card 3: .div3 -->
+        <!-- Card 3 -->
         <div class="div3 novel-card-interactive p-4 sm:p-5 border border-surface-variant/25 hover:bg-surface-container transition-all flex flex-col justify-between overflow-hidden">
           <div class="flex items-start gap-3">
             <div class="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-sky-700 dark:text-sky-400 shrink-0 shadow-sm border border-sky-500/25">
-              <span class="material-symbols-outlined text-[22px]">spellcheck</span>
+              <span class="material-symbols-outlined text-[22px]">translate</span>
             </div>
             <div class="flex flex-col min-w-0">
-              <span class="text-[11px] text-on-surface-variant font-semibold">لغة العمل والتحقيق</span>
-              <h4 class="text-xs sm:text-sm font-bold text-on-surface truncate">العربية الفصحى مع التشكيل الكامل</h4>
+              <span class="text-[11px] text-on-surface-variant font-semibold">{{ t.details.specEdition }}</span>
+              <h4 class="text-xs sm:text-sm font-bold text-on-surface truncate">
+                {{ lib.selectedChapterLang() === 'en' ? t.details.editionTagEn : t.details.editionTagAr }}
+              </h4>
             </div>
           </div>
           <div class="pt-2 border-t border-surface-variant/25 mt-2">
-            <p class="text-[11px] text-on-surface-variant leading-relaxed line-clamp-2">تحقيق لغوي وبلاغي وفق معجم ديوان الأدب والبيان.</p>
+            <p class="text-[11px] text-on-surface-variant leading-relaxed line-clamp-2">
+              {{ novel.originLanguage ? lib.i18n.displayOriginLanguage(novel.originLanguage) : t.site.brand }}
+            </p>
           </div>
         </div>
 
-        <!-- Card 4: .div4 -->
+        <!-- Card 4 -->
         <div class="div4 novel-card-interactive p-4 sm:p-5 border border-surface-variant/25 hover:bg-surface-container transition-all flex flex-col justify-between overflow-hidden">
           <div class="flex items-start gap-3">
             <div class="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-purple-700 dark:text-purple-400 shrink-0 shadow-sm border border-purple-500/25">
               <span class="material-symbols-outlined text-[22px]">inventory_2</span>
             </div>
             <div class="flex flex-col min-w-0">
-              <span class="text-[11px] text-on-surface-variant font-semibold">المخطوط والمصدر الأصلي</span>
-              <h4 class="text-xs sm:text-sm font-bold text-on-surface truncate">خزانة الكتب السلطانية ومراصد سمرقند</h4>
+              <span class="text-[11px] text-on-surface-variant font-semibold">{{ t.details.specStatus }}</span>
+              <h4 class="text-xs sm:text-sm font-bold text-on-surface truncate">
+                {{ novel.isCompleted ? t.details.specCompleted : t.details.specOngoing }}
+              </h4>
             </div>
           </div>
           <div class="pt-2 border-t border-surface-variant/25 mt-2">
-            <p class="text-[11px] text-on-surface-variant leading-relaxed line-clamp-2">قسم السرد التيموري المحفوظ في فهرس الصرح.</p>
+            <p class="text-[11px] text-on-surface-variant leading-relaxed line-clamp-2">{{ theme.realmArabicName }}</p>
           </div>
         </div>
 
-        <!-- Card 5: .div5 -->
+        <!-- Card 5 -->
         <div class="div5 novel-card-interactive p-4 sm:p-5 border border-surface-variant/25 hover:bg-surface-container transition-all flex flex-col justify-between overflow-hidden">
           <div class="flex items-start gap-3">
             <div class="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-secondary shrink-0 shadow-sm border border-secondary/25">
               <span class="material-symbols-outlined text-[22px]">verified</span>
             </div>
             <div class="flex flex-col min-w-0">
-              <span class="text-[11px] text-on-surface-variant font-semibold">رقم الإيداع والتوثيق MTX</span>
-              <h4 class="text-xs sm:text-sm font-bold text-secondary font-mono truncate">MTX-853-SMQ-AUTHENTIC</h4>
+              <span class="text-[11px] text-on-surface-variant font-semibold">MTX</span>
+              <h4 class="text-xs sm:text-sm font-bold text-secondary font-mono truncate">{{ theme.archiveCode }}</h4>
             </div>
           </div>
           <div class="pt-2 border-t border-surface-variant/25 mt-2">
-            <p class="text-[11px] text-on-surface-variant leading-relaxed line-clamp-2">مشفّر ومحقق عبر خوارزمية MTX فائقة الضغط والنقاء.</p>
+            <p class="text-[11px] text-on-surface-variant leading-relaxed line-clamp-2">{{ t.details.verifiedNovel }}</p>
           </div>
         </div>
 
-        <!-- Card 6: .div6 -->
+        <!-- Card 6 -->
         <div class="div6 novel-card-interactive p-4 sm:p-5 border border-surface-variant/25 hover:bg-surface-container transition-all flex flex-col justify-between overflow-hidden">
           <div class="flex items-start gap-3">
             <div class="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-rose-700 dark:text-rose-400 shrink-0 shadow-sm border border-rose-500/25">
               <span class="material-symbols-outlined text-[22px]">shield</span>
             </div>
             <div class="flex flex-col min-w-0">
-              <span class="text-[11px] text-on-surface-variant font-semibold">ميثاق النقاء القرائي</span>
-              <h4 class="text-xs sm:text-sm font-bold text-on-surface truncate">خالٍ ١٠٠٪ من أي إعلانات تجارية</h4>
+              <span class="text-[11px] text-on-surface-variant font-semibold">{{ t.site.brand }}</span>
+              <h4 class="text-xs sm:text-sm font-bold text-on-surface truncate">{{ t.details.verifiedNovel }}</h4>
             </div>
           </div>
           <div class="pt-2 border-t border-surface-variant/25 mt-2">
-            <p class="text-[11px] text-on-surface-variant leading-relaxed line-clamp-2">تجربة أدبية رصينة ومحمية بختم ديوان الخلود.</p>
+            <p class="text-[11px] text-on-surface-variant leading-relaxed line-clamp-2">{{ t.site.tagline }}</p>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- ================= 4. CURATED CHAPTERS INDEX WITH CIRCULAR PROGRESS GAUGE ================= -->
+    <!-- ================= 4. CURATED CHAPTERS INDEX + LIQUID GLASS CHAPTER LANGUAGE CARD ================= -->
     <section class="w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-[1400px] mx-auto" id="chapter-list">
       <div class="p-5 sm:p-6 rounded-2xl bg-surface-container-low shadow-sm mb-6 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 border border-surface-variant/40">
         <div class="flex items-center gap-4">
@@ -397,8 +427,11 @@
             <span class="material-symbols-outlined text-[26px]">menu_book</span>
           </div>
           <div class="flex flex-col">
-            <h2 class="text-lg sm:text-xl font-bold text-on-surface">فهرس الأبواب ومسارات السرد الموحد</h2>
-            <span class="text-xs text-on-surface-variant">٢٤ فصلاً متاحاً بالكامل للقراءة والاطلاع النقي</span>
+            <h2 class="text-lg sm:text-xl font-bold text-on-surface">{{ t.details.chaptersHeading }}</h2>
+            <span class="text-xs text-on-surface-variant">
+              {{ lib.i18n.formatNumber(lib.availableChaptersForNovel().length) }} {{ t.details.chapterCountUnit }}
+              · {{ lib.selectedChapterLang() === 'en' ? t.details.editionTagEn : t.details.editionTagAr }}
+            </span>
           </div>
         </div>
 
@@ -407,11 +440,11 @@
           <div class="relative flex-1 sm:w-64">
             <input
               [formControl]="lib.chapterSearchControl"
-              class="w-full pl-4 pr-10 py-2.5 rounded-xl bg-surface-container-high text-on-surface placeholder:text-on-surface-variant text-xs sm:text-sm border border-surface-variant/40 focus:border-secondary outline-none shadow-sm transition-all"
-              placeholder="ابحث عن عنوان أو رقم فصل..."
+              class="w-full pe-4 ps-10 py-2.5 rounded-xl bg-surface-container-high text-on-surface placeholder:text-on-surface-variant text-xs sm:text-sm border border-surface-variant/40 focus:border-secondary outline-none shadow-sm transition-all"
+              [placeholder]="t.details.searchChaptersPlaceholder"
               type="text"
             />
-            <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+            <span class="material-symbols-outlined absolute start-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
           </div>
 
           <button
@@ -420,229 +453,272 @@
             class="btn-tactile px-4 py-2.5 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs sm:text-sm font-semibold flex items-center gap-1.5 shadow-sm transition-all cursor-pointer border border-surface-variant/40"
           >
             <span [class]="'material-symbols-outlined text-[18px] ' + theme.textColor">sort</span>
-            <span>{{ lib.isChapterSortAscending() ? 'من الأول للأخير' : 'من الأحدث للأول' }}</span>
+            <span>{{ lib.isChapterSortAscending() ? t.details.sortAsc : t.details.sortDesc }}</span>
           </button>
         </div>
       </div>
 
-      <!-- Curated Partition Layout with Circular Progress Gauge -->
+      <!-- Compact Liquid Glass Chapter Language Switch Card (4 cols) + Chapters Partition List (8 cols) -->
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
-        <!-- Circular Progress Gauge Column (4 cols) -->
-        <div class="lg:col-span-4 flex flex-col gap-4 p-5 sm:p-6 rounded-2xl bg-surface-container-low shadow-sm border border-surface-variant/40 sticky top-24">
-          <div class="flex items-center justify-between border-b border-surface-variant/30 pb-3">
-            <span class="text-xs font-bold text-on-surface">مؤشر الإنجاز ومسار السرد</span>
-            <span class="text-xs text-secondary font-semibold font-mono">الفصل ٤ من ٢٤</span>
-          </div>
+        <!-- Liquid Glass Chapter Language Card (4 cols) -->
+        <div class="lg:col-span-4 lg:sticky lg:top-24">
+          <div class="relative overflow-hidden rounded-2xl p-5 sm:p-6 liquid-glass-crimson-card">
+            <div class="liquid-glass-crimson-glow" aria-hidden="true"></div>
 
-          <div class="flex flex-col items-center justify-center py-4">
-            <div class="relative w-36 h-36 flex items-center justify-center">
-              <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="42"
-                  class="text-surface-container-highest stroke-current"
-                  stroke-width="8"
-                  fill="transparent"
-                ></circle>
-                <circle
-                  cx="50"
-                  cy="50"
-                  r="42"
-                  class="stroke-current transition-all duration-1000 ease-out"
-                  [style.color]="theme.primaryColor"
-                  stroke-width="8"
-                  stroke-linecap="round"
-                  fill="transparent"
-                  stroke-dasharray="264"
-                  stroke-dashoffset="219"
-                ></circle>
-              </svg>
-
-              <div class="absolute flex flex-col items-center justify-center text-center">
-                <span class="text-2xl font-bold text-on-surface font-mono tabular-nums">١٧٪</span>
-                <span class="text-[10px] text-on-surface-variant">مقروء ومحفوظ</span>
+            <div class="relative z-10 flex flex-col gap-4">
+              <!-- Card Title Row -->
+              <div class="flex items-start justify-between gap-3">
+                <div class="flex items-center gap-2.5">
+                  <div class="w-9 h-9 rounded-xl bg-primary/15 border border-primary/25 text-primary flex items-center justify-center shrink-0">
+                    <span class="material-symbols-outlined text-[20px]">translate</span>
+                  </div>
+                  <h3 class="text-base sm:text-lg font-bold text-on-surface leading-snug">
+                    {{ t.details.chapterCardTitle }}
+                  </h3>
+                </div>
+                <span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-surface-container/80 border border-surface-variant/50 text-on-surface-variant shrink-0">
+                  {{ lib.selectedChapterLang() === 'en' ? 'EN' : 'AR' }}
+                </span>
               </div>
+
+              <!-- Calm Narrative Explanation (exact required wording) -->
+              <p class="text-xs sm:text-sm text-on-surface-variant leading-relaxed">
+                {{ t.details.chapterCardDesc }}
+              </p>
+
+              <!-- Edition Status & Progress Strip -->
+              <div class="p-3.5 rounded-xl bg-surface-container/60 border border-surface-variant/40 space-y-2.5">
+                <div class="flex items-center justify-between text-xs">
+                  <span class="text-on-surface-variant font-medium">
+                    {{ lib.selectedChapterLang() === 'en' ? t.details.chapterCardActiveEn : t.details.chapterCardActiveAr }}
+                  </span>
+                  <span class="font-bold text-on-surface font-mono tabular-nums">
+                    {{ lib.i18n.formatNumber(lib.availableChaptersForNovel().length) }} {{ t.details.chapterCountUnit }}
+                  </span>
+                </div>
+
+                <div class="space-y-1">
+                  <div class="flex items-center justify-between text-[11px] text-outline">
+                    <span>{{ t.details.chapterCardProgressLabel }}</span>
+                    <span class="font-mono font-bold text-primary tabular-nums">
+                      {{ lib.i18n.formatNumber(lib.selectedChapterLangProgressPercent()) }}%
+                    </span>
+                  </div>
+                  <div class="w-full h-1.5 rounded-full bg-surface-container-highest overflow-hidden">
+                    <div
+                      class="h-full rounded-full bg-primary transition-all duration-500"
+                      [style.width.%]="lib.selectedChapterLangProgressPercent()"
+                    ></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Interactive Chapter Language Toggle Button -->
+              <button
+                type="button"
+                (click)="lib.toggleNovelChapterLanguage()"
+                [class]="'btn-tactile w-full py-3 px-4 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md ' + theme.btnBg"
+              >
+                <span class="material-symbols-outlined text-[18px]">swap_horiz</span>
+                <span>
+                  {{ lib.selectedChapterLang() === 'ar' ? t.details.chapterCardSwitchToEn : t.details.chapterCardSwitchToAr }}
+                </span>
+              </button>
+
+              @if (!lib.hasOppositeChapterLang() && lib.availableChaptersForNovel().length > 0) {
+                <p class="text-[11px] text-outline text-center leading-relaxed">
+                  {{ lib.oppositeChapterLang() === 'en' ? t.details.chapterCardMissingEnHint : t.details.chapterCardMissingArHint }}
+                </p>
+              }
             </div>
-
-            <p class="text-xs text-center text-on-surface-variant max-w-xs mt-3 leading-relaxed">
-              موقعك الحالي: <strong class="text-on-surface">الفصل الرابع (ساعة الرمل في محراب أولغ بك)</strong>.
-            </p>
           </div>
-
-          <button
-            type="button"
-            (click)="lib.openChapter(lib.chapters[3])"
-            [class]="'btn-tactile w-full py-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md ' + theme.btnBg"
-          >
-            <span class="material-symbols-outlined text-[18px]">play_arrow</span>
-            <span>استئناف القراءة من الفصل الرابع</span>
-          </button>
         </div>
 
         <!-- Chapters List Partition Column (8 cols) -->
         <div class="lg:col-span-8 flex flex-col space-y-6 sm:space-y-8">
-          <!-- Partition 1 -->
-          @if (lib.partition1Chapters().length > 0) {
-            <div class="flex flex-col">
-              <div class="flex items-center justify-between px-4 py-2 mb-2 rounded-xl bg-surface-container-high border border-surface-variant/40">
-                <div class="flex items-center gap-2">
-                  <span [class]="'w-2 h-2 rounded-full ' + theme.primaryBg"></span>
-                  <span class="text-xs sm:text-sm font-bold text-on-surface">الباب الأول: سماء النحاس والبارود (الفصول ١ — ٨)</span>
-                </div>
-                <span class="text-[11px] text-on-surface-variant">المطلع التمهيدي</span>
+          @if (lib.availableChaptersForNovel().length === 0) {
+            <div class="p-8 sm:p-10 rounded-2xl bg-surface-container-low border border-surface-variant/40 text-center space-y-4 shadow-sm">
+              <div class="w-14 h-14 mx-auto rounded-2xl bg-surface-container flex items-center justify-center text-secondary border border-surface-variant/40">
+                <span class="material-symbols-outlined text-[28px]">translate</span>
               </div>
+              <h3 class="text-base sm:text-lg font-bold text-on-surface">{{ t.details.noChaptersInLangTitle }}</h3>
+              <p class="text-xs sm:text-sm text-on-surface-variant max-w-md mx-auto leading-relaxed">
+                {{ t.details.noChaptersInLangDesc }}
+              </p>
+              @if (lib.hasOppositeChapterLang()) {
+                <button
+                  type="button"
+                  (click)="lib.setNovelChapterLanguage(lib.oppositeChapterLang())"
+                  class="btn-tactile px-5 py-2.5 rounded-xl bg-primary text-on-primary text-xs sm:text-sm font-bold hover:opacity-90 transition-all cursor-pointer inline-flex items-center gap-2 shadow-md"
+                >
+                  <span class="material-symbols-outlined text-[18px]">swap_horiz</span>
+                  <span>{{ t.details.switchBackToAvailable }}</span>
+                </button>
+              }
+            </div>
+          } @else if (lib.filteredChaptersList().length === 0) {
+            <div class="p-8 rounded-2xl bg-surface-container-low border border-surface-variant/40 text-center space-y-2 shadow-sm">
+              <span class="material-symbols-outlined text-4xl text-outline/50">search_off</span>
+              <p class="text-sm text-on-surface-variant font-medium">{{ t.details.noChapterSearchResults }}</p>
+            </div>
+          } @else {
+            <!-- Partition 1 -->
+            @if (lib.partition1Chapters().length > 0) {
+              <div class="flex flex-col">
+                <div class="flex items-center justify-between px-4 py-2 mb-2 rounded-xl bg-surface-container-high border border-surface-variant/40">
+                  <div class="flex items-center gap-2">
+                    <span [class]="'w-2 h-2 rounded-full ' + theme.primaryBg"></span>
+                    <span class="text-xs sm:text-sm font-bold text-on-surface">{{ t.details.partOne }}</span>
+                  </div>
+                  <span class="text-[11px] text-on-surface-variant">{{ t.details.partSub }}</span>
+                </div>
 
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                @for (chap of lib.partition1Chapters(); track chap.id) {
-                  <div
-                    role="button"
-                    tabindex="0"
-                    (click)="lib.openChapter(chap)"
-                    (keydown.enter)="lib.openChapter(chap)"
-                    [class]="chap.status === 'current'
-                      ? 'p-4 rounded-xl transition-all flex items-center justify-between group cursor-pointer bg-surface-container-high shadow-md border ' + theme.borderColor
-                      : 'p-4 rounded-xl transition-all flex items-center justify-between group cursor-pointer bg-surface-container-low hover:bg-surface-container-high shadow-sm border border-surface-variant/25 hover:border-surface-variant/50'"
-                  >
-                    <div class="flex items-center gap-3 min-w-0">
-                      <span
-                        [class]="chap.status === 'current'
-                          ? 'w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 font-serif ' + theme.btnBg
-                          : 'w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 font-serif bg-surface-container-highest text-on-surface-variant'"
-                      >
-                        {{ chap.arabicNumber }}
-                      </span>
-                      <div class="flex flex-col min-w-0">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  @for (chap of lib.partition1Chapters(); track chap.id) {
+                    <div
+                      role="button"
+                      tabindex="0"
+                      (click)="lib.openChapter(chap)"
+                      (keydown.enter)="lib.openChapter(chap)"
+                      [class]="chap.status === 'current'
+                        ? 'p-4 rounded-xl transition-all flex items-center justify-between group cursor-pointer bg-surface-container-high shadow-md border ' + theme.borderColor
+                        : 'p-4 rounded-xl transition-all flex items-center justify-between group cursor-pointer bg-surface-container-low hover:bg-surface-container-high shadow-sm border border-surface-variant/25 hover:border-surface-variant/50'"
+                    >
+                      <div class="flex items-center gap-3 min-w-0">
                         <span
-                          [class.font-bold]="chap.status === 'current'"
-                          class="text-xs sm:text-sm text-on-surface group-hover:text-primary truncate transition-colors"
+                          [class]="chap.status === 'current'
+                            ? 'w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 font-mono tabular-nums ' + theme.btnBg
+                            : 'w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 font-mono tabular-nums bg-surface-container-highest text-on-surface-variant'"
                         >
-                          {{ chap.title }}
+                          {{ lib.selectedChapterLang() === 'en' ? (chap.chapterNumber ?? chap.id) : chap.arabicNumber }}
                         </span>
-                        <span class="text-[10px] text-on-surface-variant">
-                          {{ chap.duration }} • {{ chap.publishDate }}
-                        </span>
+                        <div class="flex flex-col min-w-0">
+                          <span
+                            [class.font-bold]="chap.status === 'current'"
+                            class="text-xs sm:text-sm text-on-surface group-hover:text-primary truncate transition-colors"
+                          >
+                            {{ chap.title }}
+                          </span>
+                          <span class="text-[10px] text-on-surface-variant">
+                            {{ chap.duration }} • {{ chap.publishDate }}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div class="flex items-center gap-2 shrink-0">
+                        @if (chap.status === 'read') {
+                          <span class="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold flex items-center gap-0.5">
+                            <span class="material-symbols-outlined text-[13px]">done_all</span>
+                            {{ t.details.chapterReadBadge }}
+                          </span>
+                        } @else if (chap.status === 'current') {
+                          <span [class]="'px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-0.5 ' + theme.badgeBg">
+                            <span class="material-symbols-outlined text-[13px]">bookmark</span>
+                            {{ t.details.chapterCurrentBadge }}
+                          </span>
+                        }
+
+                        <div class="w-7 h-7 rounded-lg bg-surface-container-highest flex items-center justify-center text-on-surface-variant group-hover:text-on-primary group-hover:bg-primary transition-all">
+                          <span class="material-symbols-outlined text-[16px]">play_arrow</span>
+                        </div>
                       </div>
                     </div>
-
-                    <div class="flex items-center gap-2 shrink-0">
-                      @if (chap.status === 'read') {
-                        <span class="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 text-[10px] font-bold flex items-center gap-0.5">
-                          <span class="material-symbols-outlined text-[13px]">done_all</span>
-                          مقروء
-                        </span>
-                      } @else if (chap.status === 'current') {
-                        <span [class]="'px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-0.5 ' + theme.badgeBg">
-                          <span class="material-symbols-outlined text-[13px]">bookmark</span>
-                          موقعك
-                        </span>
-                      }
-
-                      <div class="w-7 h-7 rounded-lg bg-surface-container-highest flex items-center justify-center text-on-surface-variant group-hover:text-on-primary group-hover:bg-primary transition-all">
-                        <span class="material-symbols-outlined text-[16px]">play_arrow</span>
-                      </div>
-                    </div>
-                  </div>
-                }
-              </div>
-            </div>
-          }
-
-          <!-- Partition 2 -->
-          @if (lib.partition2Chapters().length > 0) {
-            <div class="flex flex-col">
-              <div class="flex items-center justify-between px-4 py-2 mb-2 rounded-xl bg-surface-container-high border border-surface-variant/40">
-                <div class="flex items-center gap-2">
-                  <span [class]="'w-2 h-2 rounded-full ' + theme.primaryBg"></span>
-                  <span class="text-xs sm:text-sm font-bold text-on-surface">الباب الثاني: أسرار الأبراج التيمورية (الفصول ٩ — ١٦)</span>
+                  }
                 </div>
-                <span class="text-[11px] text-on-surface-variant">تصاعد العقدة والألغاز</span>
               </div>
+            }
 
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                @for (chap of lib.partition2Chapters(); track chap.id) {
-                  <div
-                    role="button"
-                    tabindex="0"
-                    (click)="lib.openChapter(chap)"
-                    (keydown.enter)="lib.openChapter(chap)"
-                    class="p-4 rounded-xl bg-surface-container-low hover:bg-surface-container-high transition-all flex items-center justify-between group shadow-sm cursor-pointer border border-surface-variant/25 hover:border-surface-variant/50"
-                  >
-                    <div class="flex items-center gap-3 min-w-0">
-                      <span class="w-8 h-8 rounded-lg bg-surface-container-highest text-on-surface-variant flex items-center justify-center text-xs font-bold shrink-0 font-serif">
-                        {{ chap.arabicNumber }}
-                      </span>
-                      <div class="flex flex-col min-w-0">
-                        <span class="text-xs sm:text-sm text-on-surface group-hover:text-primary truncate transition-colors">
-                          {{ chap.title }}
-                        </span>
-                        <span class="text-[10px] text-on-surface-variant">
-                          {{ chap.duration }} • {{ chap.publishDate }}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div class="w-7 h-7 rounded-lg bg-surface-container-highest flex items-center justify-center text-on-surface-variant group-hover:text-on-primary group-hover:bg-primary transition-all shrink-0">
-                      <span class="material-symbols-outlined text-[16px]">menu_book</span>
-                    </div>
+            <!-- Partition 2 -->
+            @if (lib.partition2Chapters().length > 0) {
+              <div class="flex flex-col">
+                <div class="flex items-center justify-between px-4 py-2 mb-2 rounded-xl bg-surface-container-high border border-surface-variant/40">
+                  <div class="flex items-center gap-2">
+                    <span [class]="'w-2 h-2 rounded-full ' + theme.primaryBg"></span>
+                    <span class="text-xs sm:text-sm font-bold text-on-surface">{{ t.details.partTwo }}</span>
                   </div>
-                }
-              </div>
-            </div>
-          }
-
-          <!-- Partition 3 -->
-          @if (lib.partition3Chapters().length > 0) {
-            <div class="flex flex-col">
-              <div class="flex items-center justify-between px-4 py-2 mb-2 rounded-xl bg-surface-container-high border border-surface-variant/40">
-                <div class="flex items-center gap-2">
-                  <span [class]="'w-2 h-2 rounded-full ' + theme.primaryBg"></span>
-                  <span class="text-xs sm:text-sm font-bold text-on-surface">الباب الثالث: خاتمة المذنب وانكشاف الحقيقة (الفصول ١٧ — ٢٤)</span>
+                  <span class="text-[11px] text-on-surface-variant">{{ t.details.partSub }}</span>
                 </div>
-                <span class="text-[11px] text-on-surface-variant">ذروة الملحمة والحل</span>
-              </div>
 
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                @for (chap of lib.partition3Chapters(); track chap.id) {
-                  <div
-                    role="button"
-                    tabindex="0"
-                    (click)="lib.openChapter(chap)"
-                    (keydown.enter)="lib.openChapter(chap)"
-                    class="p-4 rounded-xl bg-surface-container-low hover:bg-surface-container-high transition-all flex items-center justify-between group shadow-sm cursor-pointer border border-surface-variant/25 hover:border-surface-variant/50"
-                  >
-                    <div class="flex items-center gap-3 min-w-0">
-                      <span
-                        [class]="chap.isLast
-                          ? 'w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 font-serif ' + theme.btnBg
-                          : 'w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 font-serif bg-surface-container-highest text-on-surface-variant'"
-                      >
-                        {{ chap.arabicNumber }}
-                      </span>
-                      <div class="flex flex-col min-w-0">
-                        <span class="text-xs sm:text-sm text-on-surface group-hover:text-primary truncate transition-colors">
-                          {{ chap.title }}
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  @for (chap of lib.partition2Chapters(); track chap.id) {
+                    <div
+                      role="button"
+                      tabindex="0"
+                      (click)="lib.openChapter(chap)"
+                      (keydown.enter)="lib.openChapter(chap)"
+                      class="p-4 rounded-xl bg-surface-container-low hover:bg-surface-container-high transition-all flex items-center justify-between group shadow-sm cursor-pointer border border-surface-variant/25 hover:border-surface-variant/50"
+                    >
+                      <div class="flex items-center gap-3 min-w-0">
+                        <span class="w-8 h-8 rounded-lg bg-surface-container-highest text-on-surface-variant flex items-center justify-center text-xs font-bold shrink-0 font-mono tabular-nums">
+                          {{ lib.selectedChapterLang() === 'en' ? (chap.chapterNumber ?? chap.id) : chap.arabicNumber }}
                         </span>
-                        <span class="text-[10px] text-on-surface-variant">
-                          {{ chap.duration }} • {{ chap.publishDate }}
-                        </span>
+                        <div class="flex flex-col min-w-0">
+                          <span class="text-xs sm:text-sm text-on-surface group-hover:text-primary truncate transition-colors">
+                            {{ chap.title }}
+                          </span>
+                          <span class="text-[10px] text-on-surface-variant">
+                            {{ chap.duration }} • {{ chap.publishDate }}
+                          </span>
+                        </div>
                       </div>
-                    </div>
 
-                    <div class="flex items-center gap-2 shrink-0">
-                      @if (chap.isLast) {
-                        <span class="px-2 py-0.5 rounded bg-amber-500/15 text-amber-700 dark:text-amber-300 text-[10px] font-bold">
-                          الختام
-                        </span>
-                      }
-                      <div class="w-7 h-7 rounded-lg bg-surface-container-highest flex items-center justify-center text-on-surface-variant group-hover:text-on-primary group-hover:bg-primary transition-all">
+                      <div class="w-7 h-7 rounded-lg bg-surface-container-highest flex items-center justify-center text-on-surface-variant group-hover:text-on-primary group-hover:bg-primary transition-all shrink-0">
                         <span class="material-symbols-outlined text-[16px]">menu_book</span>
                       </div>
                     </div>
-                  </div>
-                }
+                  }
+                </div>
               </div>
-            </div>
+            }
+
+            <!-- Partition 3 -->
+            @if (lib.partition3Chapters().length > 0) {
+              <div class="flex flex-col">
+                <div class="flex items-center justify-between px-4 py-2 mb-2 rounded-xl bg-surface-container-high border border-surface-variant/40">
+                  <div class="flex items-center gap-2">
+                    <span [class]="'w-2 h-2 rounded-full ' + theme.primaryBg"></span>
+                    <span class="text-xs sm:text-sm font-bold text-on-surface">{{ t.details.partThree }}</span>
+                  </div>
+                  <span class="text-[11px] text-on-surface-variant">{{ t.details.partSub }}</span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  @for (chap of lib.partition3Chapters(); track chap.id) {
+                    <div
+                      role="button"
+                      tabindex="0"
+                      (click)="lib.openChapter(chap)"
+                      (keydown.enter)="lib.openChapter(chap)"
+                      class="p-4 rounded-xl bg-surface-container-low hover:bg-surface-container-high transition-all flex items-center justify-between group shadow-sm cursor-pointer border border-surface-variant/25 hover:border-surface-variant/50"
+                    >
+                      <div class="flex items-center gap-3 min-w-0">
+                        <span
+                          [class]="chap.isLast
+                            ? 'w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 font-mono tabular-nums ' + theme.btnBg
+                            : 'w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 font-mono tabular-nums bg-surface-container-highest text-on-surface-variant'"
+                        >
+                          {{ lib.selectedChapterLang() === 'en' ? (chap.chapterNumber ?? chap.id) : chap.arabicNumber }}
+                        </span>
+                        <div class="flex flex-col min-w-0">
+                          <span class="text-xs sm:text-sm text-on-surface group-hover:text-primary truncate transition-colors">
+                            {{ chap.title }}
+                          </span>
+                          <span class="text-[10px] text-on-surface-variant">
+                            {{ chap.duration }} • {{ chap.publishDate }}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div class="flex items-center gap-2 shrink-0">
+                        <div class="w-7 h-7 rounded-lg bg-surface-container-highest flex items-center justify-center text-on-surface-variant group-hover:text-on-primary group-hover:bg-primary transition-all">
+                          <span class="material-symbols-outlined text-[16px]">menu_book</span>
+                        </div>
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+            }
           }
         </div>
       </div>
@@ -652,34 +728,34 @@
     <section class="w-full px-margin-mobile lg:px-margin py-space-xl border-t border-surface-variant/40 max-w-[1400px] mx-auto">
       <div class="flex items-end justify-between mb-space-lg">
         <div class="flex flex-col gap-1">
-          <span [class]="'text-xs font-bold uppercase tracking-wider ' + theme.textColor">مؤلفات من صميم الرواق والمزاج</span>
-          <h2 class="text-lg sm:text-2xl font-bold text-on-surface">روائع أخرى يوصي بها ديوان القراءة</h2>
+          <span [class]="'text-xs font-bold uppercase tracking-wider ' + theme.textColor">{{ theme.realmArabicName }}</span>
+          <h2 class="text-lg sm:text-2xl font-bold text-on-surface">{{ t.details.relatedTitle }}</h2>
         </div>
 
         <div class="flex items-center gap-2">
           <button
             type="button"
-            aria-label="السابق"
+            [attr.aria-label]="t.explore.prevPage"
             (click)="lib.scrollContainer('relatedRail', 'prev')"
             class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-surface-container-low text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors flex items-center justify-center cursor-pointer shadow-sm border border-surface-variant/30"
           >
-            <span class="material-symbols-outlined text-[18px] sm:text-[20px]">chevron_right</span>
+            <span class="material-symbols-outlined text-[18px] sm:text-[20px]">{{ lib.i18n.isRtl() ? 'chevron_right' : 'chevron_left' }}</span>
           </button>
           <button
             type="button"
-            aria-label="التالي"
+            [attr.aria-label]="t.explore.nextPage"
             (click)="lib.scrollContainer('relatedRail', 'next')"
             class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-surface-container-low text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors flex items-center justify-center cursor-pointer shadow-sm border border-surface-variant/30"
           >
-            <span class="material-symbols-outlined text-[18px] sm:text-[20px]">chevron_left</span>
+            <span class="material-symbols-outlined text-[18px] sm:text-[20px]">{{ lib.i18n.isRtl() ? 'chevron_left' : 'chevron_right' }}</span>
           </button>
           <button
             type="button"
-            (click)="lib.returnToNovels()"
-            class="hidden sm:inline-flex items-center gap-1 mr-2 text-xs font-bold text-primary hover:underline cursor-pointer"
+            (click)="lib.openExplore()"
+            class="hidden sm:inline-flex items-center gap-1 ms-2 text-xs font-bold text-primary hover:underline cursor-pointer"
           >
-            <span>تصفح خزانة الرواق كاملة</span>
-            <span class="material-symbols-outlined text-[16px]">arrow_back</span>
+            <span>{{ t.details.exploreAll }}</span>
+            <span class="material-symbols-outlined text-[16px]">{{ lib.i18n.isRtl() ? 'arrow_back' : 'arrow_forward' }}</span>
           </button>
         </div>
       </div>
@@ -721,7 +797,7 @@
     <button
       type="button"
       class="fixed inset-0 w-full h-full cursor-default border-none bg-transparent"
-      aria-label="إغلاق وثيقة الإيداع"
+      [attr.aria-label]="t.details.close"
       (click)="lib.closeIntegrityDoc()"
     ></button>
 
@@ -730,14 +806,15 @@
         <div class="flex items-center gap-3">
           <span class="material-symbols-outlined text-secondary text-[28px]">verified</span>
           <div>
-            <h3 class="text-base sm:text-lg font-bold text-on-surface">وثيقة الإيداع والتحقيق التحريري الرسمية</h3>
-            <span class="text-xs text-outline font-mono">{{ theme.archiveCode }} / ح-١٤٤٦</span>
+            <h3 class="text-base sm:text-lg font-bold text-on-surface">{{ t.details.integrityTitle }}</h3>
+            <span class="text-xs text-outline font-mono">{{ theme.archiveCode }}</span>
           </div>
         </div>
         <button
           type="button"
           (click)="lib.closeIntegrityDoc()"
-          class="w-8 h-8 rounded-xl bg-surface-container flex items-center justify-center text-outline hover:text-on-surface transition-colors cursor-pointer"
+          [attr.aria-label]="t.details.close"
+          class="w-9 h-9 rounded-xl bg-surface-container flex items-center justify-center text-outline hover:text-on-surface transition-colors cursor-pointer"
         >
           <span class="material-symbols-outlined text-[18px]">close</span>
         </button>
@@ -746,29 +823,23 @@
       <div class="space-y-4 text-xs sm:text-sm text-on-surface-variant leading-relaxed">
         <div class="p-4 rounded-xl bg-surface-container-high/60 border border-surface-variant/40 space-y-2">
           <div class="flex justify-between text-on-surface font-bold">
-            <span>اسم المصنف المحقق:</span>
+            <span>{{ t.modals.publishWorkTitle }}:</span>
             <span class="text-secondary font-serif">{{ novel.title }}</span>
           </div>
           <div class="flex justify-between items-center text-on-surface gap-2">
-            <span>المحقق المعتمد:</span>
+            <span>{{ t.modals.publishAuthor }}:</span>
             <span class="inline-flex items-center gap-1.5">
-              <span>{{ novel.author || 'الشيخ جلال الدين الموصلي' }}</span>
+              <span>{{ novel.author || t.site.brand }}</span>
               <app-writer-badge [authorId]="novel.authorId" [compact]="true" />
             </span>
           </div>
           <div class="flex justify-between text-on-surface">
-            <span>الرواق المرجعي:</span>
+            <span>{{ t.modals.publishCorridor }}:</span>
             <span [class]="theme.textColor">{{ theme.realmArabicName }}</span>
-          </div>
-          <div class="flex justify-between text-on-surface">
-            <span>ختم النقاء والنزاهة:</span>
-            <span class="text-emerald-700 dark:text-emerald-400 font-bold">معتمد ١٠٠٪ دون إعلانات تجارية</span>
           </div>
         </div>
 
-        <p>
-          تشهد هيئة التحقيق بصرح أروقة الخلود بأن هذا السفر قد روجع نصاً وحركةً، وخلا من أي بتر أو تشويه، وحُفظ بصيغة MTX الثنائية المشفرة لحماية حقوق التراث والكلمة الخالدة.
-        </p>
+        <p>{{ t.details.integrityBody }}</p>
       </div>
 
       <div class="pt-2 flex justify-end">
@@ -777,7 +848,7 @@
           (click)="lib.closeIntegrityDoc()"
           [class]="'px-6 py-2 rounded-xl text-xs sm:text-sm font-bold cursor-pointer ' + theme.btnBg"
         >
-          إغلاق الوثيقة
+          {{ t.details.close }}
         </button>
       </div>
     </div>
@@ -790,7 +861,7 @@
     <button
       type="button"
       class="fixed inset-0 w-full h-full cursor-default border-none bg-transparent"
-      aria-label="إغلاق معاينة الرقيم"
+      [attr.aria-label]="t.details.close"
       (click)="lib.closeManuscriptPreview()"
     ></button>
 
@@ -799,14 +870,15 @@
         <div class="flex items-center gap-3">
           <span class="material-symbols-outlined text-secondary text-[26px]">menu_book</span>
           <div>
-            <h3 class="text-base sm:text-lg font-bold text-on-surface">معاينة الرقيم والمخطوط الأصلي</h3>
-            <span class="text-xs text-outline">مخطوطة خزائنية من مرصد سمرقند الأثري</span>
+            <h3 class="text-base sm:text-lg font-bold text-on-surface">{{ t.details.manuscriptTitle }}</h3>
+            <span class="text-xs text-outline">{{ novel.title }}</span>
           </div>
         </div>
         <button
           type="button"
           (click)="lib.closeManuscriptPreview()"
-          class="w-8 h-8 rounded-xl bg-surface-container flex items-center justify-center text-outline hover:text-on-surface transition-colors cursor-pointer"
+          [attr.aria-label]="t.details.close"
+          class="w-9 h-9 rounded-xl bg-surface-container flex items-center justify-center text-outline hover:text-on-surface transition-colors cursor-pointer"
         >
           <span class="material-symbols-outlined text-[18px]">close</span>
         </button>
@@ -816,15 +888,13 @@
         <img
           class="w-full h-full object-cover opacity-85"
           [src]="novel.coverUrl"
-          alt="رقيم المخطوطة"
+          [alt]="novel.title"
           referrerpolicy="no-referrer"
         />
         <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col justify-end p-6 text-white space-y-1">
-          <span class="text-xs text-amber-300 font-mono">{{ theme.archiveCode }} — رقعة رصد النجوم</span>
+          <span class="text-xs text-amber-300 font-mono">{{ theme.archiveCode }}</span>
           <h4 class="text-lg font-bold">{{ novel.title }}</h4>
-          <p class="text-xs text-stone-300 max-w-lg">
-            رقعة جلدية مشكولة بخط الثلث الدقيق، كُتبت في خزانة الكتب السلطانية بسمرقند عام ٨٥٣ هجرية.
-          </p>
+          <p class="text-xs text-stone-300 max-w-lg">{{ novel.description }}</p>
         </div>
       </div>
 
@@ -832,9 +902,10 @@
         <button
           type="button"
           (click)="lib.closeManuscriptPreview(); lib.startPureReading()"
-          [class]="'px-5 py-2 rounded-xl text-xs font-bold cursor-pointer ' + theme.btnBg"
+          [disabled]="lib.availableChaptersForNovel().length === 0"
+          [class]="'px-5 py-2 rounded-xl text-xs font-bold cursor-pointer disabled:opacity-50 ' + theme.btnBg"
         >
-          الانتقال لقراءة النص الكامل
+          {{ t.details.startReading }}
         </button>
 
         <button
@@ -842,7 +913,7 @@
           (click)="lib.closeManuscriptPreview()"
           class="px-4 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-xs text-outline hover:text-on-surface transition-colors cursor-pointer"
         >
-          إغلاق
+          {{ t.details.close }}
         </button>
       </div>
     </div>

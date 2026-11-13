@@ -1,10 +1,11 @@
+@let t = lib.i18n.copy();
 <!-- ================= 1. SEARCH MODAL / DRAWER ================= -->
 @if (lib.isSearchOpen()) {
   <div class="fixed inset-0 z-50 flex items-start justify-center pt-24 px-4 animate-fadeIn">
     <button
       type="button"
       class="fixed inset-0 w-full h-full bg-black/50 dark:bg-black/70 backdrop-blur-md cursor-default border-none"
-      aria-label="إغلاق البحث"
+      [attr.aria-label]="t.modals.close"
       (click)="lib.isSearchOpen.set(false)"
     ></button>
     <div class="w-full max-w-2xl bg-surface-container-low border border-surface-variant rounded-2xl shadow-2xl p-6 space-y-5 relative z-10">
@@ -12,63 +13,63 @@
       <div class="flex items-center justify-between border-b border-surface-variant/50 pb-3">
         <div class="flex items-center gap-2 text-primary font-bold text-lg">
           <span class="material-symbols-outlined text-[22px]">search</span>
-          <span>استكشاف خزائن الأدب</span>
+          <span>{{ t.modals.searchTitle }}</span>
         </div>
-        <button type="button" (click)="lib.isSearchOpen.set(false)" class="text-outline hover:text-on-surface transition-colors cursor-pointer" aria-label="إغلاق">
-          <span class="material-symbols-outlined">close</span>
+        <button type="button" (click)="lib.isSearchOpen.set(false)" class="w-9 h-9 rounded-xl bg-surface-container flex items-center justify-center text-outline hover:text-on-surface transition-colors cursor-pointer" [attr.aria-label]="t.modals.close">
+          <span class="material-symbols-outlined text-[18px]">close</span>
         </button>
       </div>
 
       <!-- Search Input Field -->
-      <div class="relative flex items-center bg-surface-container rounded-xl px-4 py-3 border border-surface-variant focus-within:border-primary">
-        <span class="material-symbols-outlined text-outline ml-2">search</span>
+      <div class="relative flex items-center bg-surface-container rounded-xl px-4 py-3 border border-surface-variant focus-within:border-primary gap-2">
+        <span class="material-symbols-outlined text-outline shrink-0">search</span>
         <input
           [formControl]="lib.searchControl"
           (keydown.enter)="lib.goToExploreWithSearch(lib.searchControl.value)"
           class="bg-transparent text-on-surface placeholder:text-outline/80 w-full focus:outline-none text-base"
-          placeholder="ابحث بالعنوان، الكاتب، الرواق أو الموضوع..."
+          [placeholder]="t.modals.searchPlaceholder"
           type="text"
         />
         @if (lib.searchControl.value) {
-          <button type="button" (click)="lib.searchControl.setValue('')" class="text-outline hover:text-on-surface cursor-pointer mr-2" aria-label="مسح البحث">
+          <button type="button" (click)="lib.searchControl.setValue('')" class="text-outline hover:text-on-surface cursor-pointer shrink-0" [attr.aria-label]="t.explore.clearSearch">
             <span class="material-symbols-outlined text-[18px]">clear</span>
           </button>
         }
         <button
           type="button"
           (click)="lib.goToExploreWithSearch(lib.searchControl.value)"
-          class="px-3 py-1.5 rounded-lg bg-primary text-on-primary text-xs font-semibold hover:opacity-90 transition-colors cursor-pointer mr-2 flex items-center gap-1 shadow-sm shrink-0"
+          class="px-3 py-1.5 rounded-lg bg-primary text-on-primary text-xs font-semibold hover:opacity-90 transition-colors cursor-pointer flex items-center gap-1 shadow-sm shrink-0"
         >
-          <span>استكشاف</span>
-          <span class="material-symbols-outlined text-[14px]">arrow_back</span>
+          <span>{{ t.nav.explore }}</span>
+          <span class="material-symbols-outlined text-[14px]">{{ lib.i18n.isRtl() ? 'arrow_back' : 'arrow_forward' }}</span>
         </button>
       </div>
 
       <!-- Quick Tags -->
       <div class="flex flex-wrap items-center gap-2 text-xs">
-        <span class="text-outline">وسوم شائعة:</span>
-        @for (tag of ['الفانتازيا الملحمية', 'الغموض والتشويق', 'الخيال العلمي', 'حجر السج', 'النيازك']; track tag) {
+        <span class="text-outline">{{ t.explore.moodLabel }}:</span>
+        @for (tag of ['الفانتازيا الملحمية', 'الغموض والتشويق', 'الخيال العلمي', 'كلاسيكيات عالمية', 'تراث ومخطوطات']; track tag) {
           <button
             type="button"
             (click)="lib.applySearchTag(tag)"
             class="px-2.5 py-1 rounded-md bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
           >
-            {{ tag }}
+            {{ lib.i18n.displayGenre(tag) }}
           </button>
         }
       </div>
 
       <!-- Live Search Results List -->
-      <div class="max-h-80 overflow-y-auto space-y-2 pr-1">
+      <div class="max-h-80 overflow-y-auto space-y-2 pe-1">
         @if (lib.searchResults().length > 0) {
           <div class="flex items-center justify-between mb-2">
-            <span class="text-xs text-outline block">عثرنا على {{ lib.searchResults().length }} عمل أدبي:</span>
+            <span class="text-xs text-outline block">{{ lib.i18n.formatNumber(lib.searchResults().length) }} {{ t.explore.resultsCount }}</span>
             <button
               type="button"
               (click)="lib.goToExploreWithSearch(lib.searchControl.value)"
               class="text-xs text-primary hover:opacity-80 font-bold transition-colors cursor-pointer"
             >
-              فتح الكل في صفحة الاستكشاف ←
+              {{ t.modals.searchGoExplore }}
             </button>
           </div>
           @for (book of lib.searchResults(); track book.id) {
@@ -83,11 +84,11 @@
                 <img [src]="book.coverUrl" [alt]="book.title" class="w-full h-full object-cover" referrerpolicy="no-referrer" />
               </div>
               <div class="flex flex-col flex-1 min-w-0">
-                <span class="text-xs text-secondary font-semibold">{{ book.genre }}</span>
+                <span class="text-xs text-secondary font-semibold">{{ lib.i18n.displayGenre(book.genre) }}</span>
                 <h4 class="text-sm font-bold text-on-surface truncate">{{ book.title }}</h4>
                 <p class="text-xs text-outline line-clamp-1 mt-0.5">{{ book.description }}</p>
               </div>
-              <span class="text-xs text-primary px-3 py-1 rounded bg-primary/10 shrink-0 font-semibold">قراءة</span>
+              <span class="text-xs text-primary px-3 py-1 rounded bg-primary/10 shrink-0 font-semibold">{{ t.explore.readNow }}</span>
             </div>
           }
           <button
@@ -96,24 +97,24 @@
             class="w-full py-2.5 px-4 rounded-xl bg-surface-container-high hover:bg-surface-container-highest border border-surface-variant text-on-surface font-semibold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer mt-2"
           >
             <span class="material-symbols-outlined text-[18px] text-secondary">explore</span>
-            <span>عرض وتصفية جميع النتائج في صفحة الاستكشاف</span>
+            <span>{{ t.modals.searchGoExplore }}</span>
           </button>
         } @else if (lib.searchControl.value) {
           <div class="py-8 text-center text-outline space-y-3">
             <span class="material-symbols-outlined text-4xl opacity-50">menu_book</span>
-            <p class="text-sm">لم نعثر على أسفار تطابق «{{ lib.searchControl.value }}» في هذا الرواق.</p>
+            <p class="text-sm">{{ t.modals.searchNoResults }}</p>
             <button
               type="button"
               (click)="lib.goToExploreWithSearch(lib.searchControl.value)"
               class="px-4 py-2 rounded-lg bg-primary text-on-primary font-bold text-xs hover:opacity-90 transition-colors cursor-pointer inline-flex items-center gap-2"
             >
               <span class="material-symbols-outlined text-[16px]">travel_explore</span>
-              <span>البحث الموسع في الخزانة المركزية العامة</span>
+              <span>{{ t.modals.searchGoExplore }}</span>
             </button>
           </div>
         } @else {
           <div class="py-4 text-center text-outline text-xs">
-            ابدأ بكتابة اسم الرواية أو الكلمة المفتاحية للبحث الفوري، أو اضغط Enter للانتقال للاستكشاف
+            {{ t.modals.searchPlaceholder }}
           </div>
         }
       </div>
@@ -128,7 +129,7 @@
     <button
       type="button"
       class="fixed inset-0 w-full h-full bg-black/50 dark:bg-black/70 backdrop-blur-md cursor-default border-none"
-      aria-label="إغلاق التصفية"
+      [attr.aria-label]="t.modals.close"
       (click)="lib.isFilterOpen.set(false)"
     ></button>
     <div class="w-full max-w-lg bg-surface-container-low border border-surface-variant rounded-2xl shadow-2xl p-6 space-y-5 relative z-10">
@@ -136,91 +137,91 @@
       <div class="flex items-center justify-between border-b border-surface-variant/50 pb-3">
         <div class="flex items-center gap-2 text-secondary font-bold text-lg">
           <span class="material-symbols-outlined text-[22px]">tune</span>
-          <span>تصفية وضبط خوارزمية الرواق</span>
+          <span>{{ t.modals.filterTitle }}</span>
         </div>
-        <button type="button" (click)="lib.isFilterOpen.set(false)" class="text-outline hover:text-on-surface transition-colors cursor-pointer" aria-label="إغلاق">
-          <span class="material-symbols-outlined">close</span>
+        <button type="button" (click)="lib.isFilterOpen.set(false)" class="w-9 h-9 rounded-xl bg-surface-container flex items-center justify-center text-outline hover:text-on-surface transition-colors cursor-pointer" [attr.aria-label]="t.modals.close">
+          <span class="material-symbols-outlined text-[18px]">close</span>
         </button>
       </div>
 
       <!-- Filter By Corridor -->
       <div class="space-y-2">
-        <span class="text-xs font-semibold text-outline block">الرواق الأدبي (انتقال وتصفية مباشرة):</span>
+        <span class="text-xs font-semibold text-outline block">{{ t.modals.filterGenreLabel }}:</span>
         <div class="grid grid-cols-2 gap-2 text-xs">
           <button
             type="button"
             (click)="lib.goToExploreWithCorridor('novels')"
             [class.bg-primary]="lib.activeCorridor() === 'novels'"
             [class.text-on-primary]="lib.activeCorridor() === 'novels'"
-            class="p-2.5 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors text-right cursor-pointer font-medium"
+            class="p-2.5 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors text-start cursor-pointer font-medium"
           >
-            رواق الروايات (Noir)
+            {{ t.explore.catNovels }}
           </button>
           <button
             type="button"
             (click)="lib.goToExploreWithCorridor('epics')"
             [class.bg-secondary]="lib.activeCorridor() === 'epics'"
             [class.text-on-secondary]="lib.activeCorridor() === 'epics'"
-            class="p-2.5 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors text-right cursor-pointer font-medium"
+            class="p-2.5 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors text-start cursor-pointer font-medium"
           >
-            رواق الملاحم (Bronze)
+            {{ t.explore.catEpics }}
           </button>
           <button
             type="button"
             (click)="lib.goToExploreWithCorridor('wisdom')"
             [class.bg-tertiary]="lib.activeCorridor() === 'wisdom'"
             [class.text-on-tertiary]="lib.activeCorridor() === 'wisdom'"
-            class="p-2.5 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors text-right cursor-pointer font-medium"
+            class="p-2.5 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors text-start cursor-pointer font-medium"
           >
-            رواق الحكمة (Ivory)
+            {{ t.explore.catWisdom }}
           </button>
           <button
             type="button"
             (click)="lib.goToExploreWithCorridor('heritage')"
             [class.bg-secondary]="lib.activeCorridor() === 'heritage'"
             [class.text-on-secondary]="lib.activeCorridor() === 'heritage'"
-            class="p-2.5 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors text-right cursor-pointer font-medium"
+            class="p-2.5 rounded-lg bg-surface-container hover:bg-surface-container-high transition-colors text-start cursor-pointer font-medium"
           >
-            رواق التراث (Emerald)
+            {{ t.explore.catHeritage }}
           </button>
         </div>
       </div>
 
       <!-- Sort Criteria -->
       <div class="space-y-2">
-        <span class="text-xs font-semibold text-outline block">ترتيب الأعمال:</span>
+        <span class="text-xs font-semibold text-outline block">{{ t.modals.filterSortLabel }}:</span>
         <div class="grid grid-cols-2 gap-2 text-xs">
           <button
             type="button"
             (click)="lib.goToExploreWithSort('popular')"
             [class.border-secondary]="lib.activeSortOrder() === 'popular'"
-            class="p-2 rounded-lg bg-surface-container border border-surface-variant/50 text-right cursor-pointer"
+            class="p-2 rounded-lg bg-surface-container border border-surface-variant/50 text-start cursor-pointer"
           >
-            الأكثر قراءة هذا الفصل
+            {{ t.explore.sortImmersion }}
           </button>
           <button
             type="button"
             (click)="lib.goToExploreWithSort('rating')"
             [class.border-secondary]="lib.activeSortOrder() === 'rating'"
-            class="p-2 rounded-lg bg-surface-container border border-surface-variant/50 text-right cursor-pointer"
+            class="p-2 rounded-lg bg-surface-container border border-surface-variant/50 text-start cursor-pointer"
           >
-            الأعلى نقاءً تحريرياً
+            {{ t.explore.sortRevered }}
           </button>
           <button
             type="button"
             (click)="lib.goToExploreWithSort('pages')"
             [class.border-secondary]="lib.activeSortOrder() === 'pages'"
-            class="p-2 rounded-lg bg-surface-container border border-surface-variant/50 text-right cursor-pointer"
+            class="p-2 rounded-lg bg-surface-container border border-surface-variant/50 text-start cursor-pointer"
           >
-            الأطول صفحات ومخطوطاً
+            {{ t.explore.sortLatest }}
           </button>
           <button
             type="button"
             (click)="lib.goToExploreWithSort('alphabetical')"
             [class.border-secondary]="lib.activeSortOrder() === 'alphabetical'"
-            class="p-2 rounded-lg bg-surface-container border border-surface-variant/50 text-right cursor-pointer"
+            class="p-2 rounded-lg bg-surface-container border border-surface-variant/50 text-start cursor-pointer"
           >
-            الترتيب الأبجدي التليد
+            {{ t.explore.sortAlpha }}
           </button>
         </div>
       </div>
@@ -231,7 +232,7 @@
           (click)="lib.applyModalFilterAndGoToExplore()"
           class="px-4 py-2 rounded-lg bg-secondary text-on-secondary font-bold text-xs hover:opacity-90 transition-colors cursor-pointer"
         >
-          تطبيق التصفية في الاستكشاف
+          {{ t.modals.filterApply }}
         </button>
       </div>
 
@@ -245,7 +246,7 @@
     <button
       type="button"
       class="fixed inset-0 w-full h-full bg-black/50 dark:bg-black/70 backdrop-blur-md cursor-default border-none"
-      aria-label="إغلاق الألواح المحفوظة"
+      [attr.aria-label]="t.modals.close"
       (click)="lib.isBookmarksOpen.set(false)"
     ></button>
     <div class="w-full max-w-xl bg-surface-container-low border border-surface-variant rounded-2xl shadow-2xl p-6 space-y-5 relative z-10">
@@ -253,15 +254,15 @@
       <div class="flex items-center justify-between border-b border-surface-variant/50 pb-3">
         <div class="flex items-center gap-2 text-secondary font-bold text-lg">
           <span class="material-symbols-outlined text-[22px]">bookmark</span>
-          <span>الألواح السردية المحفوظة ({{ lib.bookmarkedIds().size }})</span>
+          <span>{{ t.modals.bookmarksTitle }} ({{ lib.i18n.formatNumber(lib.bookmarkedIds().size) }})</span>
         </div>
-        <button type="button" (click)="lib.isBookmarksOpen.set(false)" class="text-outline hover:text-on-surface transition-colors cursor-pointer" aria-label="إغلاق">
-          <span class="material-symbols-outlined">close</span>
+        <button type="button" (click)="lib.isBookmarksOpen.set(false)" class="w-9 h-9 rounded-xl bg-surface-container flex items-center justify-center text-outline hover:text-on-surface transition-colors cursor-pointer" [attr.aria-label]="t.modals.close">
+          <span class="material-symbols-outlined text-[18px]">close</span>
         </button>
       </div>
 
       <!-- Bookmarked Items List -->
-      <div class="max-h-80 overflow-y-auto space-y-2 pr-1">
+      <div class="max-h-80 overflow-y-auto space-y-2 pe-1">
         @if (lib.bookmarkedNovels().length > 0) {
           @for (book of lib.bookmarkedNovels(); track book.id) {
             <div class="flex items-center justify-between gap-3 p-3 rounded-xl bg-surface-container/70 border border-surface-variant/50">
@@ -270,9 +271,9 @@
                   <img [src]="book.coverUrl" [alt]="book.title" class="w-full h-full object-cover" referrerpolicy="no-referrer" />
                 </div>
                 <div class="flex flex-col min-w-0">
-                  <span class="text-[10px] text-secondary font-semibold">{{ book.genre }}</span>
+                  <span class="text-[10px] text-secondary font-semibold">{{ lib.i18n.displayGenre(book.genre) }}</span>
                   <h4 class="text-sm font-bold text-on-surface truncate">{{ book.title }}</h4>
-                  <span class="text-[11px] text-outline">محفوظ في الذاكرة السحابية</span>
+                  <span class="text-[11px] text-outline">{{ book.author }}</span>
                 </div>
               </div>
 
@@ -282,13 +283,13 @@
                   (click)="lib.openNovelDetails(book); lib.isBookmarksOpen.set(false)"
                   class="px-3 py-1.5 rounded-lg bg-primary text-on-primary text-xs font-semibold hover:opacity-90 transition-colors cursor-pointer"
                 >
-                  قراءة
+                  {{ t.explore.readNow }}
                 </button>
                 <button
                   type="button"
                   (click)="lib.toggleBookmark(book)"
                   class="p-1.5 rounded-lg text-outline hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
-                  title="إزالة من الألواح"
+                  [title]="t.home.removeBookmark"
                 >
                   <span class="material-symbols-outlined text-[18px]">delete</span>
                 </button>
@@ -298,18 +299,17 @@
 
           <div class="pt-3 flex items-center justify-between text-xs border-t border-surface-variant/40">
             <button type="button" (click)="lib.clearAllBookmarks()" class="text-outline hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer">
-              تفريغ جميع الألواح
+              {{ t.modals.bookmarksClearAll }}
             </button>
             <button type="button" (click)="lib.viewFullVaultFromBookmarks()" class="text-secondary hover:underline cursor-pointer flex items-center gap-1 font-semibold">
-              <span>فتح ديوان الخزانة الكامل</span>
-              <span class="material-symbols-outlined text-[14px]">arrow_left</span>
+              <span>{{ t.modals.bookmarksViewVault }}</span>
+              <span class="material-symbols-outlined text-[14px]">{{ lib.i18n.isRtl() ? 'arrow_back' : 'arrow_forward' }}</span>
             </button>
           </div>
         } @else {
           <div class="py-10 text-center space-y-3">
             <span class="material-symbols-outlined text-5xl text-outline/40">bookmark_border</span>
-            <p class="text-sm text-outline">لا توجد ألواح محفوظة في خزانتك حالياً.</p>
-            <p class="text-xs text-outline/80">انقر على أيقونة الإشارة المرجعية عند استعراض أي رواية لتثبيتها هنا للرجوع السريع.</p>
+            <p class="text-sm text-outline">{{ t.modals.bookmarksEmpty }}</p>
           </div>
         }
       </div>
@@ -318,7 +318,142 @@
   </div>
 }
 
-<!-- Legacy quick profile modal removed; account experience lives at /profile -->
+<!-- ================= 4. GLOBAL SITE SETTINGS MODAL ================= -->
+@if (lib.isSiteSettingsOpen()) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center px-4 animate-fadeIn">
+    <button
+      type="button"
+      class="fixed inset-0 w-full h-full bg-black/50 dark:bg-black/70 backdrop-blur-md cursor-default border-none"
+      [attr.aria-label]="t.siteSettings.close"
+      (click)="lib.closeSiteSettings()"
+    ></button>
+    <div class="w-full max-w-lg bg-surface-container-low border border-surface-variant rounded-3xl shadow-2xl p-6 sm:p-7 space-y-6 relative z-10">
+
+      <div class="flex items-start justify-between gap-4 border-b border-surface-variant/50 pb-4">
+        <div class="space-y-1">
+          <div class="flex items-center gap-2 text-primary font-bold text-lg">
+            <span class="material-symbols-outlined text-[22px]">settings</span>
+            <span>{{ t.siteSettings.title }}</span>
+          </div>
+          <p class="text-xs text-outline leading-relaxed">{{ t.siteSettings.subtitle }}</p>
+        </div>
+        <button
+          type="button"
+          (click)="lib.closeSiteSettings()"
+          class="w-9 h-9 rounded-xl bg-surface-container flex items-center justify-center text-outline hover:text-on-surface transition-colors cursor-pointer"
+          [attr.aria-label]="t.siteSettings.close"
+        >
+          <span class="material-symbols-outlined text-[18px]">close</span>
+        </button>
+      </div>
+
+      <!-- Language Selector -->
+      <div class="space-y-3">
+        <div>
+          <h3 class="text-xs font-bold text-on-surface flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[16px] text-secondary">translate</span>
+            <span>{{ t.siteSettings.languageLabel }}</span>
+          </h3>
+          <p class="text-[11px] text-outline mt-1 leading-relaxed">{{ t.siteSettings.languageHint }}</p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button
+            type="button"
+            (click)="lib.setSiteLanguage('ar')"
+            [class]="lib.i18n.lang() === 'ar'
+              ? 'border-primary bg-primary/10 text-on-surface ring-1 ring-primary/40'
+              : 'border-surface-variant/60 bg-surface-container hover:border-primary/40 text-on-surface-variant'"
+            class="p-3.5 rounded-2xl border text-start transition-all cursor-pointer flex items-center justify-between gap-2"
+          >
+            <div>
+              <div class="text-xs font-bold text-on-surface">{{ t.siteSettings.arabicOption }}</div>
+              <div class="text-[11px] text-outline mt-0.5">{{ t.siteSettings.arabicDesc }}</div>
+            </div>
+            @if (lib.i18n.lang() === 'ar') {
+              <span class="material-symbols-outlined text-primary text-[18px]">check_circle</span>
+            }
+          </button>
+
+          <button
+            type="button"
+            (click)="lib.setSiteLanguage('en')"
+            [class]="lib.i18n.lang() === 'en'
+              ? 'border-primary bg-primary/10 text-on-surface ring-1 ring-primary/40'
+              : 'border-surface-variant/60 bg-surface-container hover:border-primary/40 text-on-surface-variant'"
+            class="p-3.5 rounded-2xl border text-start transition-all cursor-pointer flex items-center justify-between gap-2"
+          >
+            <div>
+              <div class="text-xs font-bold text-on-surface">{{ t.siteSettings.englishOption }}</div>
+              <div class="text-[11px] text-outline mt-0.5">{{ t.siteSettings.englishDesc }}</div>
+            </div>
+            @if (lib.i18n.lang() === 'en') {
+              <span class="material-symbols-outlined text-primary text-[18px]">check_circle</span>
+            }
+          </button>
+        </div>
+      </div>
+
+      <!-- Theme Switcher -->
+      <div class="space-y-3 pt-2 border-t border-surface-variant/40">
+        <div>
+          <h3 class="text-xs font-bold text-on-surface flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[16px] text-secondary">contrast</span>
+            <span>{{ t.siteSettings.themeLabel }}</span>
+          </h3>
+          <p class="text-[11px] text-outline mt-1 leading-relaxed">{{ t.siteSettings.themeHint }}</p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <button
+            type="button"
+            (click)="!lib.themeService.isDark() ? lib.themeService.toggleThemeWithPaperReveal() : null"
+            [class]="lib.themeService.isDark()
+              ? 'border-secondary bg-secondary/10 text-on-surface ring-1 ring-secondary/40'
+              : 'border-surface-variant/60 bg-surface-container hover:border-secondary/40 text-on-surface-variant'"
+            class="p-3.5 rounded-2xl border text-start transition-all cursor-pointer flex items-center justify-between gap-2"
+          >
+            <div class="flex items-center gap-2.5">
+              <span class="material-symbols-outlined text-secondary text-[18px]">dark_mode</span>
+              <span class="text-xs font-bold text-on-surface">{{ t.siteSettings.darkLabel }}</span>
+            </div>
+            @if (lib.themeService.isDark()) {
+              <span class="material-symbols-outlined text-secondary text-[18px]">check_circle</span>
+            }
+          </button>
+
+          <button
+            type="button"
+            (click)="lib.themeService.isDark() ? lib.themeService.toggleThemeWithPaperReveal() : null"
+            [class]="!lib.themeService.isDark()
+              ? 'border-secondary bg-secondary/10 text-on-surface ring-1 ring-secondary/40'
+              : 'border-surface-variant/60 bg-surface-container hover:border-secondary/40 text-on-surface-variant'"
+            class="p-3.5 rounded-2xl border text-start transition-all cursor-pointer flex items-center justify-between gap-2"
+          >
+            <div class="flex items-center gap-2.5">
+              <span class="material-symbols-outlined text-secondary text-[18px]">light_mode</span>
+              <span class="text-xs font-bold text-on-surface">{{ t.siteSettings.lightLabel }}</span>
+            </div>
+            @if (!lib.themeService.isDark()) {
+              <span class="material-symbols-outlined text-secondary text-[18px]">check_circle</span>
+            }
+          </button>
+        </div>
+      </div>
+
+      <div class="pt-2 border-t border-surface-variant/40 flex justify-end">
+        <button
+          type="button"
+          (click)="lib.closeSiteSettings()"
+          class="px-5 py-2 rounded-xl bg-primary text-on-primary font-bold text-xs hover:opacity-90 transition-opacity cursor-pointer"
+        >
+          {{ t.siteSettings.close }}
+        </button>
+      </div>
+
+    </div>
+  </div>
+}
 
 <!-- ================= 5. PUBLISHING / DEPOSIT MODAL ================= -->
 @if (lib.isPublishModalOpen()) {
@@ -326,7 +461,7 @@
     <button
       type="button"
       class="fixed inset-0 w-full h-full bg-black/50 dark:bg-black/70 backdrop-blur-md cursor-default border-none"
-      aria-label="إغلاق نافذة الإيداع"
+      [attr.aria-label]="t.modals.close"
       (click)="lib.closePublishModal()"
     ></button>
     <div class="w-full max-w-xl bg-surface-container-low border border-primary/40 rounded-3xl shadow-2xl p-6 sm:p-8 space-y-5 relative z-10 my-auto">
@@ -334,55 +469,68 @@
       <div class="flex items-center justify-between border-b border-surface-variant/50 pb-3">
         <div class="flex items-center gap-2 text-primary font-bold text-lg">
           <span class="material-symbols-outlined text-[24px]">history_edu</span>
-          <span>إيداع وتوثيق مصنف أدبي جديد</span>
+          <span>{{ t.modals.publishTitle }}</span>
         </div>
-        <button type="button" (click)="lib.closePublishModal()" class="text-outline hover:text-on-surface transition-colors cursor-pointer" aria-label="إغلاق">
-          <span class="material-symbols-outlined">close</span>
+        <button type="button" (click)="lib.closePublishModal()" class="w-9 h-9 rounded-xl bg-surface-container flex items-center justify-center text-outline hover:text-on-surface transition-colors cursor-pointer" [attr.aria-label]="t.modals.close">
+          <span class="material-symbols-outlined text-[18px]">close</span>
         </button>
       </div>
 
       <form [formGroup]="lib.publishForm" (ngSubmit)="lib.submitPublish()" class="space-y-4 text-xs">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div class="space-y-1">
-            <label for="publish-title" class="font-semibold text-on-surface">عنوان المصنف / السفر</label>
+            <label for="publish-title" class="font-semibold text-on-surface">{{ t.modals.publishWorkTitle }}</label>
             <input
               id="publish-title"
               type="text"
               formControlName="title"
-              placeholder="مثال: رسائل من وادي الفيروز"
+              [placeholder]="t.modals.publishWorkTitle"
               class="w-full p-2.5 rounded-xl bg-surface-container border border-surface-variant text-on-surface focus:outline-none focus:border-primary text-xs"
             />
           </div>
 
           <div class="space-y-1">
-            <label for="publish-author" class="font-semibold text-on-surface">اسم الكاتب / الباحث</label>
+            <label for="publish-author" class="font-semibold text-on-surface">{{ t.modals.publishAuthor }}</label>
             <input
               id="publish-author"
               type="text"
               formControlName="authorName"
-              placeholder="مثال: سادن الحرف القرطبي"
+              [placeholder]="t.modals.publishAuthor"
               class="w-full p-2.5 rounded-xl bg-surface-container border border-surface-variant text-on-surface focus:outline-none focus:border-primary text-xs"
             />
           </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div class="space-y-1">
-            <label for="publish-corridor" class="font-semibold text-on-surface">الرواق الأدبي المودع فيه</label>
+            <label for="publish-corridor" class="font-semibold text-on-surface">{{ t.modals.publishCorridor }}</label>
             <select
               id="publish-corridor"
               formControlName="categoryGroup"
               class="w-full p-2.5 rounded-xl bg-surface-container border border-surface-variant text-on-surface focus:outline-none focus:border-primary text-xs"
             >
-              <option value="novels">رواق الروايات (Crimson Noir)</option>
-              <option value="epics">رواق الملاحم (Mythic Bronze)</option>
-              <option value="wisdom">رواق الحكمة (Ivory Sanctuary)</option>
-              <option value="heritage">رواق التراث (Manuscript Emerald)</option>
+              <option value="novels">{{ t.nav.corridorNovels }}</option>
+              <option value="epics">{{ t.nav.corridorEpics }}</option>
+              <option value="wisdom">{{ t.nav.corridorWisdom }}</option>
+              <option value="heritage">{{ t.nav.corridorHeritage }}</option>
             </select>
           </div>
 
           <div class="space-y-1">
-            <label for="publish-reading-hours" class="font-semibold text-on-surface">ساعات القراءة التقديرية</label>
+            <label for="publish-language" class="font-semibold text-on-surface">{{ t.modals.publishLanguage }}</label>
+            <select
+              id="publish-language"
+              formControlName="originLanguage"
+              class="w-full p-2.5 rounded-xl bg-surface-container border border-surface-variant text-on-surface focus:outline-none focus:border-primary text-xs"
+            >
+              <option value="عربي أصيل">{{ lib.i18n.displayOriginLanguage('عربي أصيل') }}</option>
+              <option value="الإنجليزية">{{ lib.i18n.displayOriginLanguage('الإنجليزية') }}</option>
+              <option value="الفرنسية">{{ lib.i18n.displayOriginLanguage('الفرنسية') }}</option>
+            </select>
+          </div>
+
+          <div class="space-y-1">
+            <label for="publish-reading-hours" class="font-semibold text-on-surface">{{ t.modals.publishHours }}</label>
             <input
               id="publish-reading-hours"
               type="number"
@@ -393,19 +541,14 @@
         </div>
 
         <div class="space-y-1">
-          <label for="publish-synopsis" class="font-semibold text-on-surface">الملخص التحريري والنواة السردية</label>
+          <label for="publish-synopsis" class="font-semibold text-on-surface">{{ t.modals.publishSynopsis }}</label>
           <textarea
             id="publish-synopsis"
             formControlName="synopsis"
             rows="3"
-            placeholder="اكتب ملخصاً أدبياً رفيعاً يوجز موضوع السفر وفلسفته الفنية..."
+            [placeholder]="t.modals.publishSynopsis"
             class="w-full p-2.5 rounded-xl bg-surface-container border border-surface-variant text-on-surface focus:outline-none focus:border-primary text-xs leading-relaxed"
           ></textarea>
-        </div>
-
-        <div class="p-3 rounded-xl bg-surface-container/70 border border-surface-variant/50 text-[11px] text-outline flex items-center gap-2">
-          <span class="material-symbols-outlined text-secondary text-[18px]">verified</span>
-          <span>بإيداعك هذا المصنف، تقر بالتزامك بميثاق النقاء التحريري وخلو النص من أي تشويه أو ترويج تجاري.</span>
         </div>
 
         <div class="pt-3 border-t border-surface-variant/50 flex items-center justify-end gap-3">
@@ -414,14 +557,14 @@
             (click)="lib.closePublishModal()"
             class="px-4 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-outline text-xs font-semibold cursor-pointer"
           >
-            إلغاء
+            {{ t.modals.publishCancel }}
           </button>
           <button
             type="submit"
             class="px-5 py-2.5 rounded-xl bg-primary hover:opacity-90 text-on-primary font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shadow-lg"
           >
             <span class="material-symbols-outlined text-[16px]">publish</span>
-            <span>اعتماد الإيداع الرسمي</span>
+            <span>{{ t.modals.publishSubmit }}</span>
           </button>
         </div>
       </form>
@@ -432,7 +575,7 @@
 
 <!-- ================= TOAST NOTIFICATION ================= -->
 @if (lib.toastMessage()) {
-  <div class="fixed bottom-6 right-6 z-50 liquid-glass text-on-surface border border-secondary/40 px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-fadeIn">
+  <div class="fixed bottom-6 end-6 z-50 liquid-glass text-on-surface border border-secondary/40 px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 animate-fadeIn">
     <span class="material-symbols-outlined text-secondary text-[22px]">auto_awesome</span>
     <span class="text-sm font-medium">{{ lib.toastMessage() }}</span>
   </div>

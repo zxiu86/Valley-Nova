@@ -8,7 +8,7 @@
         "id": { "type": "string", "description": "معرف المستخدم الفريد UID" },
         "email": { "type": "string", "description": "البريد الإلكتروني المرتبط بالحساب" },
         "displayName": { "type": "string", "maxLength": 80, "description": "اسم العرض للقارئ" },
-        "username": { "type": "string", "maxLength": 24, "pattern": "^[a-z0-9_]{3,24}$", "description": "اسم المستخدم اللاتيني الفريد" },
+        "username": { "type": "string", "minLength": 4, "maxLength": 24, "pattern": "^([a-z0-9_]{4,24}|zid)$", "description": "اسم المستخدم اللاتيني الفريد (4-24 حرفاً، مع استثناء @zid للإدارة فقط)" },
         "bio": { "type": "string", "maxLength": 320, "description": "النبذة الشخصية" },
         "photoURL": { "type": "string", "maxLength": 450000, "description": "رابط الصورة الشخصية" },
         "coverURL": { "type": "string", "maxLength": 450000, "description": "رابط صورة الغلاف 1500x800" },
@@ -68,7 +68,7 @@
       "type": "object",
       "properties": {
         "uid": { "type": "string", "description": "معرف مالك الاسم" },
-        "username": { "type": "string", "minLength": 3, "maxLength": 24, "pattern": "^[a-z0-9_]+$", "description": "اسم المستخدم بالأحرف الصغيرة" },
+        "username": { "type": "string", "minLength": 4, "maxLength": 24, "pattern": "^([a-z0-9_]{4,24}|zid)$", "description": "اسم المستخدم بالأحرف الصغيرة (4-24 حرفاً، باستثناء @zid للإدارة فقط)" },
         "isPublic": { "type": "boolean", "description": "حالة خصوصية الملف المرتبط" },
         "updatedAt": { "type": "string", "description": "تاريخ التحديث" }
       },
@@ -80,7 +80,7 @@
       "type": "object",
       "properties": {
         "uid": { "type": "string", "description": "معرف المستخدم" },
-        "currentUsername": { "type": "string", "minLength": 3, "maxLength": 24, "pattern": "^[a-z0-9_]+$", "description": "الاسم الحالي للمستخدم" },
+        "currentUsername": { "type": "string", "minLength": 4, "maxLength": 24, "pattern": "^([a-z0-9_]{4,24}|zid)$", "description": "الاسم الحالي للمستخدم" },
         "updatedAt": { "type": "string", "description": "تاريخ التحديث" }
       },
       "required": ["uid", "currentUsername"]

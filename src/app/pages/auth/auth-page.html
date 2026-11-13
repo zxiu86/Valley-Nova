@@ -1,7 +1,8 @@
+@let t = lib.i18n.copy();
 <div class="flex flex-col w-full min-h-[calc(100vh-80px)] items-center justify-center py-12 px-4 sm:px-6 relative overflow-hidden bg-surface animate-fadeIn">
   <!-- Ambient Atmospheric Radial Glows -->
-  <div class="pointer-events-none absolute -top-32 right-1/4 w-[500px] h-[500px] bg-primary-container/25 dark:bg-primary-container/20 rounded-full blur-[140px] opacity-35 dark:opacity-50"></div>
-  <div class="pointer-events-none absolute -bottom-32 left-1/4 w-[500px] h-[500px] bg-secondary-container/20 dark:bg-secondary-container/15 rounded-full blur-[140px] opacity-30 dark:opacity-40"></div>
+  <div class="pointer-events-none absolute -top-32 end-1/4 w-[500px] h-[500px] bg-primary-container/25 dark:bg-primary-container/20 rounded-full blur-[140px] opacity-35 dark:opacity-50"></div>
+  <div class="pointer-events-none absolute -bottom-32 start-1/4 w-[500px] h-[500px] bg-secondary-container/20 dark:bg-secondary-container/15 rounded-full blur-[140px] opacity-30 dark:opacity-40"></div>
 
   <div class="w-full max-w-md relative z-10 space-y-6">
     @if (!auth.authReady()) {
@@ -10,33 +11,33 @@
         <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-surface-container border border-secondary/30 text-secondary">
           <span class="material-symbols-outlined text-[28px] animate-spin">progress_activity</span>
         </div>
-        <h2 class="text-lg font-bold text-on-surface">جارٍ التحقق من جلسة الدخول...</h2>
+        <h2 class="text-lg font-bold text-on-surface">{{ t.auth.loading }}</h2>
         <p class="text-xs text-on-surface-variant leading-relaxed">
-          نستعيد حالة جلستك المحفوظة وتفضيلات ديوانك بشكل آمن.
+          {{ t.auth.subtitle }}
         </p>
       </div>
     } @else {
       <!-- Literary Portal Header -->
       <div class="text-center space-y-3">
         <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-surface-container border border-secondary/35 shadow-md mb-1">
-          <img src="/logo.png" alt="شعار أروقة الخلود" class="w-10 h-10 object-contain" referrerpolicy="no-referrer" />
+          <img src="/logo.png" [alt]="t.site.brand" class="w-10 h-10 object-contain" referrerpolicy="no-referrer" />
         </div>
 
         <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-low border border-surface-variant/50 text-[11px] font-bold text-secondary">
           <span class="material-symbols-outlined text-[14px]">auto_stories</span>
-          <span>العبور الآمن إلى صرح أروقة الخلود</span>
+          <span>{{ t.site.brand }}</span>
         </div>
 
         <h1 class="text-2xl sm:text-3xl font-display-hero font-bold text-on-surface leading-tight">
           @if (auth.authMode() === 'login') {
-            بوابة العبور إلى حسابك
+            {{ t.auth.titleLogin }}
           } @else {
-            إنشاء حساب قارئ جديد
+            {{ t.auth.titleRegister }}
           }
         </h1>
 
         <p class="text-sm text-on-surface-variant max-w-sm mx-auto leading-relaxed">
-          سجّل دخولك عبر Google أو بريدك الإلكتروني لحفظ رواياتك، تتبّع فصولك المقروءة، وتخصيص ملفك الشخصي.
+          {{ t.auth.subtitle }}
         </p>
       </div>
 
@@ -50,7 +51,7 @@
             : 'flex-1 py-2.5 rounded-xl text-xs sm:text-sm text-outline hover:text-on-surface transition-all cursor-pointer flex items-center justify-center gap-1.5'"
         >
           <span class="material-symbols-outlined text-[18px]">login</span>
-          <span>تسجيل الدخول</span>
+          <span>{{ t.auth.tabLogin }}</span>
         </button>
         <button
           type="button"
@@ -60,7 +61,7 @@
             : 'flex-1 py-2.5 rounded-xl text-xs sm:text-sm text-outline hover:text-on-surface transition-all cursor-pointer flex items-center justify-center gap-1.5'"
         >
           <span class="material-symbols-outlined text-[18px]">person_add</span>
-          <span>إنشاء حساب جديد</span>
+          <span>{{ t.auth.tabRegister }}</span>
         </button>
       </div>
 
@@ -87,13 +88,13 @@
             <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
           </svg>
-          <span>المتابعة عبر حساب Google</span>
+          <span>{{ t.auth.googleBtn }}</span>
         </button>
 
         <!-- Divider -->
         <div class="relative flex py-1 items-center">
           <div class="flex-grow border-t border-surface-variant/40"></div>
-          <span class="flex-shrink mx-4 text-outline text-xs">أو عبر البريد الإلكتروني</span>
+          <span class="flex-shrink mx-4 text-outline text-xs">{{ t.auth.orDivider }}</span>
           <div class="flex-grow border-t border-surface-variant/40"></div>
         </div>
 
@@ -101,30 +102,30 @@
         @if (auth.authMode() === 'login') {
           <form [formGroup]="auth.authLoginForm" (ngSubmit)="lib.handleEmailLogin()" class="space-y-4">
             <div class="space-y-1.5">
-              <label for="login-email" class="block text-xs font-semibold text-on-surface-variant">البريد الإلكتروني</label>
+              <label for="login-email" class="block text-xs font-semibold text-on-surface-variant">{{ t.auth.emailLabel }}</label>
               <div class="flex items-center bg-surface-container rounded-xl px-3.5 py-2.5 border border-surface-variant/50 focus-within:border-primary transition-colors">
-                <span class="material-symbols-outlined text-outline text-[18px] ml-2">mail</span>
+                <span class="material-symbols-outlined text-outline text-[18px] me-2">mail</span>
                 <input
                   id="login-email"
                   type="email"
                   autocomplete="email"
                   formControlName="email"
-                  placeholder="name@example.com"
+                  [placeholder]="t.auth.emailPlaceholder"
                   class="bg-transparent text-sm text-on-surface placeholder:text-outline/60 focus:outline-none w-full"
                 />
               </div>
             </div>
 
             <div class="space-y-1.5">
-              <label for="login-password" class="block text-xs font-semibold text-on-surface-variant">كلمة المرور</label>
+              <label for="login-password" class="block text-xs font-semibold text-on-surface-variant">{{ t.auth.passwordLabel }}</label>
               <div class="flex items-center bg-surface-container rounded-xl px-3.5 py-2.5 border border-surface-variant/50 focus-within:border-primary transition-colors">
-                <span class="material-symbols-outlined text-outline text-[18px] ml-2">lock</span>
+                <span class="material-symbols-outlined text-outline text-[18px] me-2">lock</span>
                 <input
                   id="login-password"
                   type="password"
                   autocomplete="current-password"
                   formControlName="password"
-                  placeholder="••••••••"
+                  [placeholder]="t.auth.passwordPlaceholder"
                   class="bg-transparent text-sm text-on-surface placeholder:text-outline/60 focus:outline-none w-full"
                 />
               </div>
@@ -137,10 +138,10 @@
             >
               @if (auth.authLoading()) {
                 <span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
-                <span>جارٍ المصادقة...</span>
+                <span>{{ t.auth.loading }}</span>
               } @else {
                 <span class="material-symbols-outlined text-[18px]">login</span>
-                <span>الدخول إلى الصرح</span>
+                <span>{{ t.auth.loginBtn }}</span>
               }
             </button>
           </form>
@@ -150,45 +151,45 @@
         @if (auth.authMode() === 'register') {
           <form [formGroup]="auth.authRegisterForm" (ngSubmit)="lib.handleEmailRegister()" class="space-y-4">
             <div class="space-y-1.5">
-              <label for="register-displayname" class="block text-xs font-semibold text-on-surface-variant">اللقب الأدبي / الاسم الكريم</label>
+              <label for="register-displayname" class="block text-xs font-semibold text-on-surface-variant">{{ t.auth.displayNameLabel }}</label>
               <div class="flex items-center bg-surface-container rounded-xl px-3.5 py-2.5 border border-surface-variant/50 focus-within:border-secondary transition-colors">
-                <span class="material-symbols-outlined text-outline text-[18px] ml-2">badge</span>
+                <span class="material-symbols-outlined text-outline text-[18px] me-2">badge</span>
                 <input
                   id="register-displayname"
                   type="text"
                   autocomplete="name"
                   formControlName="displayName"
-                  placeholder="مثال: سادن الحرف القرطبي"
+                  [placeholder]="t.auth.displayNamePlaceholder"
                   class="bg-transparent text-sm text-on-surface placeholder:text-outline/60 focus:outline-none w-full"
                 />
               </div>
             </div>
 
             <div class="space-y-1.5">
-              <label for="register-email" class="block text-xs font-semibold text-on-surface-variant">البريد الإلكتروني</label>
+              <label for="register-email" class="block text-xs font-semibold text-on-surface-variant">{{ t.auth.emailLabel }}</label>
               <div class="flex items-center bg-surface-container rounded-xl px-3.5 py-2.5 border border-surface-variant/50 focus-within:border-secondary transition-colors">
-                <span class="material-symbols-outlined text-outline text-[18px] ml-2">mail</span>
+                <span class="material-symbols-outlined text-outline text-[18px] me-2">mail</span>
                 <input
                   id="register-email"
                   type="email"
                   autocomplete="email"
                   formControlName="email"
-                  placeholder="name@example.com"
+                  [placeholder]="t.auth.emailPlaceholder"
                   class="bg-transparent text-sm text-on-surface placeholder:text-outline/60 focus:outline-none w-full"
                 />
               </div>
             </div>
 
             <div class="space-y-1.5">
-              <label for="register-password" class="block text-xs font-semibold text-on-surface-variant">كلمة المرور (٦ أحرف على الأقل)</label>
+              <label for="register-password" class="block text-xs font-semibold text-on-surface-variant">{{ t.auth.passwordLabel }}</label>
               <div class="flex items-center bg-surface-container rounded-xl px-3.5 py-2.5 border border-surface-variant/50 focus-within:border-secondary transition-colors">
-                <span class="material-symbols-outlined text-outline text-[18px] ml-2">lock</span>
+                <span class="material-symbols-outlined text-outline text-[18px] me-2">lock</span>
                 <input
                   id="register-password"
                   type="password"
                   autocomplete="new-password"
                   formControlName="password"
-                  placeholder="••••••••"
+                  [placeholder]="t.auth.passwordPlaceholder"
                   class="bg-transparent text-sm text-on-surface placeholder:text-outline/60 focus:outline-none w-full"
                 />
               </div>
@@ -201,10 +202,10 @@
             >
               @if (auth.authLoading()) {
                 <span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
-                <span>جارٍ إنشاء الحساب...</span>
+                <span>{{ t.auth.loading }}</span>
               } @else {
                 <span class="material-symbols-outlined text-[18px]">person_add</span>
-                <span>تدشين الحساب وبدء الرحلة</span>
+                <span>{{ t.auth.registerBtn }}</span>
               }
             </button>
           </form>
@@ -217,8 +218,8 @@
             (click)="lib.returnToNovels()"
             class="text-xs text-outline hover:text-on-surface transition-colors cursor-pointer inline-flex items-center gap-1.5"
           >
-            <span>العودة والتصفح كقارئ زائر</span>
-            <span class="material-symbols-outlined text-[16px]">arrow_back</span>
+            <span>{{ t.auth.backHome }}</span>
+            <span class="material-symbols-outlined text-[16px]">{{ lib.i18n.isRtl() ? 'arrow_back' : 'arrow_forward' }}</span>
           </button>
         </div>
       </div>

@@ -1,6 +1,7 @@
+@let t = lib.i18n.copy();
 <div
   [class]="'relative w-full h-screen overflow-hidden flex flex-col ' + lib.readerThemeConfig().bg + ' ' + lib.readerThemeConfig().text"
-  dir="rtl"
+  [attr.dir]="lib.i18n.dir()"
 >
   <!-- 1. ADAPTIVE RECEDING TOP TOOLBAR (without top yellow progress bar or top progress indicators) -->
   <header
@@ -9,16 +10,16 @@
     [class.translate-y-0]="lib.readerToolbarVisible()"
   >
     <div class="h-16 px-3 sm:px-6 flex items-center justify-between gap-2 max-w-7xl mx-auto">
-      <!-- Right side: Exit Button + Chapter Info -->
+      <!-- Start side: Exit Button + Chapter Info -->
       <div class="flex items-center gap-2 sm:gap-3 min-w-0">
         <button
           type="button"
           (click)="lib.exitReader()"
           class="btn-tactile flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-current/15 hover:border-current/30 hover:bg-black/5 dark:hover:bg-white/10 transition-all cursor-pointer text-xs sm:text-sm font-semibold shrink-0"
-          title="مغادرة الرواق والعودة للتفاصيل"
+          [title]="t.reader.back"
         >
-          <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
-          <span class="hidden sm:inline">مغادرة الرواق</span>
+          <span class="material-symbols-outlined text-[20px]">{{ lib.i18n.isRtl() ? 'arrow_forward' : 'arrow_back' }}</span>
+          <span class="hidden sm:inline">{{ t.reader.back }}</span>
         </button>
 
         <div class="h-6 w-px bg-current opacity-20 shrink-0"></div>
@@ -33,17 +34,18 @@
         </div>
       </div>
 
-      <!-- Left side: Quick Controls & Drawers Triggers -->
+      <!-- End side: Quick Controls & Drawers Triggers -->
       <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
         <!-- Theme quick switcher dots -->
-        <div [class]="'flex items-center p-1 rounded-xl gap-1 border shadow-xs ' + lib.readerThemeConfig().cardBorder">
+        <div [class]="'hidden sm:flex items-center p-1 rounded-xl gap-1 border shadow-xs ' + lib.readerThemeConfig().cardBorder">
           <button
             type="button"
             (click)="lib.setReaderTheme('andalusian')"
             class="w-6 h-6 rounded-lg bg-[#121214] border border-[#27272a] hover:scale-110 active:scale-95 transition-all cursor-pointer flex items-center justify-center text-[10px]"
             [class.ring-2]="lib.readerTheme() === 'andalusian'"
             [class.ring-amber-400]="lib.readerTheme() === 'andalusian'"
-            title="السواد الأندلسي"
+            [title]="t.reader.themes.andalusian"
+            [attr.aria-label]="t.reader.themes.andalusian"
           >
             @if (lib.readerTheme() === 'andalusian') {
               <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
@@ -55,7 +57,8 @@
             class="w-6 h-6 rounded-lg bg-[#f4ebd9] border border-[#dfd2bc] hover:scale-110 active:scale-95 transition-all cursor-pointer flex items-center justify-center text-[10px]"
             [class.ring-2]="lib.readerTheme() === 'parchment'"
             [class.ring-amber-800]="lib.readerTheme() === 'parchment'"
-            title="رق البردي"
+            [title]="t.reader.themes.parchment"
+            [attr.aria-label]="t.reader.themes.parchment"
           >
             @if (lib.readerTheme() === 'parchment') {
               <span class="w-1.5 h-1.5 rounded-full bg-amber-800"></span>
@@ -67,7 +70,8 @@
             class="w-6 h-6 rounded-lg bg-[#fbf9f4] border border-[#e4ded0] hover:scale-110 active:scale-95 transition-all cursor-pointer flex items-center justify-center text-[10px]"
             [class.ring-2]="lib.readerTheme() === 'ivory'"
             [class.ring-teal-700]="lib.readerTheme() === 'ivory'"
-            title="العاجي"
+            [title]="t.reader.themes.ivory"
+            [attr.aria-label]="t.reader.themes.ivory"
           >
             @if (lib.readerTheme() === 'ivory') {
               <span class="w-1.5 h-1.5 rounded-full bg-teal-700"></span>
@@ -79,7 +83,8 @@
             class="w-6 h-6 rounded-lg bg-white border border-slate-300 hover:scale-110 active:scale-95 transition-all cursor-pointer flex items-center justify-center text-[10px]"
             [class.ring-2]="lib.readerTheme() === 'daylight'"
             [class.ring-blue-600]="lib.readerTheme() === 'daylight'"
-            title="النهاري"
+            [title]="t.reader.themes.daylight"
+            [attr.aria-label]="t.reader.themes.daylight"
           >
             @if (lib.readerTheme() === 'daylight') {
               <span class="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
@@ -93,7 +98,7 @@
             type="button"
             (click)="lib.adjustReaderFontSize(-2)"
             class="w-7 h-7 flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10 active:scale-90 text-xs font-bold cursor-pointer transition-all"
-            title="تصغير الخط"
+            [title]="t.reader.fontSizeSection"
           >
             -A
           </button>
@@ -102,7 +107,7 @@
             type="button"
             (click)="lib.adjustReaderFontSize(2)"
             class="w-7 h-7 flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10 active:scale-90 text-xs font-bold cursor-pointer transition-all"
-            title="تكبير الخط"
+            [title]="t.reader.fontSizeSection"
           >
             +A
           </button>
@@ -113,7 +118,7 @@
           type="button"
           (click)="lib.toggleReaderChapterDrawer()"
           [class]="'btn-tactile w-8 h-8 rounded-xl flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer border shadow-xs ' + lib.readerThemeConfig().cardBorder + (lib.readerChapterDrawerOpen() ? ' bg-black/10 dark:bg-white/15' : '')"
-          title="فهرس الفصول والأسفار"
+          [title]="t.reader.chaptersIndex"
         >
           <span class="material-symbols-outlined text-[19px]">menu_book</span>
         </button>
@@ -123,11 +128,11 @@
           type="button"
           (click)="lib.toggleReaderBookmarksDrawer()"
           [class]="'btn-tactile relative w-8 h-8 rounded-xl flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer border shadow-xs ' + lib.readerThemeConfig().cardBorder + (lib.readerBookmarksDrawerOpen() ? ' bg-black/10 dark:bg-white/15' : '')"
-          title="العلامات المرجعية المحفوظة"
+          [title]="t.reader.bookmarks"
         >
           <span class="material-symbols-outlined text-[19px]">bookmark</span>
           @if (lib.readerBookmarks().length > 0) {
-            <span [class]="'absolute -top-1 -right-1 w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center tabular-nums shadow-xs ' + lib.readerThemeConfig().accentBg">
+            <span [class]="'absolute -top-1 -end-1 w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center tabular-nums shadow-xs ' + lib.readerThemeConfig().accentBg">
               {{ lib.readerBookmarks().length }}
             </span>
           }
@@ -138,7 +143,7 @@
           type="button"
           (click)="lib.toggleSoundscape()"
           [class]="'btn-tactile w-8 h-8 rounded-xl flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer border shadow-xs ' + lib.readerThemeConfig().cardBorder + (lib.soundscapeActive() ? ' bg-black/10 dark:bg-white/15' : '')"
-          [title]="lib.soundscapeActive() ? 'إيقاف السكينة الصوتية' : 'تشغيل السكينة الصوتية والتأمل'"
+          [title]="lib.soundscapeActive() ? t.hero.soundOn : t.hero.soundOff"
         >
           <span class="material-symbols-outlined text-[19px]" [class.text-amber-400]="lib.soundscapeActive()">
             {{ lib.soundscapeActive() ? 'volume_up' : 'volume_off' }}
@@ -150,7 +155,7 @@
           type="button"
           (click)="lib.toggleReaderSettingsDrawer()"
           [class]="'btn-tactile w-8 h-8 rounded-xl flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer border shadow-xs ' + lib.readerThemeConfig().cardBorder + (lib.readerSettingsDrawerOpen() ? ' bg-black/10 dark:bg-white/15' : '')"
-          title="تخصيص الخطوط والمسافات والقراءة"
+          [title]="t.reader.settings"
         >
           <span class="material-symbols-outlined text-[19px]">tune</span>
         </button>
@@ -160,7 +165,7 @@
           type="button"
           (click)="lib.toggleFullscreen()"
           [class]="'btn-tactile hidden sm:flex w-8 h-8 rounded-xl items-center justify-center hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer border shadow-xs ' + lib.readerThemeConfig().cardBorder"
-          title="شاشة كاملة"
+          [title]="lib.readerIsFullscreen() ? t.reader.exitFullscreen : t.reader.fullscreen"
         >
           <span class="material-symbols-outlined text-[19px]">
             {{ lib.readerIsFullscreen() ? 'fullscreen_exit' : 'fullscreen' }}
@@ -178,16 +183,17 @@
   >
     @if (lib.readerActiveChapterContent(); as chapterContent) {
       <article
-        [class]="'mx-auto transition-all duration-300 mtx-copy-protected ' + lib.readerMeasureClass() + ' ' + lib.readerFontClass()"
+        [attr.dir]="chapterContent.language === 'en' ? 'ltr' : 'rtl'"
+        [class]="'mx-auto transition-all duration-300 mtx-copy-protected ' + lib.readerMeasureClass() + ' ' + (chapterContent.language === 'en' ? 'font-literary-en' : lib.readerFontClass())"
         [style.font-size.px]="lib.readerFontSizePx()"
         [style.line-height]="lib.readerLineHeight()"
-        [style.text-align]="lib.readerTextAlign() === 'justify' ? 'justify' : 'right'"
+        [style.text-align]="lib.readerTextAlign() === 'justify' ? 'justify' : (chapterContent.language === 'en' ? 'left' : 'right')"
       >
         <!-- Chapter Opening Ornamental Heraldry -->
         <div [class]="'flex flex-col items-center text-center pb-8 sm:pb-12 mb-8 sm:mb-12 border-b ' + lib.readerThemeConfig().cardBorder">
           <div [class]="'inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium mb-3 shadow-xs ' + lib.readerThemeConfig().pillBg">
             <span [class]="'w-1.5 h-1.5 rounded-full ' + lib.readerThemeConfig().accentBg"></span>
-            <span>السِّفْرُ الأَوَّل • {{ (lib.selectedNovel() || lib.defaultEchoesSamarkand).title }}</span>
+            <span>{{ (lib.selectedNovel() || lib.defaultEchoesSamarkand).title }}</span>
           </div>
 
           <h1 class="text-2xl sm:text-4xl font-extrabold mb-3 leading-snug tracking-tight">
@@ -207,12 +213,12 @@
             <span class="opacity-40">•</span>
             <span class="flex items-center gap-1">
               <span class="material-symbols-outlined text-[16px]">auto_stories</span>
-              <span class="tabular-nums">{{ lib.readerWordCount() }} كلمة</span>
+              <span class="tabular-nums">{{ lib.i18n.formatNumber(lib.readerWordCount()) }} {{ t.reader.words }}</span>
             </span>
             <span class="opacity-40">•</span>
             <span class="flex items-center gap-1">
-              <span class="material-symbols-outlined text-[16px]">verified</span>
-              <span>طبعة الرواق المحققة</span>
+              <span class="material-symbols-outlined text-[16px]">translate</span>
+              <span>{{ chapterContent.language === 'en' ? t.details.editionTagEn : t.details.editionTagAr }}</span>
             </span>
           </div>
 
@@ -221,11 +227,10 @@
             <blockquote
               [class]="'mt-8 px-6 py-4 rounded-2xl border text-sm sm:text-base italic max-w-2xl mx-auto opacity-95 relative shadow-sm ' + lib.readerThemeConfig().cardBg + ' ' + lib.readerThemeConfig().quoteBorder"
             >
-              <div [class]="'absolute -top-3 right-6 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md shadow-xs ' + lib.readerThemeConfig().pillBg">
-                مستهل الفصل
-              </div>
-              <p class="leading-relaxed font-amiri text-base sm:text-lg">«{{ chapterContent.epigraph }}»</p>
-              <cite class="block text-xs font-semibold opacity-80 mt-2 text-left">
+              <p [class]="'leading-relaxed text-base sm:text-lg ' + (chapterContent.language === 'en' ? 'font-literary-en' : 'font-amiri')">
+                “{{ chapterContent.epigraph }}”
+              </p>
+              <cite class="block text-xs font-semibold opacity-80 mt-2 text-end">
                 — {{ chapterContent.epigraphAuthor }}
               </cite>
             </blockquote>
@@ -246,9 +251,9 @@
           <div [class]="'mt-16 pt-8 border-t ' + lib.readerThemeConfig().cardBorder">
             <div [class]="'flex items-center gap-2 mb-4 font-bold text-sm sm:text-base ' + lib.readerThemeConfig().accent">
               <span class="material-symbols-outlined text-[20px]">edit_note</span>
-              <h3>هوامش التحقيق والشروح المعجمية للرواق</h3>
+              <h3>{{ t.reader.marginaliaHeading }}</h3>
             </div>
-            <ol class="space-y-3 text-xs sm:text-sm opacity-85 pr-4 list-decimal list-inside">
+            <ol class="space-y-3 text-xs sm:text-sm opacity-85 ps-4 list-decimal list-inside">
               @for (note of chapterContent.marginalia; track $index) {
                 <li class="leading-relaxed py-1">
                   {{ note }}
@@ -265,16 +270,16 @@
             <span class="material-symbols-outlined text-[20px]">all_inclusive</span>
             <span class="w-16 h-px bg-current opacity-30"></span>
           </div>
-          <span class="text-xs opacity-75 font-mono">نهاية {{ chapterContent.title }}</span>
+          <span class="text-xs opacity-75 font-mono">{{ t.reader.endOfChapter }} — {{ chapterContent.title }}</span>
 
-          <div class="w-full flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4">
+          <div class="w-full flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4" [attr.dir]="lib.i18n.dir()">
             <button
               type="button"
               (click)="lib.prevChapter()"
               [class]="'btn-tactile px-5 py-3 rounded-xl border flex items-center justify-center gap-2 hover:bg-black/5 dark:hover:bg-white/5 transition-all text-xs sm:text-sm font-semibold cursor-pointer shadow-xs ' + lib.readerThemeConfig().cardBorder"
             >
-              <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
-              <span>الفصل السابق</span>
+              <span class="material-symbols-outlined text-[18px]">{{ lib.i18n.isRtl() ? 'arrow_forward' : 'arrow_back' }}</span>
+              <span>{{ t.reader.previousChapter }}</span>
             </button>
 
             <button
@@ -283,7 +288,7 @@
               [class]="'btn-tactile px-4 py-2.5 rounded-xl border flex items-center justify-center gap-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-all text-xs font-semibold cursor-pointer shadow-xs ' + lib.readerThemeConfig().cardBorder"
             >
               <span class="material-symbols-outlined text-[18px]">bookmark_add</span>
-              <span>حفظ موضع القراءة الحالي</span>
+              <span>{{ t.reader.addBookmark }}</span>
             </button>
 
             <button
@@ -291,8 +296,8 @@
               (click)="lib.nextChapter()"
               [class]="'btn-tactile px-5 py-3 rounded-xl font-bold flex items-center justify-center gap-2 shadow-lg hover:opacity-95 transition-all text-xs sm:text-sm cursor-pointer ' + lib.readerThemeConfig().accentBg"
             >
-              <span>الفصل التالي</span>
-              <span class="material-symbols-outlined text-[18px]">arrow_back</span>
+              <span>{{ t.reader.nextChapter }}</span>
+              <span class="material-symbols-outlined text-[18px]">{{ lib.i18n.isRtl() ? 'arrow_back' : 'arrow_forward' }}</span>
             </button>
           </div>
         </div>
@@ -309,14 +314,14 @@
         type="button"
         (click)="lib.toggleAutoScroll()"
         [class]="'btn-tactile flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer text-xs font-semibold' + (lib.readerAutoScrollActive() ? ' bg-black/15 dark:bg-white/20' : '')"
-        title="تشغيل / إيقاف التمرير التلقائي"
+        [title]="lib.readerAutoScrollActive() ? t.reader.stopAutoScroll : t.reader.autoScroll"
       >
         <span
           [class]="'material-symbols-outlined text-[18px] ' + (lib.readerAutoScrollActive() ? lib.readerThemeConfig().accent : '')"
         >
           {{ lib.readerAutoScrollActive() ? 'pause_circle' : 'play_circle' }}
         </span>
-        <span class="hidden sm:inline">{{ lib.readerAutoScrollActive() ? 'إيقاف' : 'تمرير تلقائي' }}</span>
+        <span class="hidden sm:inline">{{ lib.readerAutoScrollActive() ? t.reader.stopAutoScroll : t.reader.autoScroll }}</span>
       </button>
 
       @if (lib.readerAutoScrollActive()) {
@@ -340,20 +345,20 @@
         type="button"
         (click)="lib.addCurrentBookmark()"
         class="btn-tactile flex items-center gap-1 px-2.5 py-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer text-xs"
-        title="حفظ علامة مرجعية"
+        [title]="t.reader.addBookmark"
       >
         <span class="material-symbols-outlined text-[18px]">bookmark_add</span>
-        <span class="hidden md:inline">علامة</span>
+        <span class="hidden md:inline">{{ t.reader.bookmarks }}</span>
       </button>
 
       <button
         type="button"
         (click)="lib.toggleReaderSettingsDrawer()"
         class="btn-tactile flex items-center gap-1 px-2.5 py-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer text-xs"
-        title="تخصيص القراءة"
+        [title]="t.reader.settings"
       >
         <span class="material-symbols-outlined text-[18px]">tune</span>
-        <span class="hidden md:inline">الضبط</span>
+        <span class="hidden md:inline">{{ t.reader.settings }}</span>
       </button>
     </div>
   </div>
@@ -366,24 +371,24 @@
       <button
         type="button"
         class="fixed inset-0 w-full h-full bg-black/60 backdrop-blur-sm cursor-default border-none"
-        aria-label="إغلاق لوحة التخصيص"
+        [attr.aria-label]="t.modals.close"
         (click)="lib.readerSettingsDrawerOpen.set(false)"
       ></button>
 
       <div
-        [class]="'w-full max-w-md h-full overflow-y-auto relative z-10 border-r shadow-2xl p-6 flex flex-col justify-between animate-slideInRight ' + lib.readerThemeConfig().bg + ' ' + lib.readerThemeConfig().text + ' ' + lib.readerThemeConfig().cardBorder"
+        [class]="'w-full max-w-md h-full overflow-y-auto relative z-10 border-s shadow-2xl p-6 flex flex-col justify-between ' + lib.readerThemeConfig().bg + ' ' + lib.readerThemeConfig().text + ' ' + lib.readerThemeConfig().cardBorder"
       >
         <div class="space-y-6">
           <div [class]="'flex items-center justify-between border-b pb-4 ' + lib.readerThemeConfig().cardBorder">
             <div class="flex items-center gap-2 font-bold text-base">
               <span [class]="'material-symbols-outlined text-[22px] ' + lib.readerThemeConfig().accent">tune</span>
-              <span>تخصيص بيئة القراءة</span>
+              <span>{{ t.reader.settings }}</span>
             </div>
             <button
               type="button"
               (click)="lib.readerSettingsDrawerOpen.set(false)"
               class="btn-tactile w-8 h-8 rounded-lg flex items-center justify-center hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer"
-              aria-label="إغلاق"
+              [attr.aria-label]="t.modals.close"
             >
               <span class="material-symbols-outlined text-[20px]">close</span>
             </button>
@@ -391,20 +396,19 @@
 
           <!-- 1. Color Themes -->
           <div class="space-y-2.5">
-            <span class="text-xs font-bold opacity-70 block">السمة اللونية والخلفية:</span>
+            <span class="text-xs font-bold opacity-70 block">{{ t.reader.themeSection }}:</span>
             <div class="grid grid-cols-2 gap-2.5 text-xs">
               <button
                 type="button"
                 (click)="lib.setReaderTheme('andalusian')"
                 [class.ring-2]="lib.readerTheme() === 'andalusian'"
                 [class.ring-amber-400]="lib.readerTheme() === 'andalusian'"
-                class="btn-tactile p-3 rounded-xl bg-[#121214] text-[#e4e4e7] border border-[#27272a] text-right flex flex-col gap-1 transition-all cursor-pointer shadow-sm"
+                class="btn-tactile p-3 rounded-xl bg-[#121214] text-[#e4e4e7] border border-[#27272a] text-start flex flex-col gap-1 transition-all cursor-pointer shadow-sm"
               >
                 <div class="flex items-center justify-between">
-                  <span class="font-bold">السواد الأندلسي</span>
+                  <span class="font-bold">{{ lib.i18n.isRtl() ? 'السواد الأندلسي' : 'Andalusian' }}</span>
                   <span class="w-3 h-3 rounded-full bg-amber-400"></span>
                 </div>
-                <span class="text-[10px] text-[#a1a1aa]">عتمة سينمائية مريحة للعين</span>
               </button>
 
               <button
@@ -412,13 +416,12 @@
                 (click)="lib.setReaderTheme('parchment')"
                 [class.ring-2]="lib.readerTheme() === 'parchment'"
                 [class.ring-amber-800]="lib.readerTheme() === 'parchment'"
-                class="btn-tactile p-3 rounded-xl bg-[#f4ebd9] text-[#2c231a] border border-[#dfd2bc] text-right flex flex-col gap-1 transition-all cursor-pointer shadow-sm"
+                class="btn-tactile p-3 rounded-xl bg-[#f4ebd9] text-[#2c231a] border border-[#dfd2bc] text-start flex flex-col gap-1 transition-all cursor-pointer shadow-sm"
               >
                 <div class="flex items-center justify-between">
-                  <span class="font-bold">رق البردي</span>
+                  <span class="font-bold">{{ lib.i18n.isRtl() ? 'رق البردي' : 'Parchment' }}</span>
                   <span class="w-3 h-3 rounded-full bg-amber-800"></span>
                 </div>
-                <span class="text-[10px] text-[#6f5e4f]">أصالة المخطوطات والقرطاس</span>
               </button>
 
               <button
@@ -426,13 +429,12 @@
                 (click)="lib.setReaderTheme('ivory')"
                 [class.ring-2]="lib.readerTheme() === 'ivory'"
                 [class.ring-teal-700]="lib.readerTheme() === 'ivory'"
-                class="btn-tactile p-3 rounded-xl bg-[#fbf9f4] text-[#1e2024] border border-[#e4ded0] text-right flex flex-col gap-1 transition-all cursor-pointer shadow-sm"
+                class="btn-tactile p-3 rounded-xl bg-[#fbf9f4] text-[#1e2024] border border-[#e4ded0] text-start flex flex-col gap-1 transition-all cursor-pointer shadow-sm"
               >
                 <div class="flex items-center justify-between">
-                  <span class="font-bold">العاجي</span>
+                  <span class="font-bold">{{ lib.i18n.isRtl() ? 'العاجي' : 'Ivory' }}</span>
                   <span class="w-3 h-3 rounded-full bg-teal-700"></span>
                 </div>
-                <span class="text-[10px] text-[#626975]">بياض هادئ دافئ غير مجهد</span>
               </button>
 
               <button
@@ -440,42 +442,38 @@
                 (click)="lib.setReaderTheme('daylight')"
                 [class.ring-2]="lib.readerTheme() === 'daylight'"
                 [class.ring-blue-600]="lib.readerTheme() === 'daylight'"
-                class="btn-tactile p-3 rounded-xl bg-white text-[#0f172a] border border-slate-300 text-right flex flex-col gap-1 transition-all cursor-pointer shadow-sm"
+                class="btn-tactile p-3 rounded-xl bg-white text-[#0f172a] border border-slate-300 text-start flex flex-col gap-1 transition-all cursor-pointer shadow-sm"
               >
                 <div class="flex items-center justify-between">
-                  <span class="font-bold">النهاري</span>
+                  <span class="font-bold">{{ lib.i18n.isRtl() ? 'النهاري' : 'Daylight' }}</span>
                   <span class="w-3 h-3 rounded-full bg-blue-600"></span>
                 </div>
-                <span class="text-[10px] text-[#475569]">وضوح ناصع للقراءة في الضوء</span>
               </button>
             </div>
           </div>
 
           <!-- 2. Arabic Typefaces -->
           <div class="space-y-2.5">
-            <span class="text-xs font-bold opacity-70 block">نوع الخط العربي:</span>
-            <div class="grid grid-cols-1 gap-2 text-xs max-h-52 overflow-y-auto pr-1">
+            <span class="text-xs font-bold opacity-70 block">{{ t.reader.fontFamilySection }}:</span>
+            <div class="grid grid-cols-1 gap-2 text-xs max-h-52 overflow-y-auto pe-1">
               @for (font of [
-                { id: 'amiri', name: 'الخط الأميري', class: 'font-amiri', desc: 'نسخ أدبي كلاسيكي مع التشكيل' },
-                { id: 'naskh', name: 'خط النسخ (Noto Naskh)', class: 'font-naskh', desc: 'وضوح مطبعي عصري ممتاز' },
-                { id: 'aref', name: 'خط الرقعة (Aref Ruqaa)', class: 'font-aref', desc: 'طابع فني شاعري أصيل' },
-                { id: 'almarai', name: 'خط المراعي (Almarai)', class: 'font-almarai', desc: 'هندسي متوازن ومريح للقراءة السريعة' },
-                { id: 'tajawal', name: 'خط تجوال (Tajawal)', class: 'font-tajawal', desc: 'انسيابي خفيف للشاشات الحديثة' },
-                { id: 'kufi', name: 'خط الكوفي (Noto Kufi)', class: 'font-kufi', desc: 'رصانة وهيبة للعناوين والبدايات' },
-                { id: 'alexandria', name: 'خط الإسكندرية (Alexandria)', class: 'font-alexandria', desc: 'أناقة رقمية بحروف واضحة' }
+                { id: 'amiri', nameAr: 'الخط الأميري', nameEn: 'Amiri Literary', class: 'font-amiri' },
+                { id: 'naskh', nameAr: 'خط النسخ (Noto Naskh)', nameEn: 'Noto Naskh Arabic', class: 'font-naskh' },
+                { id: 'aref', nameAr: 'خط الرقعة (Aref Ruqaa)', nameEn: 'Aref Ruqaa', class: 'font-aref' },
+                { id: 'almarai', nameAr: 'خط المراعي (Almarai)', nameEn: 'Almarai Clean', class: 'font-almarai' },
+                { id: 'tajawal', nameAr: 'خط تجوال (Tajawal)', nameEn: 'Tajawal', class: 'font-tajawal' },
+                { id: 'kufi', nameAr: 'خط الكوفي (Noto Kufi)', nameEn: 'Noto Kufi', class: 'font-kufi' },
+                { id: 'alexandria', nameAr: 'خط الإسكندرية (Alexandria)', nameEn: 'Alexandria', class: 'font-alexandria' }
               ]; track font.id) {
                 <button
                   type="button"
                   (click)="lib.setReaderFontFamily(font.id === 'amiri' ? 'amiri' : font.id === 'naskh' ? 'naskh' : font.id === 'aref' ? 'aref' : font.id === 'almarai' ? 'almarai' : font.id === 'tajawal' ? 'tajawal' : font.id === 'kufi' ? 'kufi' : 'alexandria')"
                   [class.ring-2]="lib.readerFontFamily() === font.id"
                   [class.ring-current]="lib.readerFontFamily() === font.id"
-                  [class]="'btn-tactile p-2.5 rounded-xl border text-right flex items-center justify-between transition-all cursor-pointer shadow-xs ' + lib.readerThemeConfig().cardBg"
+                  [class]="'btn-tactile p-2.5 rounded-xl border text-start flex items-center justify-between transition-all cursor-pointer shadow-xs ' + lib.readerThemeConfig().cardBg"
                 >
-                  <div class="flex flex-col">
-                    <span [class]="'font-bold text-sm ' + font.class">{{ font.name }}</span>
-                    <span class="text-[10px] opacity-70">{{ font.desc }}</span>
-                  </div>
-                  <span [class]="'text-base opacity-80 ' + font.class">أبجدية الخلود</span>
+                  <span [class]="'font-bold text-sm ' + font.class">{{ lib.i18n.isRtl() ? font.nameAr : font.nameEn }}</span>
+                  <span [class]="'text-xs opacity-70 ' + font.class">Aa أ ب ج</span>
                 </button>
               }
             </div>
@@ -484,8 +482,8 @@
           <!-- 3. Font Size -->
           <div class="space-y-2">
             <div class="flex items-center justify-between text-xs">
-              <span class="font-bold opacity-70">حجم الخط:</span>
-              <span [class]="'font-mono font-bold tabular-nums ' + lib.readerThemeConfig().accent">{{ lib.readerFontSizePx() }} نقطة</span>
+              <span class="font-bold opacity-70">{{ t.reader.fontSizeSection }}:</span>
+              <span [class]="'font-mono font-bold tabular-nums ' + lib.readerThemeConfig().accent">{{ lib.readerFontSizePx() }}px</span>
             </div>
             <div class="flex items-center gap-3">
               <button
@@ -519,13 +517,13 @@
 
           <!-- 4. Line Height -->
           <div class="space-y-2">
-            <span class="text-xs font-bold opacity-70 block">تباعد الأسطر:</span>
+            <span class="text-xs font-bold opacity-70 block">{{ t.reader.lineHeightSection }}:</span>
             <div class="grid grid-cols-4 gap-2 text-xs">
               @for (lh of [
-                { val: 1.75, label: 'ضيق' },
-                { val: 2.1, label: 'متوازن' },
-                { val: 2.4, label: 'رحب' },
-                { val: 2.8, label: 'فسيح' }
+                { val: 1.75, label: t.reader.compact },
+                { val: 2.1, label: t.reader.balanced },
+                { val: 2.4, label: t.reader.relaxed },
+                { val: 2.8, label: t.reader.generous }
               ]; track lh.val) {
                 <button
                   type="button"
@@ -541,13 +539,13 @@
 
           <!-- 5. Reading Measure -->
           <div class="space-y-2">
-            <span class="text-xs font-bold opacity-70 block">عرض مساحة القراءة:</span>
+            <span class="text-xs font-bold opacity-70 block">{{ t.reader.measureSection }}:</span>
             <div class="grid grid-cols-4 gap-2 text-xs">
               @for (m of [
-                { val: 'compact', label: 'مركّز' },
-                { val: 'balanced', label: 'معياري' },
-                { val: 'wide', label: 'عريض' },
-                { val: 'fluid', label: 'ملء العرض' }
+                { val: 'compact', label: t.reader.compact },
+                { val: 'balanced', label: t.reader.balanced },
+                { val: 'wide', label: t.reader.wide },
+                { val: 'fluid', label: t.reader.fluid }
               ]; track m.val) {
                 <button
                   type="button"
@@ -563,7 +561,7 @@
 
           <!-- 6. Text Alignment -->
           <div class="space-y-2">
-            <span class="text-xs font-bold opacity-70 block">محاذاة النص العربي:</span>
+            <span class="text-xs font-bold opacity-70 block">{{ t.reader.alignSection }}:</span>
             <div class="grid grid-cols-2 gap-2 text-xs">
               <button
                 type="button"
@@ -572,7 +570,7 @@
                 [class]="'btn-tactile py-2 px-3 rounded-xl border flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs ' + (lib.readerTextAlign() === 'justify' ? lib.readerThemeConfig().accentBg : lib.readerThemeConfig().cardBg)"
               >
                 <span class="material-symbols-outlined text-[18px]">format_align_justify</span>
-                <span>مضبوط بكشيدة</span>
+                <span>{{ t.reader.alignJustify }}</span>
               </button>
               <button
                 type="button"
@@ -580,20 +578,20 @@
                 [class.font-bold]="lib.readerTextAlign() === 'right'"
                 [class]="'btn-tactile py-2 px-3 rounded-xl border flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs ' + (lib.readerTextAlign() === 'right' ? lib.readerThemeConfig().accentBg : lib.readerThemeConfig().cardBg)"
               >
-                <span class="material-symbols-outlined text-[18px]">format_align_right</span>
-                <span>محاذاة لليمين</span>
+                <span class="material-symbols-outlined text-[18px]">{{ lib.readerActiveChapterContent()?.language === 'en' ? 'format_align_left' : 'format_align_right' }}</span>
+                <span>{{ t.reader.alignEdge }}</span>
               </button>
             </div>
           </div>
 
           <!-- 7. Paragraph Spacing -->
           <div class="space-y-2">
-            <span class="text-xs font-bold opacity-70 block">الفواصل بين الفقرات:</span>
+            <span class="text-xs font-bold opacity-70 block">{{ t.reader.paragraphSpacingSection }}:</span>
             <div class="grid grid-cols-3 gap-2 text-xs">
               @for (sp of [
-                { val: 'compact', label: 'متقاربة' },
-                { val: 'normal', label: 'متوازنة' },
-                { val: 'relaxed', label: 'متباعدة' }
+                { val: 'compact', label: t.reader.compact },
+                { val: 'normal', label: t.reader.normal },
+                { val: 'relaxed', label: t.reader.relaxed }
               ]; track sp.val) {
                 <button
                   type="button"
@@ -609,12 +607,12 @@
 
           <!-- 8. Side Padding -->
           <div class="space-y-2">
-            <span class="text-xs font-bold opacity-70 block">الهوامش الجانبية:</span>
+            <span class="text-xs font-bold opacity-70 block">{{ t.reader.paddingSection }}:</span>
             <div class="grid grid-cols-3 gap-2 text-xs">
               @for (pad of [
-                { val: 'compact', label: 'ضيقة' },
-                { val: 'balanced', label: 'متوازنة' },
-                { val: 'generous', label: 'رحبة' }
+                { val: 'compact', label: t.reader.compact },
+                { val: 'balanced', label: t.reader.balanced },
+                { val: 'generous', label: t.reader.generous }
               ]; track pad.val) {
                 <button
                   type="button"
@@ -636,9 +634,8 @@
             class="btn-tactile flex items-center gap-1.5 opacity-70 hover:opacity-100 transition-opacity cursor-pointer underline underline-offset-2"
           >
             <span class="material-symbols-outlined text-[16px]">restart_alt</span>
-            <span>استعادة الإعدادات الافتراضية</span>
+            <span>{{ t.reader.resetSettings }}</span>
           </button>
-          <span class="text-[10px] opacity-50">تُحفظ تلقائياً في جهازك</span>
         </div>
       </div>
     </div>
@@ -650,35 +647,35 @@
       <button
         type="button"
         class="fixed inset-0 w-full h-full bg-black/60 backdrop-blur-sm cursor-default border-none"
-        aria-label="إغلاق فهرس الفصول"
+        [attr.aria-label]="t.modals.close"
         (click)="lib.readerChapterDrawerOpen.set(false)"
       ></button>
 
       <div
-        [class]="'w-full max-w-md h-full overflow-y-auto relative z-10 border-r shadow-2xl p-6 flex flex-col justify-between animate-slideInRight ' + lib.readerThemeConfig().bg + ' ' + lib.readerThemeConfig().text + ' ' + lib.readerThemeConfig().cardBorder"
+        [class]="'w-full max-w-md h-full overflow-y-auto relative z-10 border-s shadow-2xl p-6 flex flex-col justify-between ' + lib.readerThemeConfig().bg + ' ' + lib.readerThemeConfig().text + ' ' + lib.readerThemeConfig().cardBorder"
       >
         <div class="space-y-4">
           <div [class]="'flex items-center justify-between border-b pb-4 ' + lib.readerThemeConfig().cardBorder">
             <div class="flex items-center gap-2 font-bold text-base">
               <span [class]="'material-symbols-outlined text-[22px] ' + lib.readerThemeConfig().accent">menu_book</span>
-              <span>فهرس فصول الرواية (٢٤ فصلاً)</span>
+              <span>{{ t.reader.chaptersIndex }} ({{ lib.i18n.formatNumber(lib.availableChaptersForNovel().length) }})</span>
             </div>
             <button
               type="button"
               (click)="lib.readerChapterDrawerOpen.set(false)"
               class="btn-tactile w-8 h-8 rounded-lg flex items-center justify-center hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer"
-              aria-label="إغلاق"
+              [attr.aria-label]="t.modals.close"
             >
               <span class="material-symbols-outlined text-[20px]">close</span>
             </button>
           </div>
 
           <div [class]="'relative flex items-center rounded-xl p-2.5 border shadow-xs ' + lib.readerThemeConfig().cardBorder">
-            <span class="material-symbols-outlined text-outline ml-2 text-[18px]">search</span>
+            <span class="material-symbols-outlined text-outline me-2 text-[18px]">search</span>
             <input
               [formControl]="lib.readerChapterSearch"
               type="text"
-              placeholder="ابحث عن عنوان فصل أو رقمه..."
+              [placeholder]="t.reader.searchChapters"
               class="bg-transparent w-full text-xs focus:outline-none placeholder:opacity-50"
             />
             @if (lib.readerChapterSearch.value) {
@@ -686,27 +683,27 @@
                 type="button"
                 (click)="lib.readerChapterSearch.setValue('')"
                 class="text-xs opacity-60 hover:opacity-100 cursor-pointer active:scale-90 transition-transform"
-                aria-label="مسح البحث"
+                [attr.aria-label]="t.explore.clearSearch"
               >
                 <span class="material-symbols-outlined text-[16px]">clear</span>
               </button>
             }
           </div>
 
-          <div class="space-y-2 max-h-[calc(100vh-210px)] overflow-y-auto pr-1">
+          <div class="space-y-2 max-h-[calc(100vh-210px)] overflow-y-auto pe-1">
             @for (chap of lib.filteredReaderChapters(); track chap.id) {
               <button
                 type="button"
                 (click)="lib.openChapter(chap); lib.readerChapterDrawerOpen.set(false)"
                 [class.ring-2]="lib.activeReadingChapter()?.id === chap.id"
                 [class.ring-current]="lib.activeReadingChapter()?.id === chap.id"
-                [class]="'btn-tactile w-full p-3 rounded-xl border text-right flex items-center justify-between gap-3 transition-all cursor-pointer group shadow-xs ' + (lib.activeReadingChapter()?.id === chap.id ? lib.readerThemeConfig().cardBg : 'hover:bg-black/5 dark:hover:bg-white/5')"
+                [class]="'btn-tactile w-full p-3 rounded-xl border text-start flex items-center justify-between gap-3 transition-all cursor-pointer group shadow-xs ' + (lib.activeReadingChapter()?.id === chap.id ? lib.readerThemeConfig().cardBg : 'hover:bg-black/5 dark:hover:bg-white/5')"
               >
                 <div class="flex items-center gap-3 min-w-0">
                   <span
-                    [class]="'w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold font-serif shrink-0 tabular-nums ' + (lib.activeReadingChapter()?.id === chap.id ? lib.readerThemeConfig().accentBg : lib.readerThemeConfig().pillBg)"
+                    [class]="'w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold font-mono shrink-0 tabular-nums ' + (lib.activeReadingChapter()?.id === chap.id ? lib.readerThemeConfig().accentBg : lib.readerThemeConfig().pillBg)"
                   >
-                    {{ chap.arabicNumber }}
+                    {{ lib.selectedChapterLang() === 'en' ? (chap.chapterNumber ?? chap.id) : chap.arabicNumber }}
                   </span>
                   <div class="flex flex-col min-w-0">
                     <span class="text-xs font-bold truncate group-hover:underline">
@@ -720,9 +717,9 @@
 
                 <div class="shrink-0 flex items-center gap-1.5 text-[10px]">
                   @if (chap.status === 'read') {
-                    <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 font-bold">مقروء</span>
+                    <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 font-bold">{{ t.details.chapterReadBadge }}</span>
                   } @else if (chap.status === 'current') {
-                    <span [class]="'px-2 py-0.5 rounded-full font-bold ' + lib.readerThemeConfig().pillBg">موقعك</span>
+                    <span [class]="'px-2 py-0.5 rounded-full font-bold ' + lib.readerThemeConfig().pillBg">{{ t.details.chapterCurrentBadge }}</span>
                   }
                 </div>
               </button>
@@ -739,24 +736,24 @@
       <button
         type="button"
         class="fixed inset-0 w-full h-full bg-black/60 backdrop-blur-sm cursor-default border-none"
-        aria-label="إغلاق العلامات المرجعية"
+        [attr.aria-label]="t.modals.close"
         (click)="lib.readerBookmarksDrawerOpen.set(false)"
       ></button>
 
       <div
-        [class]="'w-full max-w-md h-full overflow-y-auto relative z-10 border-r shadow-2xl p-6 flex flex-col justify-between animate-slideInRight ' + lib.readerThemeConfig().bg + ' ' + lib.readerThemeConfig().text + ' ' + lib.readerThemeConfig().cardBorder"
+        [class]="'w-full max-w-md h-full overflow-y-auto relative z-10 border-s shadow-2xl p-6 flex flex-col justify-between ' + lib.readerThemeConfig().bg + ' ' + lib.readerThemeConfig().text + ' ' + lib.readerThemeConfig().cardBorder"
       >
         <div class="space-y-4">
           <div [class]="'flex items-center justify-between border-b pb-4 ' + lib.readerThemeConfig().cardBorder">
             <div class="flex items-center gap-2 font-bold text-base">
               <span [class]="'material-symbols-outlined text-[22px] ' + lib.readerThemeConfig().accent">bookmark</span>
-              <span>العلامات المرجعية ({{ lib.readerBookmarks().length }})</span>
+              <span>{{ t.reader.bookmarks }} ({{ lib.i18n.formatNumber(lib.readerBookmarks().length) }})</span>
             </div>
             <button
               type="button"
               (click)="lib.readerBookmarksDrawerOpen.set(false)"
               class="btn-tactile w-8 h-8 rounded-lg flex items-center justify-center hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer"
-              aria-label="إغلاق"
+              [attr.aria-label]="t.modals.close"
             >
               <span class="material-symbols-outlined text-[20px]">close</span>
             </button>
@@ -768,20 +765,19 @@
             [class]="'btn-tactile w-full py-2.5 px-3 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition-all cursor-pointer shadow-md ' + lib.readerThemeConfig().accentBg"
           >
             <span class="material-symbols-outlined text-[18px]">bookmark_add</span>
-            <span>حفظ الموضع الحالي</span>
+            <span>{{ t.reader.addBookmark }}</span>
           </button>
 
-          <div class="space-y-2.5 max-h-[calc(100vh-220px)] overflow-y-auto pr-1">
+          <div class="space-y-2.5 max-h-[calc(100vh-220px)] overflow-y-auto pe-1">
             @if (lib.readerBookmarks().length === 0) {
               <div class="text-center py-12 opacity-60 flex flex-col items-center gap-3">
                 <span class="material-symbols-outlined text-[40px]">bookmark_border</span>
-                <p class="text-xs">لم تحفظ أي علامات مرجعية بعد في هذا السفر.</p>
-                <p class="text-[11px] opacity-75">انقر على زر "حفظ الموضع الحالي" في أي لحظة للرجوع إليه لاحقاً.</p>
+                <p class="text-xs">{{ t.reader.noBookmarks }}</p>
               </div>
             } @else {
               @for (bm of lib.readerBookmarks(); track bm.id) {
                 <div
-                  [class]="'p-3 rounded-xl border text-right space-y-2 shadow-xs transition-all hover:border-current/30 ' + lib.readerThemeConfig().cardBg"
+                  [class]="'p-3 rounded-xl border text-start space-y-2 shadow-xs transition-all hover:border-current/30 ' + lib.readerThemeConfig().cardBg"
                 >
                   <div class="flex items-center justify-between">
                     <span class="font-bold text-xs truncate max-w-[200px]">{{ bm.chapterTitle }}</span>
@@ -789,7 +785,7 @@
                       {{ bm.percent }}%
                     </span>
                   </div>
-                  <p class="text-[11px] opacity-75 line-clamp-2 italic font-amiri leading-relaxed">
+                  <p class="text-[11px] opacity-75 line-clamp-2 italic leading-relaxed">
                     «{{ bm.excerpt }}»
                   </p>
                   <div class="flex items-center justify-between pt-1 border-t border-current/10 text-[10px]">
@@ -800,14 +796,13 @@
                         (click)="lib.jumpToBookmark(bm)"
                         [class]="'btn-tactile text-xs font-bold hover:underline cursor-pointer flex items-center gap-0.5 ' + lib.readerThemeConfig().accent"
                       >
-                        <span>انتقال</span>
-                        <span class="material-symbols-outlined text-[14px]">arrow_back</span>
+                        <span class="material-symbols-outlined text-[14px]">{{ lib.i18n.isRtl() ? 'arrow_back' : 'arrow_forward' }}</span>
                       </button>
                       <button
                         type="button"
                         (click)="lib.removeBookmark(bm.id)"
                         class="btn-tactile text-xs text-rose-500 hover:text-rose-600 cursor-pointer p-1 rounded-md"
-                        title="حذف العلامة"
+                        [attr.aria-label]="t.home.removeBookmark"
                       >
                         <span class="material-symbols-outlined text-[16px]">delete</span>
                       </button>

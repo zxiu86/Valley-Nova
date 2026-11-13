@@ -207,7 +207,7 @@ export class ProfilePage {
     });
   }
 
-  openSettingsDrawer(section: 'edit' | 'privacy' | 'writer' | 'security' | 'admin' = 'edit'): void {
+  openSettingsDrawer(section: 'edit' | 'privacy' | 'site' | 'writer' | 'security' | 'admin' = 'edit'): void {
     this.account.settingsError.set(null);
     this.account.settingsSuccess.set(null);
     this.account.activeSettingsSection.set(section);
@@ -261,26 +261,57 @@ export class ProfilePage {
     input.value = '';
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      this.account.settingsError.set('يرجى اختيار ملف صورة صالح (JPG أو PNG أو WebP).');
+    const allowedMimes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+    const isEn = this.lib.i18n.lang() === 'en';
+    if (!allowedMimes.has(file.type.toLowerCase())) {
+      this.account.settingsError.set(
+        isEn
+          ? 'Please select a valid raster image file (JPG, PNG, or WebP).'
+          : 'يرجى اختيار ملف صورة صالح بصيغة JPG أو PNG أو WebP فقط.'
+      );
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      this.account.settingsError.set('حجم الصورة يتجاوز الحد المسموح به (١٠ ميغابايت).');
+      this.account.settingsError.set(
+        isEn
+          ? 'Image size exceeds the 10 MB limit.'
+          : 'حجم الصورة يتجاوز الحد المسموح به (١٠ ميغابايت).'
+      );
       return;
     }
 
     const reader = new FileReader();
+    reader.onerror = () => {
+      this.account.settingsError.set(
+        isEn ? 'Could not read the selected image file.' : 'تعذر قراءة ملف الصورة المختار.'
+      );
+    };
     reader.onload = async () => {
       const sourceUrl = typeof reader.result === 'string' ? reader.result : '';
       if (!sourceUrl) return;
 
-      const dims = await new Promise<{ w: number; h: number }>((resolve) => {
-        const img = new Image();
-        img.onload = () => resolve({ w: img.width, h: img.height });
-        img.onerror = () => resolve({ w: 1500, h: 800 });
-        img.src = sourceUrl;
-      });
+      let dims: { w: number; h: number };
+      try {
+        dims = await new Promise<{ w: number; h: number }>((resolve, reject) => {
+          const img = new Image();
+          img.onload = () => {
+            if (img.width <= 0 || img.height <= 0) {
+              reject(new Error('INVALID_IMAGE_DIMENSIONS'));
+              return;
+            }
+            resolve({ w: img.width, h: img.height });
+          };
+          img.onerror = () => reject(new Error('IMAGE_DECODE_FAILED'));
+          img.src = sourceUrl;
+        });
+      } catch {
+        this.account.settingsError.set(
+          isEn
+            ? 'This image could not be decoded. Please choose another JPG, PNG, or WebP image.'
+            : 'تعذر فك ترميز الصورة المختارة. يرجى اختيار صورة أخرى بصيغة JPG أو PNG أو WebP.'
+        );
+        return;
+      }
 
       const initialDraft: CroppedImageDraft = {
         kind,
@@ -299,7 +330,12 @@ export class ProfilePage {
         initialDraft.blob = rendered.blob;
         initialDraft.previewDataUrl = rendered.dataUrl;
       } catch {
-        // Fallback keeps original
+        this.account.settingsError.set(
+          isEn
+            ? 'Failed to process this image for preview.'
+            : 'تعذرت معالجة هذه الصورة للمعاينة.'
+        );
+        return;
       }
 
       if (kind === 'avatar') {
@@ -425,7 +461,11 @@ export class ProfilePage {
       this.avatarDraft.set(null);
       this.bannerDraft.set(null);
       this.activeCropperKind.set(null);
-      this.lib.showToast('تم حفظ بيانات الملف الشخصي بنجاح');
+      this.lib.showToast(
+        this.lib.i18n.lang() === 'en'
+          ? 'Profile updated cleanly'
+          : 'تم حفظ بيانات الملف الشخصي بنجاح'
+      );
     }
   }
 
@@ -440,7 +480,11 @@ export class ProfilePage {
       showProfileInfo: val.showProfileInfo,
     });
     if (ok) {
-      this.lib.showToast('تم حفظ وتطبيق إعدادات الخصوصية');
+      this.lib.showToast(
+        this.lib.i18n.lang() === 'en'
+          ? 'Privacy settings saved and applied'
+          : 'تم حفظ وتطبيق إعدادات الخصوصية'
+      );
     }
   }
 
@@ -459,7 +503,11 @@ export class ProfilePage {
 
     const val = this.writerForm.getRawValue();
     if (!val.penName.trim() || !val.shortBio.trim() || !val.writingSample.trim()) {
-      this.account.settingsError.set('يرجى تعبئة الاسم الأدبي، والنبذة، ونموذج الكتابة بالكامل.');
+      this.account.settingsError.set(
+        this.lib.i18n.lang() === 'en'
+          ? 'Please complete your pen name, short bio, and writing sample.'
+          : 'يرجى تعبئة الاسم الأدبي، والنبذة، ونموذج الكتابة بالكامل.'
+      );
       return;
     }
 
@@ -470,7 +518,11 @@ export class ProfilePage {
       writingSample: val.writingSample,
     });
     if (ok) {
-      this.lib.showToast('تم إرسال طلب الانضمام ككاتب للمراجعة بنجاح');
+      this.lib.showToast(
+        this.lib.i18n.lang() === 'en'
+          ? 'Writer application submitted for review'
+          : 'تم إرسال طلب الانضمام ككاتب للمراجعة بنجاح'
+      );
     }
   }
 
@@ -481,8 +533,15 @@ export class ProfilePage {
     const ok = await this.account.reviewApplication(applicantUid, decision, adminUid, note);
     if (ok) {
       this.adminNoteControl.setValue('');
+      const isEn = this.lib.i18n.lang() === 'en';
       this.lib.showToast(
-        decision === 'approved' ? 'تمت الموافقة ومنح شارة الكاتب' : 'تم رفض الطلب'
+        decision === 'approved'
+          ? isEn
+            ? 'Author approved and verified badge granted'
+            : 'تمت الموافقة ومنح شارة الكاتب'
+          : isEn
+            ? 'Application declined'
+            : 'تم رفض الطلب'
       );
     }
   }
@@ -490,8 +549,14 @@ export class ProfilePage {
   async confirmPermanentAccountDeletion(): Promise<void> {
     const uid = this.auth.currentUser()?.uid;
     if (!uid) return;
-    if (this.deleteConfirmText.value.trim() !== 'حذف') {
-      this.account.settingsError.set('يرجى كتابة كلمة «حذف» للتأكيد قبل الإجراء النهائي.');
+    const confirmInput = this.deleteConfirmText.value.trim();
+    const expectedWord = this.lib.i18n.copy().profile.deleteConfirmWord;
+    if (confirmInput !== 'حذف' && confirmInput.toUpperCase() !== expectedWord.toUpperCase()) {
+      this.account.settingsError.set(
+        this.lib.i18n.lang() === 'en'
+          ? 'Please type "DELETE" to confirm permanent account deletion.'
+          : 'يرجى كتابة كلمة «حذف» للتأكيد قبل الإجراء النهائي.'
+      );
       return;
     }
 
@@ -500,7 +565,11 @@ export class ProfilePage {
     if (ok) {
       this.showDeleteConfirmModal.set(false);
       this.closeSettingsDrawer();
-      this.lib.showToast('تم حذف حسابك وجميع بياناته من المنصة نهائياً');
+      this.lib.showToast(
+        this.lib.i18n.lang() === 'en'
+          ? 'Your account and all its data have been permanently deleted'
+          : 'تم حذف حسابك وجميع بياناته من المنصة نهائياً'
+      );
       await this.router.navigateByUrl('/');
     }
   }
@@ -517,7 +586,11 @@ export class ProfilePage {
       navigator.clipboard.writeText(fullUrl).catch(() => false);
     }
     this.copiedProfileLink.set(true);
-    this.lib.showToast(`تم نسخ رابط الحساب: /profile/${username}`);
+    this.lib.showToast(
+      this.lib.i18n.lang() === 'en'
+        ? `Copied profile URL: /profile/${username}`
+        : `تم نسخ رابط الحساب: /profile/${username}`
+    );
     setTimeout(() => this.copiedProfileLink.set(false), 2200);
   }
 
@@ -525,8 +598,13 @@ export class ProfilePage {
     const el = this.savedCarouselEl?.nativeElement;
     if (!el) return;
     const step = Math.max(260, Math.round(el.clientWidth * 0.72));
-    // RTL aware scroll
-    const delta = direction === 'next' ? -step : step;
-    el.scrollBy({ left: delta, behavior: 'smooth' });
+    const sign = this.lib.i18n.isRtl()
+      ? direction === 'next'
+        ? -1
+        : 1
+      : direction === 'next'
+        ? 1
+        : -1;
+    el.scrollBy({ left: sign * step, behavior: 'smooth' });
   }
 }

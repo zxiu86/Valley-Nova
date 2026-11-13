@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { compressToMtx, decompressFromMtx } from './core/mtx-codec';
 import { App } from './app';
 import { ThemeService } from './core/services/theme.service';
+import { I18nService, detectDeviceLanguage, LANG_STORAGE_KEY } from './core/services/i18n.service';
 import { CopyProtectionService } from './core/copy-protection/copy-protection.service';
 import { HomePage } from './pages/home/home-page';
 import { DetailsPage } from './pages/details/details-page';
@@ -12,9 +13,17 @@ import { ReadingPage } from './pages/reading/reading-page';
 import { AuthPage } from './pages/auth/auth-page';
 import { ProfilePage } from './pages/profile/profile-page';
 import { LibraryStateService } from './core/services/library-state.service';
+import { isArabicCatalogNovel } from './core/mtx-catalog-data';
+import { getChaptersForNovel } from './core/mtx-reader-chapters';
 
-describe('MTX Compression, Shell, Theme, Routes & Copy Protection Specs', () => {
+describe('MTX Compression, Shell, Theme, Bilingual i18n, Chapters & Copy Protection Specs', () => {
   beforeEach(() => {
+    try {
+      localStorage.removeItem(LANG_STORAGE_KEY);
+      localStorage.removeItem('mtx_site_theme');
+    } catch {
+      // Ignore storage access restrictions
+    }
     TestBed.configureTestingModule({
       imports: [App, HomePage, DetailsPage, ExplorePage, ReadingPage, AuthPage, ProfilePage],
       providers: [provideRouter([])],
@@ -22,7 +31,8 @@ describe('MTX Compression, Shell, Theme, Routes & Copy Protection Specs', () => 
   });
 
   it('should compress and decompress Arabic text with full diacritics losslessly', async () => {
-    const sampleText = 'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ - مَحَطَّةُ التَّرْمِيزِ وَالضَّغْطِ الثُّنَائِيِّ لِلنُّصُوصِ العَرَبِيَّةِ المُشَكَّلَةِ';
+    const sampleText =
+      'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ - مَحَطَّةُ التَّرْمِيزِ وَالضَّغْطِ الثُّنَائِيِّ لِلنُّصُوصِ العَرَبِيَّةِ المُشَكَّلَةِ';
     const metadata = {
       title: 'سفر البداية',
       author: 'محرك الترميز',
@@ -42,6 +52,9 @@ describe('MTX Compression, Shell, Theme, Routes & Copy Protection Specs', () => 
   });
 
   it('should instantiate App shell and all 6 modular page components cleanly', () => {
+    const i18n = TestBed.inject(I18nService);
+    i18n.setLanguage('ar', false);
+
     const appFixture = TestBed.createComponent(App);
     const app = appFixture.componentInstance;
     expect(app).toBeDefined();
@@ -80,7 +93,7 @@ describe('MTX Compression, Shell, Theme, Routes & Copy Protection Specs', () => 
     expect((profileFixture.nativeElement as HTMLElement).textContent?.length).toBeGreaterThan(0);
   });
 
-  it('should persist light and dark theme preference and trigger strictly 12 mosaic tiles via ThemeService', () => {
+  it('should persist light and dark theme preference and trigger GPU Paper Reveal transition via ThemeService', () => {
     const themeService = TestBed.inject(ThemeService);
     themeService.init();
     themeService.setTheme('light');
@@ -88,15 +101,143 @@ describe('MTX Compression, Shell, Theme, Routes & Copy Protection Specs', () => 
     expect(themeService.isDark()).toBe(false);
     expect(localStorage.getItem('mtx_site_theme')).toBe('light');
 
-    themeService.toggleThemeWithMosaic();
-    expect(themeService.isMosaicActive()).toBe(true);
-    expect(themeService.mosaicTiles().length).toBe(12);
-    expect(themeService.mosaicRows() * themeService.mosaicCols()).toBe(12);
+    themeService.toggleThemeWithPaperReveal();
+    expect(themeService.isPaperRevealActive()).toBe(true);
+    expect(themeService.paperRevealDirection()).toBe('to-dark');
 
     themeService.setTheme('dark');
     expect(themeService.theme()).toBe('dark');
     expect(themeService.isDark()).toBe(true);
     expect(localStorage.getItem('mtx_site_theme')).toBe('dark');
+  });
+
+  it('should detect device language on first visit, persist manual switching, and sync HTML lang & dir attributes', () => {
+    expect(detectDeviceLanguage({ language: 'en-US' })).toBe('en');
+    expect(detectDeviceLanguage({ language: 'ar-SA' })).toBe('ar');
+    expect(detectDeviceLanguage({ language: 'fr-FR' })).toBe('ar');
+    expect(detectDeviceLanguage({ languages: ['es-ES', 'en-GB'] })).toBe('en');
+
+    const i18n = TestBed.inject(I18nService);
+    i18n.setLanguage('en', true);
+    expect(i18n.lang()).toBe('en');
+    expect(i18n.dir()).toBe('ltr');
+    expect(document.documentElement.getAttribute('lang')).toBe('en');
+    expect(document.documentElement.getAttribute('dir')).toBe('ltr');
+    expect(localStorage.getItem(LANG_STORAGE_KEY)).toBe('en');
+
+    i18n.setLanguage('ar', true);
+    expect(i18n.lang()).toBe('ar');
+    expect(i18n.dir()).toBe('rtl');
+    expect(document.documentElement.getAttribute('lang')).toBe('ar');
+    expect(document.documentElement.getAttribute('dir')).toBe('rtl');
+    expect(localStorage.getItem(LANG_STORAGE_KEY)).toBe('ar');
+  });
+
+  it('should render opposite-language Spotlight button copy and filter Explore strictly without changing UI language', () => {
+    const i18n = TestBed.inject(I18nService);
+    const lib = TestBed.inject(LibraryStateService);
+
+    i18n.setLanguage('ar', false);
+    const arHome = TestBed.createComponent(HomePage);
+    arHome.detectChanges();
+    expect((arHome.nativeElement as HTMLElement).textContent).toContain('ENGLISH');
+
+    lib.openExploreByHeroLanguage();
+    expect(i18n.lang()).toBe('ar');
+    expect(lib.exploreLanguageScope()).toBe('non-ar');
+    expect(lib.filteredExploreBooks().length).toBeGreaterThan(0);
+    expect(lib.filteredExploreBooks().every((b) => !isArabicCatalogNovel(b))).toBe(true);
+
+    i18n.setLanguage('en', false);
+    const enHome = TestBed.createComponent(HomePage);
+    enHome.detectChanges();
+    expect((enHome.nativeElement as HTMLElement).textContent).toContain('العربية');
+
+    lib.openExploreByHeroLanguage();
+    expect(i18n.lang()).toBe('en');
+    expect(lib.exploreLanguageScope()).toBe('ar');
+    expect(lib.filteredExploreBooks().length).toBeGreaterThan(0);
+    expect(lib.filteredExploreBooks().every((b) => isArabicCatalogNovel(b))).toBe(true);
+
+    lib.setExploreLanguageScope('all');
+    i18n.setLanguage('ar', false);
+  });
+
+  it('should render Details Liquid Glass chapter language copy, resolve genuine linked chapters, and isolate progress per language', () => {
+    const i18n = TestBed.inject(I18nService);
+    const lib = TestBed.inject(LibraryStateService);
+
+    i18n.setLanguage('ar', false);
+    lib.openNovelDetails(lib.defaultEchoesSamarkand);
+    const arDetails = TestBed.createComponent(DetailsPage);
+    arDetails.detectChanges();
+    const arDetailsText = (arDetails.nativeElement as HTMLElement).textContent || '';
+    expect(arDetailsText).toContain('To English');
+    expect(arDetailsText).toContain(
+      'يمكنك قراءة الرواية باللغة الإنجليزية، حيث تتحول الفصول إلى نسختها الإنجليزية عند توفرها.'
+    );
+
+    i18n.setLanguage('en', false);
+    const enDetails = TestBed.createComponent(DetailsPage);
+    enDetails.detectChanges();
+    const enDetailsText = (enDetails.nativeElement as HTMLElement).textContent || '';
+    expect(enDetailsText).toContain('إلى العربية');
+    expect(enDetailsText).toContain(
+      'Switch the novel chapters to their Arabic versions when available.'
+    );
+
+    expect(getChaptersForNovel('echoes-of-samarkand', 'ar').length).toBe(24);
+    expect(getChaptersForNovel('echoes-of-samarkand', 'en').length).toBe(12);
+    expect(getChaptersForNovel('hayy-ibn-yaqzan', 'en').length).toBe(0);
+    expect(getChaptersForNovel('frankenstein-classic', 'ar').length).toBe(0);
+    expect(getChaptersForNovel('frankenstein-classic', 'en').length).toBe(4);
+
+    // Independent progress per (novelId, chapterLanguage, chapterNumber)
+    localStorage.setItem('mtx_last_chap_echoes-of-samarkand_ar', '4');
+    localStorage.setItem('mtx_read_pct_echoes-of-samarkand_ar_4', '50');
+    localStorage.setItem('mtx_last_chap_echoes-of-samarkand_en', '1');
+    localStorage.setItem('mtx_read_pct_echoes-of-samarkand_en_1', '0');
+
+    lib.setNovelChapterLanguage('ar');
+    const arProgress = lib.selectedChapterLangProgressPercent();
+    lib.setNovelChapterLanguage('en');
+    const enProgress = lib.selectedChapterLangProgressPercent();
+    expect(arProgress).toBeGreaterThan(enProgress);
+
+    // Directional missing-translation hints for single-language books
+    const arabicOnlyWork = lib.exploreBooksList().find((b) => b.id === 'lisan-al-arab-ibn-manzur')!;
+    expect(arabicOnlyWork).toBeDefined();
+    lib.openNovelDetails(arabicOnlyWork);
+    i18n.setLanguage('ar', false);
+    const arOnlyFixture = TestBed.createComponent(DetailsPage);
+    arOnlyFixture.detectChanges();
+    expect((arOnlyFixture.nativeElement as HTMLElement).textContent).toContain(
+      'لا توجد فصول إنجليزية متوفرة لهذا المصنف بعد'
+    );
+
+    const frankenstein = lib.exploreBooksList().find((b) => b.id === 'frankenstein-classic')!;
+    expect(frankenstein).toBeDefined();
+    lib.openNovelDetails(frankenstein);
+    const frankFixture = TestBed.createComponent(DetailsPage);
+    frankFixture.detectChanges();
+    expect((frankFixture.nativeElement as HTMLElement).textContent).toContain(
+      'لا توجد فصول عربية متوفرة لهذا المصنف بعد'
+    );
+
+    // Partial Spotlight/Serendipity NovelCard enrichment from canonical catalog
+    lib.openNovelDetails({
+      id: 'echoes-of-samarkand',
+      title: lib.spotlight.title,
+      genre: lib.spotlight.genre,
+      coverUrl: lib.spotlight.coverUrl,
+      coverAlt: lib.spotlight.coverAlt,
+      description: lib.spotlight.quote,
+    });
+    expect(lib.selectedNovel()?.author).toBeTruthy();
+    expect(lib.selectedNovel()?.languageCode).toBe('ar');
+    expect(lib.selectedNovel()?.readingHours).toBeGreaterThan(0);
+
+    i18n.setLanguage('ar', false);
   });
 
   it('should exempt form inputs from copy protection while preventing casual copy on protected prose', () => {
@@ -128,20 +269,27 @@ describe('MTX Compression, Shell, Theme, Routes & Copy Protection Specs', () => 
     protection.destroy();
   });
 
-  it('should normalize and validate Latin/numeric/underscore usernames case-insensitively and block reserved names', async () => {
+  it('should normalize and validate 4–24 char usernames and enforce @zid exclusive admin exception', async () => {
     const { normalizeUsername, validateUsernameFormat } = await import('./core/mtx-firebase');
 
     expect(normalizeUsername('  @Zaid_05  ')).toBe('zaid_05');
     expect(validateUsernameFormat('Zaid').valid).toBe(true);
     expect(validateUsernameFormat('Zaid').normalized).toBe('zaid');
     expect(validateUsernameFormat('za_99').valid).toBe(true);
+    expect(validateUsernameFormat('abc').valid).toBe(false);
     expect(validateUsernameFormat('ab').valid).toBe(false);
     expect(validateUsernameFormat('زيد').valid).toBe(false);
     expect(validateUsernameFormat('admin').reserved).toBe(true);
     expect(validateUsernameFormat('Admin').valid).toBe(false);
+    expect(validateUsernameFormat('zid').valid).toBe(false);
+    expect(validateUsernameFormat('zid').reserved).toBe(true);
+    expect(validateUsernameFormat('zid', { isAdmin: true }).valid).toBe(true);
   });
 
   it('should render ProfilePage private guard state without exposing personal details and enforce strict 2-stat limit', async () => {
+    const i18n = TestBed.inject(I18nService);
+    i18n.setLanguage('ar', false);
+
     const { AccountService } = await import('./core/services/account.service');
     const accountService = TestBed.inject(AccountService);
 
@@ -186,24 +334,33 @@ describe('MTX Compression, Shell, Theme, Routes & Copy Protection Specs', () => 
     expect(okHtml).not.toContain('المتابعين');
   });
 
-  it('should map Firebase Google and Email auth errors cleanly with actionable Arabic diagnostics', async () => {
+  it('should map Firebase Google and Email auth errors cleanly in both Arabic and English diagnostics', async () => {
     const { mapGoogleAuthErrorMessage, mapEmailAuthErrorMessage } = await import(
       './core/services/auth-session.service'
     );
 
     expect(mapGoogleAuthErrorMessage({ code: 'auth/popup-closed-by-user' })).toBeNull();
     expect(
-      mapGoogleAuthErrorMessage({ code: 'auth/unauthorized-domain' }, 'zxiu86.github.io')
+      mapGoogleAuthErrorMessage({ code: 'auth/unauthorized-domain' }, 'zxiu86.github.io', 'ar')
     ).toContain('zxiu86.github.io');
-    expect(mapGoogleAuthErrorMessage({ code: 'auth/popup-blocked' })).toContain('النافذة المنبثقة');
-    expect(mapGoogleAuthErrorMessage({ code: 'auth/operation-not-allowed' })).toContain(
+    expect(mapGoogleAuthErrorMessage({ code: 'auth/popup-blocked' }, '', 'ar')).toContain(
+      'النافذة المنبثقة'
+    );
+    expect(mapGoogleAuthErrorMessage({ code: 'auth/operation-not-allowed' }, '', 'ar')).toContain(
       'Sign-in method'
     );
-    expect(mapEmailAuthErrorMessage({ code: 'auth/invalid-credential' }, 'login')).toContain(
+    expect(mapEmailAuthErrorMessage({ code: 'auth/invalid-credential' }, 'login', 'ar')).toContain(
       'غير صحيحة'
     );
-    expect(mapEmailAuthErrorMessage({ code: 'auth/email-already-in-use' }, 'register')).toContain(
-      'مسجل مسبقاً'
+    expect(
+      mapEmailAuthErrorMessage({ code: 'auth/email-already-in-use' }, 'register', 'ar')
+    ).toContain('مسجل مسبقاً');
+
+    expect(mapGoogleAuthErrorMessage({ code: 'auth/popup-blocked' }, '', 'en')).toContain(
+      'popup'
+    );
+    expect(mapEmailAuthErrorMessage({ code: 'auth/invalid-credential' }, 'login', 'en')).toContain(
+      'Incorrect'
     );
   });
 });

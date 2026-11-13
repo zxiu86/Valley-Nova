@@ -21,7 +21,7 @@ service cloud.firestore {
     }
 
     function isValidUsername(name) {
-      return name is string && name.size() >= 3 && name.size() <= 24 && name.matches('^[a-z0-9_]+$');
+      return name is string && name.size() >= 4 && name.size() <= 24 && name.matches('^[a-z0-9_]+$');
     }
 
     function isReservedUsername(name) {
@@ -45,8 +45,7 @@ service cloud.firestore {
     function isDesignatedFounder() {
       return isSignedIn() &&
         request.auth.token.email_verified == true &&
-        (request.auth.token.email == 'alsaid66900@gmail.com' ||
-         request.auth.token.email == 'zly30257@gmail.com');
+        request.auth.token.email == 'zly30257@gmail.com';
     }
 
     function isFounder() {
@@ -91,6 +90,14 @@ service cloud.firestore {
       );
     }
 
+    function isAllowedUsernamePath(name) {
+      return isValidUsername(name) || name == 'zid';
+    }
+
+    function isAllowedUsernameWrite(name) {
+      return (isValidUsername(name) && !isReservedUsername(name)) || (name == 'zid' && isAdmin());
+    }
+
     function isValidPublicProfile(data) {
       return data.uid is string &&
         data.uid.size() <= 128 &&
@@ -101,7 +108,7 @@ service cloud.firestore {
         data.showSavedNovels is bool &&
         data.showReadingHistory is bool &&
         data.showProfileInfo is bool &&
-        (!('username' in data) || data.username == '' || (isValidUsername(data.username) && !isReservedUsername(data.username))) &&
+        (!('username' in data) || data.username == '' || isAllowedUsernameWrite(data.username)) &&
         (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 450000)) &&
         (!('coverURL' in data) || (data.coverURL is string && data.coverURL.size() <= 450000)) &&
         (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 64)) &&
@@ -122,7 +129,7 @@ service cloud.firestore {
         data.email is string &&
         data.email.size() <= 200 &&
         (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 80)) &&
-        (!('username' in data) || data.username == '' || (isValidUsername(data.username) && !isReservedUsername(data.username))) &&
+        (!('username' in data) || data.username == '' || isAllowedUsernameWrite(data.username)) &&
         (!('bio' in data) || (data.bio is string && data.bio.size() <= 320)) &&
         (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 450000)) &&
         (!('coverURL' in data) || (data.coverURL is string && data.coverURL.size() <= 450000)) &&
@@ -230,6 +237,11 @@ service cloud.firestore {
       allow create: if isValidId(userId) &&
         isOwner(userId) &&
         incoming().id == userId &&
+        incoming().keys().hasOnly([
+          'id', 'email', 'displayName', 'username', 'bio', 'photoURL', 'coverURL',
+          'isPublic', 'showSavedNovels', 'showReadingHistory', 'showProfileInfo',
+          'createdAt', 'updatedAt'
+        ]) &&
         isValidPrivateUserDoc(incoming());
       allow update: if isValidId(userId) &&
         isOwner(userId) &&
@@ -287,9 +299,14 @@ service cloud.firestore {
       allow create: if isValidId(userId) &&
         isOwner(userId) &&
         incoming().uid == userId &&
+        incoming().keys().hasOnly([
+          'uid', 'displayName', 'username', 'photoURL', 'coverURL',
+          'isPublic', 'showSavedNovels', 'showReadingHistory', 'showProfileInfo',
+          'createdAt', 'updatedAt'
+        ]) &&
         isValidPublicProfile(incoming()) &&
         (!('username' in incoming()) || incoming().username == '' ||
-         (isValidUsername(incoming().username) &&
+         (isAllowedUsernameWrite(incoming().username) &&
           existsAfter(/databases/$(database)/documents/usernames/$(incoming().username)) &&
           getAfter(/databases/$(database)/documents/usernames/$(incoming().username)).data.uid == userId));
       allow update: if isValidId(userId) &&
@@ -298,7 +315,7 @@ service cloud.firestore {
         isValidPublicProfile(incoming()) &&
         (incoming().username == existing().username ||
          incoming().username == '' ||
-         (isValidUsername(incoming().username) &&
+         (isAllowedUsernameWrite(incoming().username) &&
           existsAfter(/databases/$(database)/documents/usernames/$(incoming().username)) &&
           getAfter(/databases/$(database)/documents/usernames/$(incoming().username)).data.uid == userId)) &&
         incoming().diff(existing()).affectedKeys().hasOnly([
@@ -318,8 +335,11 @@ service cloud.firestore {
         );
         allow list: if false;
         allow create, update: if isValidId(userId) && detailId == 'bio' && isOwner(userId) &&
+          incoming().keys().hasAll(['uid', 'bio', 'updatedAt']) &&
+          incoming().keys().hasOnly(['uid', 'bio', 'updatedAt']) &&
           incoming().uid == userId &&
-          incoming().bio is string && incoming().bio.size() <= 320;
+          incoming().bio is string && incoming().bio.size() <= 320 &&
+          incoming().updatedAt is string && incoming().updatedAt.size() <= 64;
         allow delete: if isValidId(userId) && detailId == 'bio' && isOwner(userId);
       }
 
@@ -335,9 +355,12 @@ service cloud.firestore {
         );
         allow list: if false;
         allow create, update: if isValidId(userId) && statId in ['saved', 'reading'] && isOwner(userId) &&
+          incoming().keys().hasAll(['uid', 'count', 'updatedAt']) &&
+          incoming().keys().hasOnly(['uid', 'count', 'updatedAt']) &&
           incoming().uid == userId &&
           incoming().count is number &&
-          incoming().count >= 0;
+          incoming().count >= 0 &&
+          incoming().updatedAt is string && incoming().updatedAt.size() <= 64;
         allow delete: if isValidId(userId) && statId in ['saved', 'reading'] && isOwner(userId);
       }
 
@@ -351,19 +374,23 @@ service cloud.firestore {
            get(/databases/$(database)/documents/public_profiles/$(userId)).data.showSavedNovels == true)
         );
         allow create, update: if isValidId(userId) && isValidId(novelId) && isOwner(userId) &&
+          incoming().keys().hasOnly(['userId', 'novelId', 'novelTitle', 'author', 'genre', 'coverUrl', 'createdAt']) &&
           incoming().userId == userId &&
-          incoming().novelId == novelId;
+          incoming().novelId == novelId &&
+          (!('novelTitle' in incoming()) || (incoming().novelTitle is string && incoming().novelTitle.size() <= 160)) &&
+          (!('author' in incoming()) || (incoming().author is string && incoming().author.size() <= 80)) &&
+          (!('genre' in incoming()) || (incoming().genre is string && incoming().genre.size() <= 80)) &&
+          (!('coverUrl' in incoming()) || (incoming().coverUrl is string && incoming().coverUrl.size() <= 450000));
         allow delete: if isValidId(userId) && isValidId(novelId) && isOwner(userId);
       }
     }
 
     // ================= ATOMIC USERNAME RESERVATION & REDIRECTS ================= //
     match /usernames/{usernameLower} {
-      allow get: if isValidUsername(usernameLower);
+      allow get: if isAllowedUsernamePath(usernameLower);
       allow list: if false;
       allow create: if isSignedIn() &&
-        isValidUsername(usernameLower) &&
-        !isReservedUsername(usernameLower) &&
+        isAllowedUsernameWrite(usernameLower) &&
         !exists(/databases/$(database)/documents/usernames/$(usernameLower)) &&
         incoming().keys().hasAll(['uid', 'username', 'isPublic', 'updatedAt']) &&
         incoming().keys().hasOnly(['uid', 'username', 'isPublic', 'updatedAt']) &&
@@ -372,28 +399,37 @@ service cloud.firestore {
         incoming().isPublic is bool &&
         getAfter(/databases/$(database)/documents/public_profiles/$(request.auth.uid)).data.username == usernameLower;
       allow update: if isSignedIn() &&
-        isValidUsername(usernameLower) &&
+        isAllowedUsernameWrite(usernameLower) &&
         existing().uid == request.auth.uid &&
         incoming().uid == existing().uid &&
         incoming().username == usernameLower &&
         incoming().isPublic is bool &&
         incoming().diff(existing()).affectedKeys().hasOnly(['isPublic', 'updatedAt']);
       allow delete: if isSignedIn() &&
-        isValidUsername(usernameLower) &&
+        isAllowedUsernamePath(usernameLower) &&
         existing().uid == request.auth.uid;
     }
 
     match /username_redirects/{oldUsername} {
-      allow get: if isValidUsername(oldUsername);
+      allow get: if isAllowedUsernamePath(oldUsername);
       allow list: if false;
-      allow create, update: if isSignedIn() &&
-        isValidUsername(oldUsername) &&
-        !isReservedUsername(oldUsername) &&
+      allow create: if isSignedIn() &&
+        isAllowedUsernameWrite(oldUsername) &&
+        !exists(/databases/$(database)/documents/username_redirects/$(oldUsername)) &&
+        incoming().keys().hasAll(['uid', 'currentUsername', 'updatedAt']) &&
+        incoming().keys().hasOnly(['uid', 'currentUsername', 'updatedAt']) &&
         incoming().uid == request.auth.uid &&
-        incoming().currentUsername is string &&
-        isValidUsername(incoming().currentUsername);
+        isAllowedUsernameWrite(incoming().currentUsername) &&
+        incoming().updatedAt is string && incoming().updatedAt.size() <= 64;
+      allow update: if isSignedIn() &&
+        isAllowedUsernamePath(oldUsername) &&
+        existing().uid == request.auth.uid &&
+        incoming().uid == existing().uid &&
+        incoming().keys().hasOnly(['uid', 'currentUsername', 'updatedAt']) &&
+        isAllowedUsernameWrite(incoming().currentUsername) &&
+        incoming().updatedAt is string && incoming().updatedAt.size() <= 64;
       allow delete: if isSignedIn() &&
-        isValidUsername(oldUsername) &&
+        isAllowedUsernamePath(oldUsername) &&
         existing().uid == request.auth.uid;
     }
 
@@ -405,6 +441,10 @@ service cloud.firestore {
         incoming().id == novelId &&
         incoming().authorId == request.auth.uid &&
         incoming().title is string && incoming().title.size() >= 2 && incoming().title.size() <= 140 &&
+        (!('authorName' in incoming()) || (incoming().authorName is string && incoming().authorName.size() <= 80)) &&
+        (!('genre' in incoming()) || (incoming().genre is string && incoming().genre.size() <= 80)) &&
+        (!('description' in incoming()) || (incoming().description is string && incoming().description.size() <= 2000)) &&
+        (!('coverUrl' in incoming()) || (incoming().coverUrl is string && incoming().coverUrl.size() <= 450000)) &&
         incoming().isPublished is bool;
       allow update: if isValidId(novelId) && (
         isAdmin() ||
@@ -412,7 +452,11 @@ service cloud.firestore {
          existing().authorId == request.auth.uid &&
          incoming().authorId == existing().authorId &&
          incoming().id == existing().id &&
-         incoming().title is string && incoming().title.size() >= 2 && incoming().title.size() <= 140)
+         incoming().title is string && incoming().title.size() >= 2 && incoming().title.size() <= 140 &&
+         (!('authorName' in incoming()) || (incoming().authorName is string && incoming().authorName.size() <= 80)) &&
+         (!('genre' in incoming()) || (incoming().genre is string && incoming().genre.size() <= 80)) &&
+         (!('description' in incoming()) || (incoming().description is string && incoming().description.size() <= 2000)) &&
+         (!('coverUrl' in incoming()) || (incoming().coverUrl is string && incoming().coverUrl.size() <= 450000)))
       );
       allow delete: if isValidId(novelId) && isSignedIn() && (existing().authorId == request.auth.uid || isAdmin());
     }

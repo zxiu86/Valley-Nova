@@ -3,18 +3,6 @@ import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 
 export type SiteTheme = 'light' | 'dark';
 
-export interface MosaicTile {
-  id: number;
-  row: number;
-  col: number;
-  delayMs: number;
-  bgColor: string;
-  borderColor: string;
-  rotateDeg: number;
-  disperseX: number;
-  disperseY: number;
-}
-
 const THEME_STORAGE_KEY = 'mtx_site_theme';
 
 @Injectable({ providedIn: 'root' })
@@ -25,12 +13,12 @@ export class ThemeService {
   readonly theme = signal<SiteTheme>('dark');
   readonly isDark = computed(() => this.theme() === 'dark');
 
-  // Mosaic Transition Orchestration (12 GPU-composited tiles)
-  readonly isMosaicActive = signal<boolean>(false);
-  readonly mosaicDispersing = signal<boolean>(false);
-  readonly mosaicRows = signal<number>(3);
-  readonly mosaicCols = signal<number>(4);
-  readonly mosaicTiles = signal<MosaicTile[]>([]);
+  // Lightweight GPU-composited Paper Reveal theme transition
+  readonly isPaperRevealActive = signal<boolean>(false);
+  readonly paperRevealPeeling = signal<boolean>(false);
+  readonly paperRevealOutgoingBg = signal<string>('#131315');
+  readonly paperRevealEdgeColor = signal<string>('rgba(233, 195, 73, 0.24)');
+  readonly paperRevealDirection = signal<'to-light' | 'to-dark'>('to-light');
 
   private transitionTimer: ReturnType<typeof setTimeout> | null = null;
   private rafId: number | null = null;
@@ -56,8 +44,8 @@ export class ThemeService {
     this.applyThemeToDom(next);
   }
 
-  toggleThemeWithMosaic(): void {
-    if (this.isMosaicActive()) return;
+  toggleThemeWithPaperReveal(): void {
+    if (this.isPaperRevealActive()) return;
 
     const currentTheme = this.theme();
     const nextTheme: SiteTheme = currentTheme === 'dark' ? 'light' : 'dark';
@@ -78,44 +66,9 @@ export class ThemeService {
     }
 
     const savedScrollY = window.scrollY;
-    const width = window.innerWidth;
-    // Strictly 12 tiles across all viewports (3x4 on narrow mobile, 4x3 on tablet/desktop)
-    const cols = width < 640 ? 3 : 4;
-    const rows = width < 640 ? 4 : 3;
-
-    const outgoingPalette =
-      currentTheme === 'dark'
-        ? ['#131315', '#17161a', '#1b1a1e', '#151418']
-        : ['#F7F7FA', '#FFFFFF', '#F0EFF5', '#ECEAF2'];
-
-    const outgoingBorder =
-      currentTheme === 'dark' ? 'rgba(255, 255, 255, 0.04)' : 'rgba(33, 29, 43, 0.05)';
-
-    const tiles: MosaicTile[] = [];
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const idx = r * cols + c;
-        // Smooth diagonal wave from top-right (RTL origin) to bottom-left
-        const waveStep = (cols - 1 - c) * 0.7 + r * 0.8;
-        const delayMs = Math.round(waveStep * 26);
-        const shade = outgoingPalette[(r * 3 + c * 5) % outgoingPalette.length];
-        const rotateDeg = ((r + c) % 2 === 0 ? 1 : -1) * (2.5 + ((r + c) % 3));
-        const disperseX = Math.round((c / Math.max(1, cols - 1) - 0.5) * 28);
-        const disperseY = Math.round((r / Math.max(1, rows - 1) - 0.5) * 22 - 8);
-
-        tiles.push({
-          id: idx,
-          row: r,
-          col: c,
-          delayMs,
-          bgColor: shade,
-          borderColor: outgoingBorder,
-          rotateDeg,
-          disperseX,
-          disperseY,
-        });
-      }
-    }
+    const outgoingBg = currentTheme === 'dark' ? '#131315' : '#F7F7FA';
+    const edgeColor =
+      currentTheme === 'dark' ? 'rgba(233, 195, 73, 0.26)' : 'rgba(158, 27, 66, 0.2)';
 
     if (this.rafId !== null) {
       cancelAnimationFrame(this.rafId);
@@ -126,13 +79,13 @@ export class ThemeService {
       this.rafInnerId = null;
     }
 
-    this.mosaicRows.set(rows);
-    this.mosaicCols.set(cols);
-    this.mosaicTiles.set(tiles);
-    this.mosaicDispersing.set(false);
-    this.isMosaicActive.set(true);
+    this.paperRevealOutgoingBg.set(outgoingBg);
+    this.paperRevealEdgeColor.set(edgeColor);
+    this.paperRevealDirection.set(nextTheme === 'light' ? 'to-light' : 'to-dark');
+    this.paperRevealPeeling.set(false);
+    this.isPaperRevealActive.set(true);
 
-    // Paint the 12 solid tiles first, switch theme offscreen beneath them, then smoothly disperse
+    // Paint single paper sheet matching outgoing theme, swap theme underneath, then smoothly peel away
     this.rafId = requestAnimationFrame(() => {
       this.applyThemeToDom(nextTheme);
       if (Math.abs(window.scrollY - savedScrollY) > 1) {
@@ -140,22 +93,18 @@ export class ThemeService {
       }
 
       this.rafInnerId = requestAnimationFrame(() => {
-        this.mosaicDispersing.set(true);
+        this.paperRevealPeeling.set(true);
       });
     });
-
-    const maxDelay = Math.max(...tiles.map((t) => t.delayMs), 0);
-    const totalDurationMs = maxDelay + 360;
 
     if (this.transitionTimer) {
       clearTimeout(this.transitionTimer);
     }
     this.transitionTimer = setTimeout(() => {
-      this.isMosaicActive.set(false);
-      this.mosaicDispersing.set(false);
-      this.mosaicTiles.set([]);
+      this.isPaperRevealActive.set(false);
+      this.paperRevealPeeling.set(false);
       this.transitionTimer = null;
-    }, totalDurationMs);
+    }, 480);
   }
 
   private applyThemeToDom(next: SiteTheme): void {
