@@ -28,6 +28,96 @@ export interface AuthDisplayHint {
   photoURL: string;
 }
 
+export function extractFirebaseErrorCode(err: unknown): string {
+  if (
+    err &&
+    typeof err === 'object' &&
+    'code' in err &&
+    typeof (err as { code?: unknown }).code === 'string'
+  ) {
+    return (err as { code: string }).code.toLowerCase();
+  }
+  const msg = err instanceof Error ? err.message : String(err ?? '');
+  const match = msg.match(/auth\/[a-z0-9-]+/i);
+  return match ? match[0].toLowerCase() : '';
+}
+
+export function mapGoogleAuthErrorMessage(err: unknown, hostname = ''): string | null {
+  const code = extractFirebaseErrorCode(err);
+  const msg = err instanceof Error ? err.message : String(err ?? '');
+
+  if (code === 'auth/popup-closed-by-user' || msg.includes('popup-closed-by-user')) {
+    return null;
+  }
+  if (code === 'auth/cancelled-popup-request' || msg.includes('cancelled-popup-request')) {
+    return 'تم إلغاء نافذة تسجيل الدخول السابقة، يرجى الضغط مرة أخرى والمتابعة من النافذة الجديدة.';
+  }
+  if (code === 'auth/unauthorized-domain' || msg.includes('unauthorized-domain')) {
+    const hostSuffix = hostname ? ` (${hostname})` : '';
+    return `النطاق الحالي${hostSuffix} غير مضاف ضمن النطاقات المصرح بها في Firebase. أضفه من لوحة Firebase: Authentication ← Settings ← Authorized domains.`;
+  }
+  if (code === 'auth/operation-not-allowed' || msg.includes('operation-not-allowed')) {
+    return 'تسجيل الدخول عبر Google غير مفعّل في مشروع Firebase. يرجى تفعيله من: Authentication ← Sign-in method ← Google.';
+  }
+  if (code === 'auth/popup-blocked' || msg.includes('popup-blocked')) {
+    return 'تم حظر النافذة المنبثقة لتسجيل الدخول عبر جوجل من قِبل المتصفح. يرجى السماح بالنوافذ المنبثقة لهذا الموقع ثم المحاولة مجدداً.';
+  }
+  if (
+    code === 'auth/account-exists-with-different-credential' ||
+    msg.includes('account-exists-with-different-credential')
+  ) {
+    return 'هذا البريد الإلكتروني مسجل مسبقاً بكلمة مرور. يرجى تسجيل الدخول عبر البريد الإلكتروني وكلمة المرور.';
+  }
+  if (code === 'auth/network-request-failed' || msg.includes('network-request-failed')) {
+    return 'تعذر الاتصال بخوادم جوجل، يرجى التحقق من اتصالك بالإنترنت والمحاولة مجدداً.';
+  }
+  if (
+    code === 'auth/invalid-api-key' ||
+    code === 'auth/api-key-not-valid' ||
+    msg.includes('api-key-not-valid')
+  ) {
+    return 'مفتاح Firebase API مقيّد لنطاق آخر أو غير صالح في إعدادات Google Cloud Console.';
+  }
+
+  const codeTag = code ? ` (${code})` : '';
+  return `تعذر تسجيل الدخول عبر جوجل${codeTag}، يرجى المحاولة لاحقاً.`;
+}
+
+export function mapEmailAuthErrorMessage(err: unknown, mode: 'login' | 'register'): string {
+  const code = extractFirebaseErrorCode(err);
+  const msg = err instanceof Error ? err.message : String(err ?? '');
+
+  if (
+    code === 'auth/user-not-found' ||
+    code === 'auth/invalid-credential' ||
+    code === 'auth/wrong-password' ||
+    msg.includes('user-not-found') ||
+    msg.includes('invalid-credential') ||
+    msg.includes('wrong-password')
+  ) {
+    return 'البريد الإلكتروني أو كلمة المرور غير صحيحة';
+  }
+  if (code === 'auth/invalid-email' || msg.includes('invalid-email')) {
+    return 'صيغة البريد الإلكتروني غير صالحة';
+  }
+  if (code === 'auth/email-already-in-use' || msg.includes('email-already-in-use')) {
+    return 'هذا البريد الإلكتروني مسجل مسبقاً، يمكنك تسجيل الدخول بدلاً من ذلك';
+  }
+  if (code === 'auth/weak-password' || msg.includes('weak-password')) {
+    return 'كلمة المرور ضعيفة جداً، يرجى اختيار كلمة مرور من ٦ أحرف على الأقل';
+  }
+  if (code === 'auth/too-many-requests' || msg.includes('too-many-requests')) {
+    return 'تم تقييد المحاولات مؤقتاً لكثرة الطلبات، يرجى الانتظار قليلاً ثم المحاولة';
+  }
+  if (code === 'auth/network-request-failed' || msg.includes('network-request-failed')) {
+    return 'تعذر الاتصال بخوادم المصادقة، يرجى التحقق من اتصال الإنترنت';
+  }
+
+  return mode === 'login'
+    ? 'تعذر تسجيل الدخول، يرجى التحقق من صحة البيانات أو المحاولة لاحقاً'
+    : 'تعذر إنشاء الحساب، يرجى المحاولة لاحقاً';
+}
+
 @Injectable({ providedIn: 'root' })
 export class AuthSessionService {
   private readonly platformId = inject(PLATFORM_ID);
@@ -199,14 +289,7 @@ export class AuthSessionService {
       this.authLoginForm.reset();
       return user;
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes('user-not-found') || msg.includes('invalid-credential') || msg.includes('wrong-password')) {
-        this.authError.set('البريد الإلكتروني أو كلمة المرور غير صحيحة');
-      } else if (msg.includes('invalid-email')) {
-        this.authError.set('صيغة البريد الإلكتروني غير صالحة');
-      } else {
-        this.authError.set('تعذر تسجيل الدخول، يرجى التحقق من صحة البيانات أو المحاولة لاحقاً');
-      }
+      this.authError.set(mapEmailAuthErrorMessage(err, 'login'));
       return null;
     } finally {
       this.authLoading.set(false);
@@ -236,12 +319,7 @@ export class AuthSessionService {
       this.authRegisterForm.reset();
       return user;
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes('email-already-in-use')) {
-        this.authError.set('هذا البريد الإلكتروني مسجل مسبقاً، يمكنك تسجيل الدخول بدلاً من ذلك');
-      } else {
-        this.authError.set('تعذر إنشاء الحساب، يرجى المحاولة لاحقاً');
-      }
+      this.authError.set(mapEmailAuthErrorMessage(err, 'register'));
       return null;
     } finally {
       this.authLoading.set(false);
@@ -258,9 +336,15 @@ export class AuthSessionService {
       await this.loadUserData(user.uid);
       return user;
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (!msg.includes('popup-closed-by-user')) {
-        this.authError.set('تعذر تسجيل الدخول عبر جوجل، يرجى المحاولة لاحقاً');
+      const code = extractFirebaseErrorCode(err);
+      console.error('Google Sign-In error:', code || 'unknown', err);
+      const hostname =
+        isPlatformBrowser(this.platformId) && typeof window !== 'undefined'
+          ? window.location.hostname
+          : '';
+      const mapped = mapGoogleAuthErrorMessage(err, hostname);
+      if (mapped) {
+        this.authError.set(mapped);
       }
       return null;
     } finally {

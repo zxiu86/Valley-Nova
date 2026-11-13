@@ -1,11 +1,13 @@
 # See https://docs.github.com/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
 
-# Env variables
+# Env variables & Firebase client config (inject via GitHub Actions Secrets in CI)
 .env*
 !.env.example
+/firebase-applet-config.json
 
 # Compiled output
 /dist
+/docs
 /tmp
 /out-tsc
 /bazel-out

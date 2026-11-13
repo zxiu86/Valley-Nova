@@ -185,4 +185,25 @@ describe('MTX Compression, Shell, Theme, Routes & Copy Protection Specs', () => 
     expect(okHtml).not.toContain('ساعات القراءة');
     expect(okHtml).not.toContain('المتابعين');
   });
+
+  it('should map Firebase Google and Email auth errors cleanly with actionable Arabic diagnostics', async () => {
+    const { mapGoogleAuthErrorMessage, mapEmailAuthErrorMessage } = await import(
+      './core/services/auth-session.service'
+    );
+
+    expect(mapGoogleAuthErrorMessage({ code: 'auth/popup-closed-by-user' })).toBeNull();
+    expect(
+      mapGoogleAuthErrorMessage({ code: 'auth/unauthorized-domain' }, 'zxiu86.github.io')
+    ).toContain('zxiu86.github.io');
+    expect(mapGoogleAuthErrorMessage({ code: 'auth/popup-blocked' })).toContain('النافذة المنبثقة');
+    expect(mapGoogleAuthErrorMessage({ code: 'auth/operation-not-allowed' })).toContain(
+      'Sign-in method'
+    );
+    expect(mapEmailAuthErrorMessage({ code: 'auth/invalid-credential' }, 'login')).toContain(
+      'غير صحيحة'
+    );
+    expect(mapEmailAuthErrorMessage({ code: 'auth/email-already-in-use' }, 'register')).toContain(
+      'مسجل مسبقاً'
+    );
+  });
 });

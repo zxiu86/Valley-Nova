@@ -157,6 +157,7 @@ export function getFirebaseAuth(): Auth {
   if (!authInstance) {
     const app = getFirebaseApp();
     authInstance = getAuth(app);
+    authInstance.languageCode = 'ar';
   }
   return authInstance;
 }
@@ -286,6 +287,8 @@ export async function loginWithGoogle(): Promise<User> {
   await ensureAuthPersistence();
   const auth = getFirebaseAuth();
   const provider = new GoogleAuthProvider();
+  provider.addScope('email');
+  provider.addScope('profile');
   provider.setCustomParameters({ prompt: 'select_account' });
   const credential = await signInWithPopup(auth, provider);
   if (credential.user) {
@@ -1435,6 +1438,8 @@ export async function reauthenticateUserForDeletion(password?: string): Promise<
 
   if (usesGoogle && !password) {
     const provider = new GoogleAuthProvider();
+    provider.addScope('email');
+    provider.addScope('profile');
     provider.setCustomParameters({ prompt: 'select_account' });
     const res = await reauthenticateWithPopup(user, provider);
     return res.user;
@@ -1450,6 +1455,9 @@ export async function reauthenticateUserForDeletion(password?: string): Promise<
   }
 
   const provider = new GoogleAuthProvider();
+  provider.addScope('email');
+  provider.addScope('profile');
+  provider.setCustomParameters({ prompt: 'select_account' });
   const res = await reauthenticateWithPopup(user, provider);
   return res.user;
 }

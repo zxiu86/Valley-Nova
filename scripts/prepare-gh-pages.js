@@ -55,36 +55,36 @@ const noJekyllPath = path.join(browserDir, '.nojekyll');
 fs.writeFileSync(noJekyllPath, '');
 console.log('✓ Created .nojekyll in build directory');
 
-// 4. Synchronize all static files to root /docs folder for direct GitHub Pages hosting
-try {
-  if (fs.existsSync(docsDir)) {
-    fs.rmSync(docsDir, { recursive: true, force: true });
-  }
-  fs.mkdirSync(docsDir, { recursive: true });
-
-  function copyDirRecursive(src, dest) {
-    if (!fs.existsSync(dest)) {
-      fs.mkdirSync(dest, { recursive: true });
+// 4. Only copy to /docs when explicitly requested (GitHub Actions deploys dist/app/browser directly via upload-pages-artifact)
+if (process.argv.includes('--with-docs')) {
+  try {
+    if (fs.existsSync(docsDir)) {
+      fs.rmSync(docsDir, { recursive: true, force: true });
     }
-    const entries = fs.readdirSync(src, { withFileTypes: true });
-    for (const entry of entries) {
-      const srcPath = path.join(src, entry.name);
-      const destPath = path.join(dest, entry.name);
-      if (entry.isDirectory()) {
-        copyDirRecursive(srcPath, destPath);
-      } else {
-        fs.copyFileSync(srcPath, destPath);
+    fs.mkdirSync(docsDir, { recursive: true });
+
+    function copyDirRecursive(src, dest) {
+      if (!fs.existsSync(dest)) {
+        fs.mkdirSync(dest, { recursive: true });
+      }
+      const entries = fs.readdirSync(src, { withFileTypes: true });
+      for (const entry of entries) {
+        const srcPath = path.join(src, entry.name);
+        const destPath = path.join(dest, entry.name);
+        if (entry.isDirectory()) {
+          copyDirRecursive(srcPath, destPath);
+        } else {
+          fs.copyFileSync(srcPath, destPath);
+        }
       }
     }
-  }
 
-  copyDirRecursive(browserDir, docsDir);
-  
-  // Ensure .nojekyll exists directly in docs
-  fs.writeFileSync(path.join(docsDir, '.nojekyll'), '');
-  console.log('✓ Synchronized all static files to /docs folder for direct GitHub Pages hosting');
-} catch (err) {
-  console.warn('Notice: Could not copy to /docs:', err.message);
+    copyDirRecursive(browserDir, docsDir);
+    fs.writeFileSync(path.join(docsDir, '.nojekyll'), '');
+    console.log('✓ Synchronized static files to /docs folder');
+  } catch (err) {
+    console.warn('Notice: Could not copy to /docs:', err.message);
+  }
 }
 
 console.log('✓ GitHub Pages preparation completed successfully!');
