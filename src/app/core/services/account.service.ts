@@ -52,6 +52,7 @@ const DEFAULT_WRITER_STATUS: VerifiedWriterStatus = {
   isWriterBadge: false,
   canPublish: false,
   isAdmin: false,
+  roleKind: 'none',
   roleRecord: null,
 };
 
@@ -61,8 +62,9 @@ export class AccountService implements OnDestroy {
   private readonly router = inject(Router);
   private readonly i18n = inject(I18nService);
 
-  // Authoritative Verified Writer Badge Cache (never trusts client profile flags)
+  // Authoritative Verified Writer Badge & Role Cache (never trusts client profile flags)
   readonly writerBadgeCache = signal<Record<string, boolean>>({});
+  readonly writerRoleCache = signal<Record<string, 'founder' | 'author' | 'none'>>({});
   private readonly pendingBadgeLookups = new Set<string>();
 
   // Reactive Public Author Appearance Cache (avatar photoURL & 1500x800 coverURL)
@@ -126,6 +128,10 @@ export class AccountService implements OnDestroy {
    */
   verifyWriterBadge(authorUid: string | undefined): boolean {
     if (!authorUid) return false;
+    const own = this.ownProfile();
+    if (own && own.uid === authorUid) {
+      return this.ownWriterStatus().isWriterBadge;
+    }
     const cache = this.writerBadgeCache();
     if (Object.prototype.hasOwnProperty.call(cache, authorUid)) {
       return cache[authorUid];
@@ -139,11 +145,19 @@ export class AccountService implements OnDestroy {
             ...prev,
             [authorUid]: status.isWriterBadge,
           }));
+          this.writerRoleCache.update((prev) => ({
+            ...prev,
+            [authorUid]: status.roleKind,
+          }));
         })
         .catch(() => {
           this.writerBadgeCache.update((prev) => ({
             ...prev,
             [authorUid]: false,
+          }));
+          this.writerRoleCache.update((prev) => ({
+            ...prev,
+            [authorUid]: 'none',
           }));
         })
         .finally(() => {
@@ -151,6 +165,21 @@ export class AccountService implements OnDestroy {
         });
     }
     return false;
+  }
+
+  getAuthorRoleKind(authorUid: string | undefined): 'founder' | 'author' | 'none' {
+    if (!authorUid) return 'none';
+    const own = this.ownProfile();
+    if (own && own.uid === authorUid) {
+      return this.ownWriterStatus().roleKind;
+    }
+    const roleCache = this.writerRoleCache();
+    if (Object.prototype.hasOwnProperty.call(roleCache, authorUid)) {
+      return roleCache[authorUid];
+    }
+    // Trigger lookup cleanly if not fetched yet
+    this.verifyWriterBadge(authorUid);
+    return 'none';
   }
 
   /**
@@ -223,6 +252,10 @@ export class AccountService implements OnDestroy {
       this.writerBadgeCache.update((prev) => ({
         ...prev,
         [uid]: writerStatus.isWriterBadge,
+      }));
+      this.writerRoleCache.update((prev) => ({
+        ...prev,
+        [uid]: writerStatus.roleKind,
       }));
       this.ownReadChaptersCount.set(readCount);
       this.ownApplication.set(appDoc);
@@ -345,6 +378,10 @@ export class AccountService implements OnDestroy {
     this.writerBadgeCache.update((prev) => ({
       ...prev,
       [targetUid]: writerStatus.isWriterBadge,
+    }));
+    this.writerRoleCache.update((prev) => ({
+      ...prev,
+      [targetUid]: writerStatus.roleKind,
     }));
 
     if (visitorRes.state !== 'ok' || !visitorRes.profile) {

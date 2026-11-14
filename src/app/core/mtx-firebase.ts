@@ -27,6 +27,7 @@ import {
   getDoc,
   setDoc,
   updateDoc,
+  deleteDoc,
   getDocFromServer,
   collection,
   getDocs,
@@ -35,6 +36,7 @@ import {
   limit,
   runTransaction,
   writeBatch,
+  serverTimestamp,
 } from 'firebase/firestore';
 import {
   getStorage,
@@ -53,13 +55,17 @@ import {
 } from './firebase-config';
 import {
   FullAccountProfile,
+  FullNovelMtxArchive,
+  LogicalChapter,
   NovelCard,
+  NovelSection,
   PrivacySettings,
   PublishedNovelRecord,
   PublicProfile,
   UserRoleRecord,
   UsernameCheckResult,
   VerifiedWriterStatus,
+  WorkReport,
   WriterApplication,
 } from './models/library.models';
 
@@ -624,6 +630,47 @@ export async function ensureUserDocumentsOnLogin(
 
     if (hasWrites) {
       await batch.commit();
+    }
+
+    // Bootstrap official Founder seal & role idempotently for designated Founder email
+    if (user.emailVerified === true && DESIGNATED_ADMIN_EMAILS.has(initialEmail)) {
+      const founderRef = doc(db, 'founders', user.uid);
+      const roleRef = doc(db, 'user_roles', user.uid);
+      const [founderSnap, roleSnap] = await Promise.all([
+        getDoc(founderRef).catch(() => null),
+        getDoc(roleRef).catch(() => null),
+      ]);
+      const founderBatch = writeBatch(db);
+      let needsFounderWrite = false;
+      if (!founderSnap || !founderSnap.exists()) {
+        founderBatch.set(founderRef, {
+          uid: user.uid,
+          badge: 'founder',
+          handle: ADMIN_EXCLUSIVE_USERNAME,
+          titleAr: 'مؤسس رواق الخلود — المشرف الرسمي',
+          titleEn: 'Founder of Eternity Corridors — Official Admin',
+          active: true,
+          updatedAt: now,
+        });
+        needsFounderWrite = true;
+      }
+      if (!roleSnap || !roleSnap.exists() || (roleSnap.data() as UserRoleRecord)?.role !== 'founder') {
+        founderBatch.set(roleRef, {
+          userId: user.uid,
+          role: 'founder',
+          roles: ['founder', 'author'],
+          status: 'active',
+          canPublish: true,
+          assignedBy: user.uid,
+          assignedAt: now,
+        });
+        needsFounderWrite = true;
+      }
+      if (needsFounderWrite) {
+        await founderBatch.commit().catch((err) => {
+          console.warn('Founder seal bootstrap warning:', err);
+        });
+      }
     }
   } catch (error) {
     if (isPermissionDeniedError(error)) {
@@ -1275,6 +1322,7 @@ export async function getVerifiedWriterStatus(userId: string): Promise<VerifiedW
       isWriterBadge: false,
       canPublish: false,
       isAdmin: false,
+      roleKind: 'none',
       roleRecord: null,
     };
   }
@@ -1288,8 +1336,19 @@ export async function getVerifiedWriterStatus(userId: string): Promise<VerifiedW
 
   const db = getDb();
   try {
-    const roleSnap = await getDoc(doc(db, 'user_roles', userId));
-    if (roleSnap.exists()) {
+    const [roleSnap, founderSnap] = await Promise.all([
+      getDoc(doc(db, 'user_roles', userId)).catch(() => null),
+      getDoc(doc(db, 'founders', userId)).catch(() => null),
+    ]);
+
+    const hasPublicFounderSeal = Boolean(
+      founderSnap &&
+        founderSnap.exists() &&
+        (founderSnap.data() as { active?: boolean; badge?: string })?.active === true &&
+        (founderSnap.data() as { badge?: string })?.badge === 'founder'
+    );
+
+    if (roleSnap && roleSnap.exists()) {
       const record = roleSnap.data() as UserRoleRecord;
       const isActive = record.status === 'active';
       const hasAuthorRole =
@@ -1298,16 +1357,26 @@ export async function getVerifiedWriterStatus(userId: string): Promise<VerifiedW
         (Array.isArray(record.roles) &&
           (record.roles.includes('author') || record.roles.includes('founder')));
 
-      const isFounder = record.role === 'founder' && isActive;
-      const isBadge = isCurrentDesignatedAdmin || (isActive && hasAuthorRole);
-      const canPublish =
-        isCurrentDesignatedAdmin || isFounder || (isActive && hasAuthorRole && record.canPublish === true);
+      const isFounder = isCurrentDesignatedAdmin || hasPublicFounderSeal || (record.role === 'founder' && isActive);
+      const isBadge = isFounder || (isActive && hasAuthorRole);
+      const canPublish = isFounder || (isActive && hasAuthorRole && record.canPublish === true);
 
       return {
         isWriterBadge: isBadge,
         canPublish,
-        isAdmin: isCurrentDesignatedAdmin || isFounder,
+        isAdmin: isFounder,
+        roleKind: isFounder ? 'founder' : isBadge ? 'author' : 'none',
         roleRecord: record,
+      };
+    }
+
+    if (isCurrentDesignatedAdmin || hasPublicFounderSeal) {
+      return {
+        isWriterBadge: true,
+        canPublish: true,
+        isAdmin: true,
+        roleKind: 'founder',
+        roleRecord: null,
       };
     }
   } catch (err) {
@@ -1318,6 +1387,7 @@ export async function getVerifiedWriterStatus(userId: string): Promise<VerifiedW
     isWriterBadge: isCurrentDesignatedAdmin,
     canPublish: isCurrentDesignatedAdmin,
     isAdmin: isCurrentDesignatedAdmin,
+    roleKind: isCurrentDesignatedAdmin ? 'founder' : 'none',
     roleRecord: null,
   };
 }
@@ -1488,25 +1558,28 @@ export async function publishNovelToFirestore(
   }
 }
 
-export async function fetchAuthorPublishedNovels(authorId: string): Promise<PublishedNovelRecord[]> {
+export async function fetchAuthorPublishedNovels(
+  authorId: string,
+  includeDraftsAndRemoved = false
+): Promise<PublishedNovelRecord[]> {
   if (!isFirebaseConfigured()) return [];
   const db = getDb();
   const auth = getFirebaseAuth();
   try {
-    // Use single-field queries so no manual Firestore composite index is required
     if (auth.currentUser?.uid === authorId) {
-      const q = query(collection(db, 'novels'), where('authorId', '==', authorId), limit(50));
+      const q = query(collection(db, 'novels'), where('authorId', '==', authorId), limit(60));
       const snap = await getDocs(q);
-      return snap.docs
-        .map((d) => d.data() as PublishedNovelRecord)
-        .filter((n) => n.isPublished !== false);
+      const list = snap.docs.map((d) => d.data() as PublishedNovelRecord);
+      return includeDraftsAndRemoved
+        ? list
+        : list.filter((n) => n.isPublished === true && n.moderationStatus !== 'rejected_removed');
     }
 
     const q = query(collection(db, 'novels'), where('isPublished', '==', true), limit(100));
     const snap = await getDocs(q);
     return snap.docs
       .map((d) => d.data() as PublishedNovelRecord)
-      .filter((n) => n.authorId === authorId);
+      .filter((n) => n.authorId === authorId && n.moderationStatus !== 'rejected_removed');
   } catch (err) {
     if (isPermissionDeniedError(err)) {
       handleFirestoreError(err, OperationType.LIST, 'novels');
@@ -1520,9 +1593,11 @@ export async function fetchAllPublishedNovels(): Promise<PublishedNovelRecord[]>
   if (!isFirebaseConfigured()) return [];
   const db = getDb();
   try {
-    const q = query(collection(db, 'novels'), where('isPublished', '==', true), limit(50));
+    const q = query(collection(db, 'novels'), where('isPublished', '==', true), limit(60));
     const snap = await getDocs(q);
-    return snap.docs.map((d) => d.data() as PublishedNovelRecord);
+    return snap.docs
+      .map((d) => d.data() as PublishedNovelRecord)
+      .filter((n) => n.moderationStatus !== 'rejected_removed');
   } catch (err) {
     if (isPermissionDeniedError(err)) {
       handleFirestoreError(err, OperationType.LIST, 'novels');
@@ -1757,5 +1832,788 @@ export async function saveToCloudVault(book: CloudMtxBook): Promise<void> {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(filtered.slice(0, 30)));
   } catch (err) {
     console.warn('Could not store to local cache:', err);
+  }
+}
+
+// ================= WRITER STUDIO: NOVELS, SECTIONS, CHAPTERS, VERIFIED READS & REPORTS ================= //
+
+export async function uploadNovelCoverAsset(
+  uid: string,
+  novelId: string,
+  blob: Blob,
+  fallbackDataUrl: string,
+  previousUrl?: string
+): Promise<string> {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    throw new Error('انقطع الاتصال بالإنترنت أثناء رفع الغلاف. يرجى المحاولة لاحقاً.');
+  }
+
+  const isSafeRasterFallback =
+    typeof fallbackDataUrl === 'string' &&
+    fallbackDataUrl.length <= 420000 &&
+    /^data:image\/(webp|png|jpeg);base64,/i.test(fallbackDataUrl);
+
+  try {
+    const storage = getFirebaseStorage();
+    const path = `novels/${uid}/${novelId}/cover_${Date.now()}.webp`;
+    const fileRef = storageRef(storage, path);
+
+    const uploadTask = uploadBytes(fileRef, blob, {
+      contentType: 'image/webp',
+      cacheControl: 'public, max-age=31536000',
+    });
+
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('STORAGE_TIMEOUT')), 3000)
+    );
+
+    const snap = await Promise.race([uploadTask, timeoutPromise]);
+    const url = await getDownloadURL(snap.ref);
+
+    if (previousUrl && previousUrl.includes('firebasestorage.googleapis.com')) {
+      try {
+        await deleteObject(storageRef(storage, previousUrl));
+      } catch {
+        // Ignore stale image cleanup failure
+      }
+    }
+    return url;
+  } catch {
+    if (isSafeRasterFallback) {
+      return fallbackDataUrl;
+    }
+    throw new Error('تعذر رفع أو ضغط صورة الغلاف. يرجى اختيار صورة أصغر بصيغة JPG أو PNG أو WebP.');
+  }
+}
+
+export async function fetchNovelByIdFromFirestore(
+  novelId: string
+): Promise<PublishedNovelRecord | null> {
+  if (!isFirebaseConfigured() || !novelId) return null;
+  const db = getDb();
+  try {
+    const snap = await getDoc(doc(db, 'novels', novelId));
+    return snap.exists() ? (snap.data() as PublishedNovelRecord) : null;
+  } catch (err) {
+    if (isPermissionDeniedError(err)) {
+      handleFirestoreError(err, OperationType.GET, `novels/${novelId}`);
+    }
+    return null;
+  }
+}
+
+export async function updateNovelRecordInFirestore(
+  novelId: string,
+  patch: Partial<PublishedNovelRecord>
+): Promise<PublishedNovelRecord> {
+  const db = getDb();
+  const ref = doc(db, 'novels', novelId);
+  try {
+    const snap = await getDoc(ref);
+    if (!snap.exists()) {
+      throw new Error('NOVEL_NOT_FOUND');
+    }
+    const current = snap.data() as PublishedNovelRecord;
+    const updated: PublishedNovelRecord = {
+      ...current,
+      ...patch,
+      id: current.id,
+      authorId: current.authorId,
+      createdAt: current.createdAt,
+      updatedAt: new Date().toISOString(),
+    };
+    await setDoc(ref, updated);
+    return updated;
+  } catch (err) {
+    if (isPermissionDeniedError(err)) {
+      handleFirestoreError(err, OperationType.UPDATE, `novels/${novelId}`);
+    }
+    throw err;
+  }
+}
+
+export async function deleteNovelTreeFromFirestore(
+  novelId: string,
+  coverUrl?: string
+): Promise<void> {
+  const db = getDb();
+  const subcollections = ['chapters', 'chapter_slots', 'sections', 'read_sessions', 'verified_reads'];
+  try {
+    for (const sub of subcollections) {
+      const snap = await getDocs(collection(db, 'novels', novelId, sub)).catch(() => null);
+      if (snap && !snap.empty) {
+        for (let i = 0; i < snap.docs.length; i += 400) {
+          const batch = writeBatch(db);
+          snap.docs.slice(i, i + 400).forEach((d) => batch.delete(d.ref));
+          await batch.commit();
+        }
+      }
+    }
+    await deleteDoc(doc(db, 'novels', novelId));
+  } catch (err) {
+    if (isPermissionDeniedError(err)) {
+      handleFirestoreError(err, OperationType.DELETE, `novels/${novelId}`);
+    }
+    throw err;
+  }
+
+  if (coverUrl && coverUrl.includes('firebasestorage.googleapis.com')) {
+    try {
+      const storage = getFirebaseStorage();
+      await deleteObject(storageRef(storage, coverUrl));
+    } catch {
+      // Non-fatal storage cleanup
+    }
+  }
+}
+
+// ---- Sections ---- //
+
+export async function fetchNovelSections(novelId: string): Promise<NovelSection[]> {
+  if (!isFirebaseConfigured() || !novelId) return [];
+  const db = getDb();
+  try {
+    const snap = await getDocs(query(collection(db, 'novels', novelId, 'sections'), limit(100)));
+    return snap.docs
+      .map((d) => d.data() as NovelSection)
+      .sort((a, b) => a.orderIndex - b.orderIndex);
+  } catch (err) {
+    if (isPermissionDeniedError(err)) {
+      handleFirestoreError(err, OperationType.LIST, `novels/${novelId}/sections`);
+    }
+    return [];
+  }
+}
+
+export async function upsertNovelSection(section: NovelSection): Promise<NovelSection> {
+  const db = getDb();
+  const clean: NovelSection = {
+    ...section,
+    title: section.title.trim().slice(0, 120),
+    ...(section.titleEn?.trim() ? { titleEn: section.titleEn.trim().slice(0, 120) } : {}),
+    updatedAt: new Date().toISOString(),
+  };
+  if (!clean.titleEn) {
+    delete clean.titleEn;
+  }
+  try {
+    await setDoc(doc(db, 'novels', clean.novelId, 'sections', clean.id), clean);
+    return clean;
+  } catch (err) {
+    if (isPermissionDeniedError(err)) {
+      handleFirestoreError(err, OperationType.WRITE, `novels/${clean.novelId}/sections/${clean.id}`);
+    }
+    throw err;
+  }
+}
+
+export async function deleteNovelSection(novelId: string, sectionId: string): Promise<void> {
+  const db = getDb();
+  try {
+    await deleteDoc(doc(db, 'novels', novelId, 'sections', sectionId));
+  } catch (err) {
+    if (isPermissionDeniedError(err)) {
+      handleFirestoreError(err, OperationType.DELETE, `novels/${novelId}/sections/${sectionId}`);
+    }
+    throw err;
+  }
+}
+
+// ---- Logical Bilingual Chapters & Atomic Slot Locking ---- //
+
+export async function fetchNovelChapters(
+  novelId: string,
+  includeUnpublished = false
+): Promise<LogicalChapter[]> {
+  if (!isFirebaseConfigured() || !novelId) return [];
+  const db = getDb();
+  try {
+    const colRef = collection(db, 'novels', novelId, 'chapters');
+    const q = includeUnpublished
+      ? query(colRef, limit(500))
+      : query(colRef, where('isPublished', '==', true), limit(500));
+    const snap = await getDocs(q);
+    return snap.docs
+      .map((d) => d.data() as LogicalChapter)
+      .sort((a, b) => a.chapterNumber - b.chapterNumber);
+  } catch (err) {
+    if (isPermissionDeniedError(err)) {
+      handleFirestoreError(err, OperationType.LIST, `novels/${novelId}/chapters`);
+    }
+    return [];
+  }
+}
+
+export async function checkChapterSlotExists(
+  novelId: string,
+  chapterNumber: number
+): Promise<boolean> {
+  if (!isFirebaseConfigured() || !novelId || chapterNumber < 1) return false;
+  const db = getDb();
+  try {
+    const slotSnap = await getDoc(
+      doc(db, 'novels', novelId, 'chapter_slots', `slot_${chapterNumber}`)
+    );
+    return slotSnap.exists();
+  } catch (err) {
+    if (isPermissionDeniedError(err)) {
+      handleFirestoreError(err, OperationType.GET, `novels/${novelId}/chapter_slots/slot_${chapterNumber}`);
+    }
+    return false;
+  }
+}
+
+export async function createChapterWithSlotTransaction(
+  chapter: LogicalChapter
+): Promise<LogicalChapter> {
+  const db = getDb();
+  const now = new Date().toISOString();
+  const slotId = `slot_${chapter.chapterNumber}`;
+  const slotRef = doc(db, 'novels', chapter.novelId, 'chapter_slots', slotId);
+  const chapterRef = doc(db, 'novels', chapter.novelId, 'chapters', chapter.id);
+
+  const cleanChapter: LogicalChapter = {
+    ...chapter,
+    revision: 1,
+    createdAt: chapter.createdAt || now,
+    updatedAt: now,
+  };
+  if (!cleanChapter.titleEn) delete cleanChapter.titleEn;
+  if (!cleanChapter.sectionId) delete cleanChapter.sectionId;
+
+  try {
+    await runTransaction(db, async (tx) => {
+      const existingSlot = await tx.get(slotRef);
+      if (existingSlot.exists()) {
+        throw new Error('CHAPTER_NUMBER_EXISTS');
+      }
+      tx.set(chapterRef, cleanChapter);
+      tx.set(slotRef, {
+        chapterId: cleanChapter.id,
+        chapterNumber: cleanChapter.chapterNumber,
+        authorId: cleanChapter.authorId,
+        createdAt: now,
+      });
+    });
+    return cleanChapter;
+  } catch (err) {
+    if (err instanceof Error && err.message === 'CHAPTER_NUMBER_EXISTS') {
+      throw err;
+    }
+    if (isPermissionDeniedError(err)) {
+      handleFirestoreError(err, OperationType.CREATE, `novels/${chapter.novelId}/chapters/${chapter.id}`);
+    }
+    throw err;
+  }
+}
+
+export async function updateChapterWithRevisionTransaction(
+  chapter: LogicalChapter,
+  expectedRevision: number,
+  forceOverwrite = false
+): Promise<
+  | { ok: true; chapter: LogicalChapter }
+  | { ok: false; conflict: Omit<ChapterConflictState, 'localSnapshot'> }
+> {
+  const db = getDb();
+  const chapterRef = doc(db, 'novels', chapter.novelId, 'chapters', chapter.id);
+  const now = new Date().toISOString();
+
+  try {
+    return await runTransaction(db, async (tx) => {
+      const snap = await tx.get(chapterRef);
+      if (!snap.exists()) {
+        throw new Error('CHAPTER_NOT_FOUND');
+      }
+      const serverChapter = snap.data() as LogicalChapter;
+      if (!forceOverwrite && serverChapter.revision !== expectedRevision) {
+        return {
+          ok: false as const,
+          conflict: {
+            novelId: chapter.novelId,
+            chapterId: chapter.id,
+            serverChapter,
+          },
+        };
+      }
+
+      const nextChapter: LogicalChapter = {
+        ...chapter,
+        id: serverChapter.id,
+        authorId: serverChapter.authorId,
+        chapterNumber: serverChapter.chapterNumber,
+        revision: (serverChapter.revision || 1) + 1,
+        createdAt: serverChapter.createdAt,
+        updatedAt: now,
+      };
+      if (!nextChapter.titleEn) delete nextChapter.titleEn;
+      if (!nextChapter.sectionId) delete nextChapter.sectionId;
+
+      tx.set(chapterRef, nextChapter);
+      return { ok: true as const, chapter: nextChapter };
+    });
+  } catch (err) {
+    if (isPermissionDeniedError(err)) {
+      handleFirestoreError(err, OperationType.UPDATE, `novels/${chapter.novelId}/chapters/${chapter.id}`);
+    }
+    throw err;
+  }
+}
+
+export async function deleteChapterWithSlotTransaction(
+  novelId: string,
+  chapterId: string,
+  chapterNumber: number
+): Promise<void> {
+  const db = getDb();
+  const chapterRef = doc(db, 'novels', novelId, 'chapters', chapterId);
+  const slotRef = doc(db, 'novels', novelId, 'chapter_slots', `slot_${chapterNumber}`);
+  try {
+    await runTransaction(db, async (tx) => {
+      tx.delete(chapterRef);
+      tx.delete(slotRef);
+    });
+  } catch (err) {
+    if (isPermissionDeniedError(err)) {
+      handleFirestoreError(err, OperationType.DELETE, `novels/${novelId}/chapters/${chapterId}`);
+    }
+    throw err;
+  }
+}
+
+export async function recomputeNovelStatsInFirestore(novelId: string): Promise<{
+  publishedChapterCount: number;
+  publishedWordsAr: number;
+  publishedWordsEn: number;
+  readingHours: number;
+}> {
+  const db = getDb();
+  const chapters = await fetchNovelChapters(novelId, true);
+  const published = chapters.filter((ch) => ch.isPublished === true);
+
+  const publishedChapterCount = published.length;
+  const publishedWordsAr = published.reduce((acc, ch) => acc + (ch.wordCountAr || 0), 0);
+  const publishedWordsEn = published.reduce((acc, ch) => acc + (ch.wordCountEn || 0), 0);
+  const maxWords = Math.max(publishedWordsAr, publishedWordsEn);
+  const readingHours = publishedChapterCount === 0 ? 1 : Math.max(1, Math.round(maxWords / 9000) || 1);
+
+  try {
+    const snap = await getDoc(doc(db, 'novels', novelId));
+    if (snap.exists()) {
+      const current = snap.data() as PublishedNovelRecord;
+      await setDoc(doc(db, 'novels', novelId), {
+        ...current,
+        publishedChapterCount,
+        publishedWordsAr,
+        publishedWordsEn,
+        readingHours,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+  } catch (err) {
+    if (isPermissionDeniedError(err)) {
+      handleFirestoreError(err, OperationType.UPDATE, `novels/${novelId}`);
+    }
+  }
+
+  return {
+    publishedChapterCount,
+    publishedWordsAr,
+    publishedWordsEn,
+    readingHours,
+  };
+}
+
+export async function importFullNovelArchiveToFirestore(
+  authorId: string,
+  authorName: string,
+  archive: FullNovelMtxArchive,
+  publishImmediately = true
+): Promise<PublishedNovelRecord> {
+  const db = getDb();
+  const now = new Date().toISOString();
+  const novelId = `novel_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+
+  const totalAr = archive.chapters
+    .filter((c) => c.isPublished || publishImmediately)
+    .reduce((sum, c) => sum + (c.editions.ar?.wordCount || 0), 0);
+  const totalEn = archive.chapters
+    .filter((c) => c.isPublished || publishImmediately)
+    .reduce((sum, c) => sum + (c.editions.en?.wordCount || 0), 0);
+
+  const novelDoc: PublishedNovelRecord = {
+    id: novelId,
+    title: archive.novel.title,
+    ...(archive.novel.titleEn ? { titleEn: archive.novel.titleEn } : {}),
+    authorId,
+    authorName: authorName || archive.novel.authorName || 'أروقة الخلود',
+    workType: archive.novel.workType || 'original',
+    ...(archive.novel.originalAuthor ? { originalAuthor: archive.novel.originalAuthor } : {}),
+    ...(archive.novel.firstAuthor ? { firstAuthor: archive.novel.firstAuthor } : {}),
+    ...(archive.novel.supportMethod ? { supportMethod: archive.novel.supportMethod } : {}),
+    novelStatus: archive.novel.novelStatus || 'ongoing',
+    moderationStatus: 'active',
+    reportCount: 0,
+    verifiedReadsCount: 0,
+    publishedChapterCount: archive.chapters.length,
+    publishedWordsAr: totalAr,
+    publishedWordsEn: totalEn,
+    genre: archive.novel.genre,
+    categoryGroup: archive.novel.categoryGroup,
+    coverUrl: archive.novel.coverUrl || '/images/writers_sanctuary_bg.jpg',
+    description: archive.novel.description || '',
+    readingHours: Math.max(1, Math.round(Math.max(totalAr, totalEn) / 9000) || 1),
+    originLanguage: archive.novel.originLanguage || 'عربي أصيل',
+    languageCode: archive.novel.languageCode || (totalAr === 0 && totalEn > 0 ? 'en' : 'ar'),
+    ...(archive.novel.tags?.length ? { tags: archive.novel.tags } : {}),
+    isPublished: publishImmediately,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  try {
+    await setDoc(doc(db, 'novels', novelId), novelDoc);
+
+    const sectionIdMap = new Map<string, string>();
+    for (let i = 0; i < archive.sections.length; i++) {
+      const sec = archive.sections[i];
+      const newSecId = `sec_${Date.now()}_${i}`;
+      sectionIdMap.set(sec.id, newSecId);
+      const secPayload: NovelSection = {
+        id: newSecId,
+        novelId,
+        authorId,
+        title: sec.title,
+        ...(sec.titleEn ? { titleEn: sec.titleEn } : {}),
+        orderIndex: sec.orderIndex ?? i,
+        createdAt: now,
+        updatedAt: now,
+      };
+      await setDoc(doc(db, 'novels', novelId, 'sections', newSecId), secPayload);
+    }
+
+    for (let i = 0; i < archive.chapters.length; i++) {
+      const ch = archive.chapters[i];
+      const newChapterId = `ch_${ch.chapterNumber}_${Date.now()}_${i}`;
+      const mappedSectionId = ch.sectionId ? sectionIdMap.get(ch.sectionId) : undefined;
+      const chapterPayload: LogicalChapter = {
+        id: newChapterId,
+        novelId,
+        authorId,
+        chapterNumber: ch.chapterNumber,
+        title: ch.title,
+        ...(ch.titleEn ? { titleEn: ch.titleEn } : {}),
+        ...(mappedSectionId ? { sectionId: mappedSectionId } : {}),
+        chapterType: ch.chapterType,
+        endStatus: ch.endStatus,
+        languageMode: ch.languageMode,
+        editions: ch.editions,
+        wordCountAr: ch.editions.ar?.wordCount || 0,
+        wordCountEn: ch.editions.en?.wordCount || 0,
+        isPublished: publishImmediately ? true : ch.isPublished,
+        revision: 1,
+        createdAt: now,
+        updatedAt: now,
+      };
+      await createChapterWithSlotTransaction(chapterPayload);
+    }
+
+    return novelDoc;
+  } catch (err) {
+    if (isPermissionDeniedError(err)) {
+      handleFirestoreError(err, OperationType.WRITE, `novels/${novelId}`);
+    }
+    throw err;
+  }
+}
+
+// ---- Server-Timed 60-Second Verified Reads ---- //
+
+export async function startReadSessionWithServerTime(
+  novelId: string,
+  chapterId: string,
+  readerKey: string,
+  userId?: string
+): Promise<{ alreadyVerified: boolean; sessionId: string | null }> {
+  if (!isFirebaseConfigured() || !novelId || !readerKey) {
+    return { alreadyVerified: false, sessionId: null };
+  }
+  const db = getDb();
+  try {
+    const verifiedSnap = await getDoc(doc(db, 'novels', novelId, 'verified_reads', readerKey));
+    if (verifiedSnap.exists()) {
+      return { alreadyVerified: true, sessionId: null };
+    }
+
+    const sessionId = `rs_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    await setDoc(doc(db, 'novels', novelId, 'read_sessions', sessionId), {
+      sessionId,
+      novelId,
+      chapterId,
+      readerKey,
+      ...(userId ? { userId } : {}),
+      startedAt: serverTimestamp(),
+      consumed: false,
+    });
+    return { alreadyVerified: false, sessionId };
+  } catch {
+    return { alreadyVerified: false, sessionId: null };
+  }
+}
+
+export async function commitVerifiedReadTransaction(
+  novelId: string,
+  sessionId: string,
+  readerKey: string,
+  chapterId: string,
+  userId?: string
+): Promise<{ counted: boolean; newCount?: number }> {
+  if (!isFirebaseConfigured() || !novelId || !sessionId || !readerKey) {
+    return { counted: false };
+  }
+  const db = getDb();
+  const novelRef = doc(db, 'novels', novelId);
+  const sessionRef = doc(db, 'novels', novelId, 'read_sessions', sessionId);
+  const verifiedRef = doc(db, 'novels', novelId, 'verified_reads', readerKey);
+
+  try {
+    return await runTransaction(db, async (tx) => {
+      const [novelSnap, sessionSnap, verifiedSnap] = await Promise.all([
+        tx.get(novelRef),
+        tx.get(sessionRef),
+        tx.get(verifiedRef),
+      ]);
+
+      if (!novelSnap.exists() || !sessionSnap.exists() || verifiedSnap.exists()) {
+        return { counted: false };
+      }
+      const novelData = novelSnap.data() as PublishedNovelRecord;
+      const nextCount = (novelData.verifiedReadsCount || 0) + 1;
+
+      tx.set(verifiedRef, {
+        novelId,
+        readerKey,
+        chapterId,
+        sessionId,
+        ...(userId ? { userId } : {}),
+        verifiedAt: serverTimestamp(),
+      });
+      tx.update(sessionRef, { consumed: true });
+      tx.update(novelRef, {
+        verifiedReadsCount: nextCount,
+        lastVerifiedReadKey: readerKey,
+      });
+
+      return { counted: true, newCount: nextCount };
+    });
+  } catch (err) {
+    // Expected permission-denied if called before 60s server time elapsed
+    if (!isPermissionDeniedError(err)) {
+      console.warn('Verified read commit warning:', err);
+    }
+    return { counted: false };
+  }
+}
+
+// ---- Work Reports & @zid Moderation Triage ---- //
+
+export async function hasUserReportedNovel(novelId: string, uid: string): Promise<boolean> {
+  if (!isFirebaseConfigured() || !novelId || !uid) return false;
+  const db = getDb();
+  try {
+    const snap = await getDoc(doc(db, 'work_reports', `${novelId}__${uid}`));
+    return snap.exists();
+  } catch {
+    return false;
+  }
+}
+
+export async function submitWorkReportToFirestore(
+  novelId: string,
+  novelTitle: string,
+  authorId: string,
+  reason: string,
+  details = ''
+): Promise<{ reportCount: number; underReview: boolean }> {
+  const auth = getFirebaseAuth();
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error('AUTH_REQUIRED');
+  }
+  const db = getDb();
+  const reportId = `${novelId}__${user.uid}`;
+  const reportRef = doc(db, 'work_reports', reportId);
+  const novelRef = doc(db, 'novels', novelId);
+  const now = new Date().toISOString();
+
+  try {
+    return await runTransaction(db, async (tx) => {
+      const [existingReport, novelSnap] = await Promise.all([
+        tx.get(reportRef),
+        tx.get(novelRef),
+      ]);
+      if (existingReport.exists()) {
+        throw new Error('ALREADY_REPORTED');
+      }
+      if (!novelSnap.exists()) {
+        throw new Error('NOVEL_NOT_FOUND');
+      }
+      const novel = novelSnap.data() as PublishedNovelRecord;
+      const nextCount = (novel.reportCount || 0) + 1;
+      const nextModStatus =
+        nextCount >= 3 ? 'under_review' : (novel.moderationStatus || 'active');
+
+      const reportPayload: WorkReport = {
+        id: reportId,
+        novelId,
+        novelTitle: novelTitle.slice(0, 140),
+        authorId,
+        reporterUid: user.uid,
+        reason: reason.trim().slice(0, 120),
+        ...(details.trim() ? { details: details.trim().slice(0, 1000) } : {}),
+        status: 'open',
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      tx.set(reportRef, reportPayload);
+      tx.update(novelRef, {
+        reportCount: nextCount,
+        moderationStatus: nextModStatus,
+        updatedAt: now,
+      });
+
+      return {
+        reportCount: nextCount,
+        underReview: nextModStatus === 'under_review',
+      };
+    });
+  } catch (err) {
+    if (isPermissionDeniedError(err)) {
+      handleFirestoreError(err, OperationType.WRITE, `work_reports/${reportId}`);
+    }
+    throw err;
+  }
+}
+
+export async function fetchWorkReportsForAdmin(): Promise<WorkReport[]> {
+  if (!isFirebaseConfigured()) return [];
+  const db = getDb();
+  try {
+    const snap = await getDocs(query(collection(db, 'work_reports'), limit(100)));
+    return snap.docs
+      .map((d) => d.data() as WorkReport)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  } catch (err) {
+    if (isPermissionDeniedError(err)) {
+      handleFirestoreError(err, OperationType.LIST, 'work_reports');
+    }
+    return [];
+  }
+}
+
+export async function fetchModeratedNovelsForAdmin(): Promise<PublishedNovelRecord[]> {
+  if (!isFirebaseConfigured()) return [];
+  const db = getDb();
+  try {
+    const q = query(
+      collection(db, 'novels'),
+      where('moderationStatus', 'in', ['under_review', 'rejected_removed']),
+      limit(60)
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map((d) => d.data() as PublishedNovelRecord);
+  } catch (err) {
+    if (isPermissionDeniedError(err)) {
+      handleFirestoreError(err, OperationType.LIST, 'novels');
+    }
+    return [];
+  }
+}
+
+export async function resolveReportKeepNovelAsAdmin(
+  novelId: string,
+  adminUid: string,
+  note = ''
+): Promise<void> {
+  const db = getDb();
+  const now = new Date().toISOString();
+  try {
+    const [novelSnap, reportsSnap] = await Promise.all([
+      getDoc(doc(db, 'novels', novelId)),
+      getDocs(query(collection(db, 'work_reports'), where('novelId', '==', novelId), limit(100))),
+    ]);
+    const batch = writeBatch(db);
+    if (novelSnap.exists()) {
+      const current = novelSnap.data() as PublishedNovelRecord;
+      batch.set(doc(db, 'novels', novelId), {
+        ...current,
+        moderationStatus: 'active',
+        moderationNote: note.trim(),
+        reportCount: 0,
+        isPublished: true,
+        updatedAt: now,
+      });
+    }
+    reportsSnap.docs.forEach((d) => {
+      batch.update(d.ref, { status: 'reviewed_kept', updatedAt: now });
+    });
+    batch.set(doc(db, 'moderation_logs', `log_${Date.now()}`), {
+      novelId,
+      decidedBy: adminUid,
+      decision: 'reviewed_kept',
+      note: note.trim(),
+      createdAt: now,
+    });
+    await batch.commit();
+  } catch (err) {
+    if (isPermissionDeniedError(err)) {
+      handleFirestoreError(err, OperationType.WRITE, `novels/${novelId}`);
+    }
+    throw err;
+  }
+}
+
+export async function resolveReportRemoveNovelAsAdmin(
+  novelId: string,
+  adminUid: string,
+  note = ''
+): Promise<void> {
+  const db = getDb();
+  const now = new Date().toISOString();
+  try {
+    const [novelSnap, reportsSnap] = await Promise.all([
+      getDoc(doc(db, 'novels', novelId)),
+      getDocs(query(collection(db, 'work_reports'), where('novelId', '==', novelId), limit(100))),
+    ]);
+    const batch = writeBatch(db);
+    if (novelSnap.exists()) {
+      const current = novelSnap.data() as PublishedNovelRecord;
+      // Preserve author's writer role; only remove this specific work from public visibility
+      batch.set(doc(db, 'novels', novelId), {
+        ...current,
+        moderationStatus: 'rejected_removed',
+        moderationNote:
+          note.trim() || 'تمت إزالة هذا العمل من العرض العام بعد المراجعة الإدارية.',
+        isPublished: false,
+        updatedAt: now,
+      });
+    }
+    reportsSnap.docs.forEach((d) => {
+      batch.update(d.ref, { status: 'rejected_removed', updatedAt: now });
+    });
+    batch.set(doc(db, 'moderation_logs', `log_${Date.now()}`), {
+      novelId,
+      decidedBy: adminUid,
+      decision: 'rejected_removed',
+      note: note.trim(),
+      createdAt: now,
+    });
+    await batch.commit();
+  } catch (err) {
+    if (isPermissionDeniedError(err)) {
+      handleFirestoreError(err, OperationType.WRITE, `novels/${novelId}`);
+    }
+    throw err;
   }
 }

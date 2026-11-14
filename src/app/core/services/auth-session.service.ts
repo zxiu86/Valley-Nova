@@ -20,6 +20,7 @@ import {
 import { AccountService } from './account.service';
 import { I18nService } from './i18n.service';
 import { SiteLanguage } from '../models/library.models';
+import { hydrateRuntimeFirebaseAppletConfig, isFirebaseConfigComplete } from '../firebase-config';
 
 const AUTH_HINT_KEY = 'mtx_auth_display_hint';
 
@@ -270,6 +271,9 @@ export class AuthSessionService {
     this.initialized = true;
 
     this.restoreDisplayHint();
+    if (!isFirebaseConfigComplete()) {
+      await hydrateRuntimeFirebaseAppletConfig().catch(() => false);
+    }
     verifyFirestoreConnection().catch(() => false);
 
     try {

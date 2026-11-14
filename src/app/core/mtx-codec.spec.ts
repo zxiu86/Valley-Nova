@@ -39,7 +39,7 @@ describe('MTX Binary Codec Engine v2.2', () => {
     expect(result.mtxBytes[1]).toBe(0x54); // 'T'
     expect(result.mtxBytes[2]).toBe(0x58); // 'X'
     expect(result.mtxBytes[3]).toBe(0x32); // '2'
-    expect(result.mtxBytes[4]).toBe(22);   // v2.2
+    expect(result.mtxBytes[4]).toBe(25);   // v2.5
   });
 
   it('should decompress MTX binary back to original text with 100% losslessness', async () => {
@@ -51,7 +51,7 @@ describe('MTX Binary Codec Engine v2.2', () => {
     expect(decompressed.metadata.title).toBe(metadata.title);
     expect(decompressed.metadata.author).toBe(metadata.author);
     expect(decompressed.decodingDurationMs).toBeGreaterThanOrEqual(0);
-    expect(decompressed.version).toBe(22);
+    expect(decompressed.version).toBe(25);
   });
 
   it('should support maximum and fast profiles and dual checksums', async () => {

@@ -1,5 +1,11 @@
-import {bootstrapApplication} from '@angular/platform-browser';
-import {App} from './app/app';
-import {appConfig} from './app/app.config';
+import { bootstrapApplication } from '@angular/platform-browser';
+import { App } from './app/app';
+import { appConfig } from './app/app.config';
+import { hydrateRuntimeFirebaseAppletConfig } from './app/core/firebase-config';
 
-bootstrapApplication(App, appConfig).catch((err) => console.error(err));
+async function startApp(): Promise<void> {
+  await hydrateRuntimeFirebaseAppletConfig().catch(() => false);
+  await bootstrapApplication(App, appConfig);
+}
+
+startApp().catch((err) => console.error(err));

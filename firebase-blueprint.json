@@ -26,17 +26,17 @@
       "description": "الملف التعريفي الخاضع لقواعد الخصوصية بدون أي بيانات حساسة (PII)",
       "type": "object",
       "properties": {
-        "uid": { "type": "string", "description": "معرف المستخدم الفريد" },
-        "displayName": { "type": "string", "maxLength": 80, "description": "اسم العرض" },
-        "username": { "type": "string", "maxLength": 24, "description": "اسم المستخدم الفريد" },
-        "photoURL": { "type": "string", "maxLength": 450000, "description": "رابط الصورة الشخصية" },
-        "coverURL": { "type": "string", "maxLength": 450000, "description": "رابط صورة الغلاف" },
-        "isPublic": { "type": "boolean", "description": "هل الحساب عام أم خاص" },
-        "showSavedNovels": { "type": "boolean", "description": "إظهار الروايات المحفوظة" },
-        "showReadingHistory": { "type": "boolean", "description": "إظهار عدد الفصول المقروءة" },
-        "showProfileInfo": { "type": "boolean", "description": "إظهار النبذة ومعلومات الملف" },
-        "createdAt": { "type": "string", "description": "تاريخ الإنشاء" },
-        "updatedAt": { "type": "string", "description": "تاريخ آخر تحديث" }
+        "uid": { "type": "string" },
+        "displayName": { "type": "string", "maxLength": 80 },
+        "username": { "type": "string", "maxLength": 24 },
+        "photoURL": { "type": "string", "maxLength": 450000 },
+        "coverURL": { "type": "string", "maxLength": 450000 },
+        "isPublic": { "type": "boolean" },
+        "showSavedNovels": { "type": "boolean" },
+        "showReadingHistory": { "type": "boolean" },
+        "showProfileInfo": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
       },
       "required": ["uid", "displayName", "isPublic"]
     },
@@ -45,9 +45,9 @@
       "description": "النبذة الشخصية المحمية بإعداد إظهار معلومات الملف الشخصي",
       "type": "object",
       "properties": {
-        "uid": { "type": "string", "description": "معرف المستخدم" },
-        "bio": { "type": "string", "maxLength": 320, "description": "النبذة الشخصية" },
-        "updatedAt": { "type": "string", "description": "تاريخ التحديث" }
+        "uid": { "type": "string" },
+        "bio": { "type": "string", "maxLength": 320 },
+        "updatedAt": { "type": "string" }
       },
       "required": ["uid", "bio"]
     },
@@ -56,9 +56,9 @@
       "description": "ملخص إحصائية فردية (عدد الروايات المحفوظة أو عدد الفصول المقروءة)",
       "type": "object",
       "properties": {
-        "uid": { "type": "string", "description": "معرف المستخدم" },
-        "count": { "type": "number", "description": "العدد الإجمالي الفعلي" },
-        "updatedAt": { "type": "string", "description": "تاريخ التحديث" }
+        "uid": { "type": "string" },
+        "count": { "type": "number" },
+        "updatedAt": { "type": "string" }
       },
       "required": ["uid", "count"]
     },
@@ -67,10 +67,10 @@
       "description": "سجل حجز اسم المستخدم الفريد الذري غير الحساس لحالة الأحرف",
       "type": "object",
       "properties": {
-        "uid": { "type": "string", "description": "معرف مالك الاسم" },
-        "username": { "type": "string", "minLength": 4, "maxLength": 24, "pattern": "^([a-z0-9_]{4,24}|zid)$", "description": "اسم المستخدم بالأحرف الصغيرة (4-24 حرفاً، باستثناء @zid للإدارة فقط)" },
-        "isPublic": { "type": "boolean", "description": "حالة خصوصية الملف المرتبط" },
-        "updatedAt": { "type": "string", "description": "تاريخ التحديث" }
+        "uid": { "type": "string" },
+        "username": { "type": "string", "minLength": 4, "maxLength": 24, "pattern": "^([a-z0-9_]{4,24}|zid)$" },
+        "isPublic": { "type": "boolean" },
+        "updatedAt": { "type": "string" }
       },
       "required": ["uid", "username", "isPublic"]
     },
@@ -79,48 +79,182 @@
       "description": "تحويل أسماء المستخدمين القديمة لمنع الروابط المكسورة",
       "type": "object",
       "properties": {
-        "uid": { "type": "string", "description": "معرف المستخدم" },
-        "currentUsername": { "type": "string", "minLength": 4, "maxLength": 24, "pattern": "^([a-z0-9_]{4,24}|zid)$", "description": "الاسم الحالي للمستخدم" },
-        "updatedAt": { "type": "string", "description": "تاريخ التحديث" }
+        "uid": { "type": "string" },
+        "currentUsername": { "type": "string", "minLength": 4, "maxLength": 24, "pattern": "^([a-z0-9_]{4,24}|zid)$" },
+        "updatedAt": { "type": "string" }
       },
       "required": ["uid", "currentUsername"]
+    },
+    "FounderSeal": {
+      "title": "FounderSeal",
+      "description": "سجل توثيق شارة المؤسس والمشرف الرسمي بدون أي بيانات شخصية",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "badge": { "type": "string", "enum": ["founder"] },
+        "handle": { "type": "string", "enum": ["zid"] },
+        "titleAr": { "type": "string" },
+        "titleEn": { "type": "string" },
+        "active": { "type": "boolean" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["uid", "badge", "handle", "active"]
     },
     "PublishedNovel": {
       "title": "PublishedNovel",
       "description": "رواية منشورة من قبل كاتب معتمد الصلاحية وتبقى متاحة للعامة",
       "type": "object",
       "properties": {
-        "id": { "type": "string", "description": "معرف الرواية" },
-        "title": { "type": "string", "minLength": 2, "maxLength": 140, "description": "عنوان الرواية" },
-        "authorId": { "type": "string", "description": "معرف الكاتب UID" },
-        "authorName": { "type": "string", "maxLength": 80, "description": "اسم الكاتب" },
-        "genre": { "type": "string", "maxLength": 80, "description": "التصنيف الأدبي" },
-        "categoryGroup": { "type": "string", "enum": ["novels", "epics", "wisdom", "heritage"], "description": "الرواق الأدبي" },
-        "coverUrl": { "type": "string", "maxLength": 450000, "description": "غلاف الرواية" },
-        "description": { "type": "string", "maxLength": 2000, "description": "ملخص الرواية" },
-        "readingHours": { "type": "number", "description": "ساعات القراءة التقديرية" },
-        "isPublished": { "type": "boolean", "description": "حالة النشر العام" },
-        "createdAt": { "type": "string", "description": "تاريخ النشر" },
-        "updatedAt": { "type": "string", "description": "تاريخ التحديث" }
+        "id": { "type": "string" },
+        "title": { "type": "string", "minLength": 2, "maxLength": 140 },
+        "titleEn": { "type": "string", "maxLength": 160 },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string", "maxLength": 80 },
+        "workType": { "type": "string", "enum": ["original", "translated", "republish"] },
+        "originalAuthor": { "type": "string", "maxLength": 80 },
+        "firstAuthor": { "type": "string", "maxLength": 80 },
+        "supportMethod": { "type": "string", "maxLength": 240 },
+        "novelStatus": { "type": "string", "enum": ["ongoing", "completed", "paused"] },
+        "moderationStatus": { "type": "string", "enum": ["active", "under_review", "rejected_removed"] },
+        "moderationNote": { "type": "string", "maxLength": 500 },
+        "reportCount": { "type": "number" },
+        "genre": { "type": "string", "maxLength": 80 },
+        "categoryGroup": { "type": "string", "enum": ["novels", "epics", "wisdom", "heritage"] },
+        "coverUrl": { "type": "string", "maxLength": 450000 },
+        "description": { "type": "string", "maxLength": 2000 },
+        "readingHours": { "type": "number" },
+        "originLanguage": { "type": "string", "maxLength": 60 },
+        "languageCode": { "type": "string", "maxLength": 12 },
+        "verifiedReadsCount": { "type": "number" },
+        "lastVerifiedReadKey": { "type": "string" },
+        "publishedChapterCount": { "type": "number" },
+        "publishedWordsAr": { "type": "number" },
+        "publishedWordsEn": { "type": "number" },
+        "tags": { "type": "array" },
+        "isPublished": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
       },
       "required": ["id", "title", "authorId", "isPublished"]
+    },
+    "NovelSection": {
+      "title": "NovelSection",
+      "description": "مجلد أو قسم تنظيمي لفصول الرواية",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "novelId": { "type": "string" },
+        "authorId": { "type": "string" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "titleEn": { "type": "string", "maxLength": 120 },
+        "orderIndex": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "novelId", "authorId", "title", "orderIndex"]
+    },
+    "LogicalChapter": {
+      "title": "LogicalChapter",
+      "description": "فصل منطقي يحتوي على النسختين العربية والإنجليزية المستقلتين ونوع الفصل وحالته",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "novelId": { "type": "string" },
+        "authorId": { "type": "string" },
+        "chapterNumber": { "type": "number" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "titleEn": { "type": "string", "maxLength": 160 },
+        "sectionId": { "type": "string" },
+        "chapterType": { "type": "string", "enum": ["narrative", "explanatory"] },
+        "endStatus": { "type": "string", "enum": ["ongoing", "ending"] },
+        "languageMode": { "type": "string", "enum": ["ar", "en", "both"] },
+        "editions": { "type": "object" },
+        "wordCountAr": { "type": "number" },
+        "wordCountEn": { "type": "number" },
+        "isPublished": { "type": "boolean" },
+        "revision": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "novelId", "authorId", "chapterNumber", "title", "chapterType", "endStatus", "languageMode", "revision"]
+    },
+    "ChapterSlot": {
+      "title": "ChapterSlot",
+      "description": "قفل ذري يمنع تكرار رقم الفصل داخل الرواية الواحدة",
+      "type": "object",
+      "properties": {
+        "chapterId": { "type": "string" },
+        "chapterNumber": { "type": "number" },
+        "authorId": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["chapterId", "chapterNumber", "authorId"]
+    },
+    "ReadSession": {
+      "title": "ReadSession",
+      "description": "جلسة قراءة موثقة بزمن الخادم للتحقق من إتمام دقيقة كاملة",
+      "type": "object",
+      "properties": {
+        "sessionId": { "type": "string" },
+        "novelId": { "type": "string" },
+        "chapterId": { "type": "string" },
+        "readerKey": { "type": "string" },
+        "userId": { "type": "string" },
+        "startedAt": { "type": "string" },
+        "consumed": { "type": "boolean" }
+      },
+      "required": ["sessionId", "novelId", "chapterId", "readerKey", "startedAt", "consumed"]
+    },
+    "VerifiedRead": {
+      "title": "VerifiedRead",
+      "description": "سجل قراءة موثقة واحدة لكل قارئ بعد انقضاء ٦٠ ثانية بتوقيت الخادم",
+      "type": "object",
+      "properties": {
+        "novelId": { "type": "string" },
+        "readerKey": { "type": "string" },
+        "userId": { "type": "string" },
+        "chapterId": { "type": "string" },
+        "sessionId": { "type": "string" },
+        "verifiedAt": { "type": "string" }
+      },
+      "required": ["novelId", "readerKey", "chapterId", "sessionId", "verifiedAt"]
+    },
+    "WorkReport": {
+      "title": "WorkReport",
+      "description": "بلاغ قارئ عن عمل أو غلاف مخالف لمراجعة المشرف الرسمي",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "novelId": { "type": "string" },
+        "novelTitle": { "type": "string" },
+        "authorId": { "type": "string" },
+        "reporterUid": { "type": "string" },
+        "reason": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "details": { "type": "string", "maxLength": 1000 },
+        "status": { "type": "string", "enum": ["open", "reviewed_kept", "rejected_removed"] },
+        "reviewedBy": { "type": "string" },
+        "reviewNote": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "novelId", "reporterUid", "reason", "status"]
     },
     "WriterApplication": {
       "title": "WriterApplication",
       "description": "طلب الحصول على صلاحية كاتب وشارة الكاتب للمراجعة الإدارية",
       "type": "object",
       "properties": {
-        "userId": { "type": "string", "description": "معرف مقدم الطلب UID" },
-        "penName": { "type": "string", "minLength": 2, "maxLength": 80, "description": "الاسم الأدبي" },
-        "shortBio": { "type": "string", "minLength": 10, "maxLength": 400, "description": "نبذة قصيرة عن المتقدم" },
-        "genres": { "type": "array", "description": "أنواع الكتابة والتصنيفات الأدبية" },
-        "writingSample": { "type": "string", "minLength": 50, "maxLength": 8000, "description": "العينة الكتابية" },
-        "status": { "type": "string", "enum": ["pending", "approved", "rejected"], "description": "حالة الطلب" },
-        "reviewNote": { "type": "string", "maxLength": 500, "description": "ملاحظة الإدارة" },
-        "reviewedBy": { "type": "string", "description": "معرف المراجع الإداري" },
-        "reviewedAt": { "type": "string", "description": "تاريخ المراجعة" },
-        "submittedAt": { "type": "string", "description": "تاريخ التقديم" },
-        "updatedAt": { "type": "string", "description": "تاريخ التحديث" }
+        "userId": { "type": "string" },
+        "penName": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "shortBio": { "type": "string", "minLength": 10, "maxLength": 400 },
+        "genres": { "type": "array" },
+        "writingSample": { "type": "string", "minLength": 50, "maxLength": 8000 },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "reviewNote": { "type": "string", "maxLength": 500 },
+        "reviewedBy": { "type": "string" },
+        "reviewedAt": { "type": "string" },
+        "submittedAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
       },
       "required": ["userId", "penName", "shortBio", "genres", "writingSample", "status"]
     },
@@ -129,13 +263,13 @@
       "description": "الروايات المحفوظة في مفضلة المستخدم",
       "type": "object",
       "properties": {
-        "userId": { "type": "string", "description": "معرف صاحب المفضلة" },
-        "novelId": { "type": "string", "description": "معرف الرواية المحفوظة" },
-        "novelTitle": { "type": "string", "description": "عنوان الرواية" },
-        "coverUrl": { "type": "string", "description": "صورة الغلاف" },
-        "author": { "type": "string", "description": "اسم الكاتب" },
-        "genre": { "type": "string", "description": "التصنيف" },
-        "createdAt": { "type": "string", "description": "تاريخ الحفظ" }
+        "userId": { "type": "string" },
+        "novelId": { "type": "string" },
+        "novelTitle": { "type": "string" },
+        "coverUrl": { "type": "string" },
+        "author": { "type": "string" },
+        "genre": { "type": "string" },
+        "createdAt": { "type": "string" }
       },
       "required": ["userId", "novelId"]
     },
@@ -144,12 +278,12 @@
       "description": "سجل الفصول التي قرأها المستخدم",
       "type": "object",
       "properties": {
-        "userId": { "type": "string", "description": "معرف المستخدم" },
-        "novelId": { "type": "string", "description": "معرف الرواية" },
-        "novelTitle": { "type": "string", "description": "عنوان الرواية" },
-        "chapterId": { "type": "number", "description": "معرف الفصل" },
-        "chapterTitle": { "type": "string", "description": "عنوان الفصل" },
-        "readAt": { "type": "string", "description": "تاريخ القراءة" }
+        "userId": { "type": "string" },
+        "novelId": { "type": "string" },
+        "novelTitle": { "type": "string" },
+        "chapterId": { "type": "number" },
+        "chapterTitle": { "type": "string" },
+        "readAt": { "type": "string" }
       },
       "required": ["userId", "novelId", "chapterId"]
     },
@@ -158,10 +292,10 @@
       "description": "تقييم المستخدم للرواية",
       "type": "object",
       "properties": {
-        "userId": { "type": "string", "description": "معرف المستخدم المقيم" },
-        "novelId": { "type": "string", "description": "معرف الرواية" },
-        "rating": { "type": "number", "description": "قيمة التقييم من 1 إلى 5" },
-        "createdAt": { "type": "string", "description": "تاريخ التقييم" }
+        "userId": { "type": "string" },
+        "novelId": { "type": "string" },
+        "rating": { "type": "number" },
+        "createdAt": { "type": "string" }
       },
       "required": ["userId", "novelId", "rating"]
     },
@@ -170,17 +304,17 @@
       "description": "تعليق القارئ على فصل محدد",
       "type": "object",
       "properties": {
-        "id": { "type": "string", "description": "معرف التعليق" },
-        "novelId": { "type": "string", "description": "معرف الرواية" },
-        "chapterId": { "type": "string", "description": "معرف الفصل" },
-        "userId": { "type": "string", "description": "معرف صاحب التعليق" },
-        "userName": { "type": "string", "description": "اسم صاحب التعليق" },
-        "userAvatar": { "type": "string", "description": "صورة صاحب التعليق" },
-        "userCover": { "type": "string", "description": "خلفية صاحب التعليق" },
-        "userRole": { "type": "string", "description": "رتبة المستخدم الموثقة" },
-        "text": { "type": "string", "description": "نص التعليق" },
-        "likes": { "type": "number", "description": "عدد التفاعلات الذرية المحسوبة" },
-        "createdAt": { "type": "string", "description": "تاريخ الإضافة" }
+        "id": { "type": "string" },
+        "novelId": { "type": "string" },
+        "chapterId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userAvatar": { "type": "string" },
+        "userCover": { "type": "string" },
+        "userRole": { "type": "string" },
+        "text": { "type": "string" },
+        "likes": { "type": "number" },
+        "createdAt": { "type": "string" }
       },
       "required": ["id", "novelId", "chapterId", "userId", "text"]
     },
@@ -189,10 +323,10 @@
       "description": "سجل تفاعل المستخدم الفردي مع التعليق",
       "type": "object",
       "properties": {
-        "userId": { "type": "string", "description": "معرف المستخدم المتفاعل" },
-        "commentId": { "type": "string", "description": "معرف التعليق المتفاعل معه" },
-        "type": { "type": "string", "description": "نوع التفاعل، مثل like" },
-        "createdAt": { "type": "string", "description": "تاريخ التفاعل" }
+        "userId": { "type": "string" },
+        "commentId": { "type": "string" },
+        "type": { "type": "string" },
+        "createdAt": { "type": "string" }
       },
       "required": ["userId", "commentId", "type"]
     },
@@ -201,13 +335,13 @@
       "description": "الرتبة المعتمدة للمستخدم الممنوحة من الإدارة فقط",
       "type": "object",
       "properties": {
-        "userId": { "type": "string", "description": "معرف المستخدم" },
-        "role": { "type": "string", "description": "الرتبة: auditor أو author أو translate أو founder" },
-        "roles": { "type": "array", "description": "قائمة الرتب المعتمدة" },
-        "status": { "type": "string", "description": "حالة الرتبة: active أو revoked" },
-        "canPublish": { "type": "boolean", "description": "صلاحية النشر الفعلية المعتمدة إدارياً" },
-        "assignedBy": { "type": "string", "description": "معرف المانح" },
-        "assignedAt": { "type": "string", "description": "تاريخ المنح" }
+        "userId": { "type": "string" },
+        "role": { "type": "string" },
+        "roles": { "type": "array" },
+        "status": { "type": "string" },
+        "canPublish": { "type": "boolean" },
+        "assignedBy": { "type": "string" },
+        "assignedAt": { "type": "string" }
       },
       "required": ["userId", "role", "status"]
     },
@@ -216,16 +350,16 @@
       "description": "طلب انضمام لرتبة مدقق أو كاتب أو مترجم",
       "type": "object",
       "properties": {
-        "id": { "type": "string", "description": "معرف الطلب" },
-        "userId": { "type": "string", "description": "معرف صاحب الطلب" },
-        "userEmail": { "type": "string", "description": "بريد صاحب الطلب" },
-        "userName": { "type": "string", "description": "اسم صاحب الطلب" },
-        "role": { "type": "string", "description": "الرتبة المطلوبة: auditor أو author أو translate" },
-        "statement": { "type": "string", "description": "تعهد ومبررات الطلب" },
-        "status": { "type": "string", "description": "حالة الطلب: pending أو approved أو rejected" },
-        "createdAt": { "type": "string", "description": "تاريخ التقديم" },
-        "reviewedAt": { "type": "string", "description": "تاريخ المراجعة" },
-        "reviewedBy": { "type": "string", "description": "معرف المراجع" }
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "userName": { "type": "string" },
+        "role": { "type": "string" },
+        "statement": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "reviewedAt": { "type": "string" },
+        "reviewedBy": { "type": "string" }
       },
       "required": ["id", "userId", "userEmail", "role", "status"]
     },
@@ -234,18 +368,18 @@
       "description": "مراجعة وتدقيق عمل أدبي أو فصل بواسطة مدقق معتمد",
       "type": "object",
       "properties": {
-        "id": { "type": "string", "description": "معرف تقرير التدقيق" },
-        "novelId": { "type": "string", "description": "معرف الرواية" },
-        "novelTitle": { "type": "string", "description": "عنوان الرواية" },
-        "chapterId": { "type": "string", "description": "معرف الفصل" },
-        "chapterTitle": { "type": "string", "description": "عنوان الفصل" },
-        "reviewerId": { "type": "string", "description": "معرف المدقق" },
-        "reviewerName": { "type": "string", "description": "اسم المدقق" },
-        "decision": { "type": "string", "description": "قرار التدقيق: approved أو issues_found" },
-        "explanation": { "type": "string", "description": "شرح القرار أو الملحوظات" },
-        "evidence": { "type": "string", "description": "الأدلة أو المراجع التوثيقية" },
-        "concernType": { "type": "string", "description": "نوع الشبهة" },
-        "createdAt": { "type": "string", "description": "تاريخ التدقيق" }
+        "id": { "type": "string" },
+        "novelId": { "type": "string" },
+        "novelTitle": { "type": "string" },
+        "chapterId": { "type": "string" },
+        "chapterTitle": { "type": "string" },
+        "reviewerId": { "type": "string" },
+        "reviewerName": { "type": "string" },
+        "decision": { "type": "string" },
+        "explanation": { "type": "string" },
+        "evidence": { "type": "string" },
+        "concernType": { "type": "string" },
+        "createdAt": { "type": "string" }
       },
       "required": ["id", "novelId", "reviewerId", "decision"]
     },
@@ -254,15 +388,15 @@
       "description": "حالة رقابة ونشر العمل الأدبي ومحصلة قرارات التدقيق",
       "type": "object",
       "properties": {
-        "novelId": { "type": "string", "description": "معرف الرواية" },
-        "status": { "type": "string", "description": "حالة العمل" },
-        "approvalCount": { "type": "number", "description": "عدد الإجازات المعتمدة" },
-        "issueCount": { "type": "number", "description": "عدد الملحوظات المرصودة" },
-        "requiredApprovals": { "type": "number", "description": "عتبة التوافق المطلوبة" },
-        "hasCopyrightConcern": { "type": "boolean", "description": "هل توجد شبهة حقوق ملكية" },
-        "suspendedReason": { "type": "string", "description": "سبب التعليق" },
-        "lastAuditedAt": { "type": "string", "description": "تاريخ آخر تدقيق" },
-        "updatedAt": { "type": "string", "description": "تاريخ التحديث" }
+        "novelId": { "type": "string" },
+        "status": { "type": "string" },
+        "approvalCount": { "type": "number" },
+        "issueCount": { "type": "number" },
+        "requiredApprovals": { "type": "number" },
+        "hasCopyrightConcern": { "type": "boolean" },
+        "suspendedReason": { "type": "string" },
+        "lastAuditedAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
       },
       "required": ["novelId", "status"]
     },
@@ -271,13 +405,13 @@
       "description": "سجل القرارات الإدارية والتحقيقية الصادرة عن الإدارة",
       "type": "object",
       "properties": {
-        "id": { "type": "string", "description": "معرف السجل" },
-        "targetType": { "type": "string", "description": "نوع الهدف" },
-        "targetId": { "type": "string", "description": "معرف الهدف" },
-        "action": { "type": "string", "description": "الإجراء المتخذ" },
-        "reason": { "type": "string", "description": "مبررات القرار" },
-        "decidedBy": { "type": "string", "description": "معرف متخذ القرار" },
-        "createdAt": { "type": "string", "description": "تاريخ القرار" }
+        "id": { "type": "string" },
+        "targetType": { "type": "string" },
+        "targetId": { "type": "string" },
+        "action": { "type": "string" },
+        "reason": { "type": "string" },
+        "decidedBy": { "type": "string" },
+        "createdAt": { "type": "string" }
       },
       "required": ["id", "targetType", "targetId", "action", "reason", "decidedBy"]
     }
@@ -323,9 +457,37 @@
       "schema": "UsernameRedirect",
       "description": "إعادة توجيه الروابط القديمة بعد تغيير اسم المستخدم"
     },
+    "/founders/{founderId}": {
+      "schema": "FounderSeal",
+      "description": "سجل التوثيق العام لشارة المؤسس والمشرف الرسمي"
+    },
     "/novels/{novelId}": {
       "schema": "PublishedNovel",
       "description": "الروايات المنشورة بواسطة الكتاب المعتمدين وتبقى عامة للزوار"
+    },
+    "/novels/{novelId}/sections/{sectionId}": {
+      "schema": "NovelSection",
+      "description": "الأقسام والمجلدات التنظيمية لفصول الرواية"
+    },
+    "/novels/{novelId}/chapters/{chapterId}": {
+      "schema": "LogicalChapter",
+      "description": "الفصول المنطقية متعددة اللغات ونوع الفصل وحالة النشر"
+    },
+    "/novels/{novelId}/chapter_slots/{slotId}": {
+      "schema": "ChapterSlot",
+      "description": "قفل فريد لأرقام الفصول داخل الرواية"
+    },
+    "/novels/{novelId}/read_sessions/{sessionId}": {
+      "schema": "ReadSession",
+      "description": "جلسات القراءة الزمنية للتحقق من قضاء دقيقة كاملة"
+    },
+    "/novels/{novelId}/verified_reads/{readerKey}": {
+      "schema": "VerifiedRead",
+      "description": "سجل القراءة الموثقة الفريد لكل قارئ"
+    },
+    "/work_reports/{reportId}": {
+      "schema": "WorkReport",
+      "description": "بلاغات القرّاء حول المخالفات لمراجعة المشرف الرسمي"
     },
     "/writer_applications/{userId}": {
       "schema": "WriterApplication",

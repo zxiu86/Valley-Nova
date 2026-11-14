@@ -4,6 +4,7 @@
 .env*
 !.env.example
 /firebase-applet-config.json
+/public/firebase-applet-config.json
 
 # Compiled output
 /dist

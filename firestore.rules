@@ -17,7 +17,7 @@ service cloud.firestore {
     }
 
     function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
     function isValidUsername(name) {
@@ -90,12 +90,33 @@ service cloud.firestore {
       );
     }
 
+    function isNovelAuthor(novelId) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/novels/$(novelId)) &&
+        get(/databases/$(database)/documents/novels/$(novelId)).data.authorId == request.auth.uid;
+    }
+
+    function isNovelPubliclyVisible(novelId) {
+      return exists(/databases/$(database)/documents/novels/$(novelId)) &&
+        get(/databases/$(database)/documents/novels/$(novelId)).data.isPublished == true &&
+        get(/databases/$(database)/documents/novels/$(novelId)).data.get('moderationStatus', 'active') != 'rejected_removed';
+    }
+
     function isAllowedUsernamePath(name) {
       return isValidUsername(name) || name == 'zid';
     }
 
     function isAllowedUsernameWrite(name) {
       return (isValidUsername(name) && !isReservedUsername(name)) || (name == 'zid' && isAdmin());
+    }
+
+    function isValidSafeImageUrl(url) {
+      return url is string &&
+        url.size() <= 450000 &&
+        (url == '' ||
+         url.matches('^https://.*') ||
+         url.matches('^/images/.*') ||
+         url.matches('^data:image/(webp|png|jpeg);base64,.*'));
     }
 
     function isValidPublicProfile(data) {
@@ -109,8 +130,8 @@ service cloud.firestore {
         data.showReadingHistory is bool &&
         data.showProfileInfo is bool &&
         (!('username' in data) || data.username == '' || isAllowedUsernameWrite(data.username)) &&
-        (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 450000)) &&
-        (!('coverURL' in data) || (data.coverURL is string && data.coverURL.size() <= 450000)) &&
+        (!('photoURL' in data) || isValidSafeImageUrl(data.photoURL)) &&
+        (!('coverURL' in data) || isValidSafeImageUrl(data.coverURL)) &&
         (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 64)) &&
         (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 64)) &&
         !('email' in data) &&
@@ -131,8 +152,8 @@ service cloud.firestore {
         (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 80)) &&
         (!('username' in data) || data.username == '' || isAllowedUsernameWrite(data.username)) &&
         (!('bio' in data) || (data.bio is string && data.bio.size() <= 320)) &&
-        (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 450000)) &&
-        (!('coverURL' in data) || (data.coverURL is string && data.coverURL.size() <= 450000)) &&
+        (!('photoURL' in data) || isValidSafeImageUrl(data.photoURL)) &&
+        (!('coverURL' in data) || isValidSafeImageUrl(data.coverURL)) &&
         (!('isPublic' in data) || data.isPublic is bool) &&
         (!('showSavedNovels' in data) || data.showSavedNovels is bool) &&
         (!('showReadingHistory' in data) || data.showReadingHistory is bool) &&
@@ -172,6 +193,89 @@ service cloud.firestore {
         (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 64));
     }
 
+    function isValidNovelPayload(data) {
+      return data.keys().hasAll(['id', 'title', 'authorId', 'categoryGroup', 'isPublished', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly([
+          'id', 'title', 'titleEn', 'authorId', 'authorName', 'workType',
+          'originalAuthor', 'firstAuthor', 'supportMethod', 'novelStatus',
+          'moderationStatus', 'moderationNote', 'reportCount', 'genre',
+          'categoryGroup', 'coverUrl', 'description', 'readingHours',
+          'originLanguage', 'languageCode', 'verifiedReadsCount', 'lastVerifiedReadKey',
+          'publishedChapterCount', 'publishedWordsAr', 'publishedWordsEn', 'tags',
+          'isPublished', 'createdAt', 'updatedAt'
+        ]) &&
+        data.title is string && data.title.size() >= 2 && data.title.size() <= 140 &&
+        (!('titleEn' in data) || (data.titleEn is string && data.titleEn.size() <= 160)) &&
+        (!('authorName' in data) || (data.authorName is string && data.authorName.size() <= 80)) &&
+        (!('workType' in data) || data.workType in ['original', 'translated', 'republish']) &&
+        (!('originalAuthor' in data) || (data.originalAuthor is string && data.originalAuthor.size() <= 80)) &&
+        (!('firstAuthor' in data) || (data.firstAuthor is string && data.firstAuthor.size() <= 80)) &&
+        (data.get('workType', 'original') != 'translated' || (data.get('originalAuthor', '') is string && data.get('originalAuthor', '').size() >= 2)) &&
+        (data.get('workType', 'original') != 'republish' || (data.get('firstAuthor', '') is string && data.get('firstAuthor', '').size() >= 2)) &&
+        (!('supportMethod' in data) || (data.supportMethod is string && data.supportMethod.size() <= 240)) &&
+        (!('novelStatus' in data) || data.novelStatus in ['ongoing', 'completed', 'paused']) &&
+        (!('moderationStatus' in data) || data.moderationStatus in ['active', 'under_review', 'rejected_removed']) &&
+        (!('moderationNote' in data) || (data.moderationNote is string && data.moderationNote.size() <= 500)) &&
+        (!('reportCount' in data) || (data.reportCount is int && data.reportCount >= 0)) &&
+        (!('genre' in data) || (data.genre is string && data.genre.size() <= 80)) &&
+        data.categoryGroup in ['novels', 'epics', 'wisdom', 'heritage'] &&
+        (!('coverUrl' in data) || isValidSafeImageUrl(data.coverUrl)) &&
+        (!('description' in data) || (data.description is string && data.description.size() <= 2000)) &&
+        (!('readingHours' in data) || (data.readingHours is number && data.readingHours >= 0 && data.readingHours <= 2000)) &&
+        (!('originLanguage' in data) || (data.originLanguage is string && data.originLanguage.size() <= 60)) &&
+        (!('languageCode' in data) || (data.languageCode is string && data.languageCode.size() <= 12)) &&
+        (!('verifiedReadsCount' in data) || (data.verifiedReadsCount is int && data.verifiedReadsCount >= 0)) &&
+        (!('lastVerifiedReadKey' in data) || (data.lastVerifiedReadKey is string && data.lastVerifiedReadKey.size() <= 128)) &&
+        (!('publishedChapterCount' in data) || (data.publishedChapterCount is int && data.publishedChapterCount >= 0)) &&
+        (!('publishedWordsAr' in data) || (data.publishedWordsAr is int && data.publishedWordsAr >= 0)) &&
+        (!('publishedWordsEn' in data) || (data.publishedWordsEn is int && data.publishedWordsEn >= 0)) &&
+        (!('tags' in data) || (data.tags is list && data.tags.size() <= 12)) &&
+        data.isPublished is bool &&
+        data.createdAt is string && data.createdAt.size() <= 64 &&
+        data.updatedAt is string && data.updatedAt.size() <= 64;
+    }
+
+    function isValidSectionPayload(data, novelId) {
+      return data.keys().hasAll(['id', 'novelId', 'authorId', 'title', 'orderIndex', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['id', 'novelId', 'authorId', 'title', 'titleEn', 'orderIndex', 'createdAt', 'updatedAt']) &&
+        data.novelId == novelId &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 120 &&
+        (!('titleEn' in data) || (data.titleEn is string && data.titleEn.size() <= 120)) &&
+        data.orderIndex is int && data.orderIndex >= 0 && data.orderIndex <= 5000 &&
+        data.createdAt is string && data.createdAt.size() <= 64 &&
+        data.updatedAt is string && data.updatedAt.size() <= 64;
+    }
+
+    function isValidChapterPayload(data, novelId) {
+      return data.keys().hasAll([
+          'id', 'novelId', 'authorId', 'chapterNumber', 'title',
+          'chapterType', 'endStatus', 'languageMode', 'editions',
+          'wordCountAr', 'wordCountEn', 'isPublished', 'revision',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'novelId', 'authorId', 'chapterNumber', 'title', 'titleEn',
+          'sectionId', 'chapterType', 'endStatus', 'languageMode', 'editions',
+          'wordCountAr', 'wordCountEn', 'isPublished', 'revision',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.novelId == novelId &&
+        data.chapterNumber is int && data.chapterNumber >= 1 && data.chapterNumber <= 50000 &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
+        (!('titleEn' in data) || (data.titleEn is string && data.titleEn.size() <= 160)) &&
+        (!('sectionId' in data) || (data.sectionId is string && data.sectionId.size() <= 128)) &&
+        data.chapterType in ['narrative', 'explanatory'] &&
+        data.endStatus in ['ongoing', 'ending'] &&
+        data.languageMode in ['ar', 'en', 'both'] &&
+        data.editions is map &&
+        data.wordCountAr is int && data.wordCountAr >= 0 &&
+        data.wordCountEn is int && data.wordCountEn >= 0 &&
+        data.isPublished is bool &&
+        data.revision is int && data.revision >= 1 &&
+        data.createdAt is string && data.createdAt.size() <= 64 &&
+        data.updatedAt is string && data.updatedAt.size() <= 64;
+    }
+
     // ================= ADMIN & FOUNDER COLLECTIONS ================= //
     match /admins/{adminId} {
       allow get: if isValidId(adminId) && isOwner(adminId);
@@ -181,9 +285,18 @@ service cloud.firestore {
     }
 
     match /founders/{founderId} {
-      allow get: if isValidId(founderId) && isSignedIn();
+      // Public get contains only non-PII seal verification flags (no email/phone/PII)
+      allow get: if isValidId(founderId);
       allow list: if isAdmin();
-      allow create, update: if isValidId(founderId) && isDesignatedFounder() && founderId == request.auth.uid;
+      allow create, update: if isValidId(founderId) &&
+        isDesignatedFounder() &&
+        founderId == request.auth.uid &&
+        incoming().keys().hasAll(['uid', 'badge', 'handle', 'active']) &&
+        incoming().keys().hasOnly(['uid', 'badge', 'handle', 'titleAr', 'titleEn', 'active', 'updatedAt']) &&
+        incoming().uid == request.auth.uid &&
+        incoming().badge == 'founder' &&
+        incoming().handle == 'zid' &&
+        incoming().active is bool;
       allow delete: if false;
     }
 
@@ -191,7 +304,11 @@ service cloud.firestore {
     match /user_roles/{userId} {
       allow get: if isValidId(userId);
       allow list: if isAdmin();
-      allow write: if isValidId(userId) && isAdmin();
+      allow create, update: if isValidId(userId) && isAdmin() &&
+        incoming().userId == userId &&
+        incoming().role in ['reader', 'author', 'auditor', 'translate', 'founder'] &&
+        incoming().status in ['active', 'revoked'];
+      allow delete: if isValidId(userId) && isAdmin();
     }
 
     // ================= WRITER APPLICATIONS COLLECTION ================= //
@@ -380,7 +497,7 @@ service cloud.firestore {
           (!('novelTitle' in incoming()) || (incoming().novelTitle is string && incoming().novelTitle.size() <= 160)) &&
           (!('author' in incoming()) || (incoming().author is string && incoming().author.size() <= 80)) &&
           (!('genre' in incoming()) || (incoming().genre is string && incoming().genre.size() <= 80)) &&
-          (!('coverUrl' in incoming()) || (incoming().coverUrl is string && incoming().coverUrl.size() <= 450000));
+          (!('coverUrl' in incoming()) || isValidSafeImageUrl(incoming().coverUrl));
         allow delete: if isValidId(userId) && isValidId(novelId) && isOwner(userId);
       }
     }
@@ -433,37 +550,223 @@ service cloud.firestore {
         existing().uid == request.auth.uid;
     }
 
-    // ================= PUBLISHED NOVELS (PUBLIC CONTENT EVEN WHEN ACCOUNT IS PRIVATE) ================= //
+    // ================= PUBLISHED NOVELS & WRITER STUDIO TREE ================= //
     match /novels/{novelId} {
-      allow read: if resource.data.isPublished == true || (isSignedIn() && (resource.data.authorId == request.auth.uid || isAdmin()));
+      allow read: if resource.data.isPublished == true ||
+                    (isSignedIn() && (resource.data.authorId == request.auth.uid || isAdmin()));
+
       allow create: if isValidId(novelId) &&
         isApprovedWriter() &&
         incoming().id == novelId &&
         incoming().authorId == request.auth.uid &&
-        incoming().title is string && incoming().title.size() >= 2 && incoming().title.size() <= 140 &&
-        (!('authorName' in incoming()) || (incoming().authorName is string && incoming().authorName.size() <= 80)) &&
-        (!('genre' in incoming()) || (incoming().genre is string && incoming().genre.size() <= 80)) &&
-        (!('description' in incoming()) || (incoming().description is string && incoming().description.size() <= 2000)) &&
-        (!('coverUrl' in incoming()) || (incoming().coverUrl is string && incoming().coverUrl.size() <= 450000)) &&
-        incoming().isPublished is bool;
+        incoming().get('moderationStatus', 'active') == 'active' &&
+        incoming().get('verifiedReadsCount', 0) == 0 &&
+        incoming().get('reportCount', 0) == 0 &&
+        isValidNovelPayload(incoming());
+
       allow update: if isValidId(novelId) && (
-        isAdmin() ||
+        // 1. Founder/Admin full moderation & cleanup update
+        (isAdmin() &&
+         incoming().id == existing().id &&
+         incoming().authorId == existing().authorId &&
+         isValidNovelPayload(incoming())) ||
+
+        // 2. Novel author updating novel content/stats (cannot forge verifiedReadsCount or re-publish removed novels)
         (isApprovedWriter() &&
          existing().authorId == request.auth.uid &&
-         incoming().authorId == existing().authorId &&
          incoming().id == existing().id &&
-         incoming().title is string && incoming().title.size() >= 2 && incoming().title.size() <= 140 &&
-         (!('authorName' in incoming()) || (incoming().authorName is string && incoming().authorName.size() <= 80)) &&
-         (!('genre' in incoming()) || (incoming().genre is string && incoming().genre.size() <= 80)) &&
-         (!('description' in incoming()) || (incoming().description is string && incoming().description.size() <= 2000)) &&
-         (!('coverUrl' in incoming()) || (incoming().coverUrl is string && incoming().coverUrl.size() <= 450000)))
+         incoming().authorId == existing().authorId &&
+         incoming().get('verifiedReadsCount', 0) == existing().get('verifiedReadsCount', 0) &&
+         incoming().get('reportCount', 0) == existing().get('reportCount', 0) &&
+         incoming().get('moderationStatus', 'active') == existing().get('moderationStatus', 'active') &&
+         (existing().get('moderationStatus', 'active') != 'rejected_removed' || incoming().isPublished == false) &&
+         isValidNovelPayload(incoming())) ||
+
+        // 3. Server-verified 60s Read increment (atomic batch paired with read_sessions + verified_reads)
+        (incoming().diff(existing()).affectedKeys().hasOnly(['verifiedReadsCount', 'lastVerifiedReadKey']) &&
+         incoming().verifiedReadsCount is int &&
+         incoming().verifiedReadsCount == (existing().get('verifiedReadsCount', 0) + 1) &&
+         incoming().lastVerifiedReadKey is string &&
+         isValidId(incoming().lastVerifiedReadKey) &&
+         !exists(/databases/$(database)/documents/novels/$(novelId)/verified_reads/$(incoming().lastVerifiedReadKey)) &&
+         existsAfter(/databases/$(database)/documents/novels/$(novelId)/verified_reads/$(incoming().lastVerifiedReadKey))) ||
+
+        // 4. Signed-in reader submitting a unique work_report (escalates to under_review at >= 3 reports)
+        (isSignedIn() &&
+         incoming().diff(existing()).affectedKeys().hasOnly(['reportCount', 'moderationStatus', 'updatedAt']) &&
+         !exists(/databases/$(database)/documents/work_reports/$(novelId + '__' + request.auth.uid)) &&
+         existsAfter(/databases/$(database)/documents/work_reports/$(novelId + '__' + request.auth.uid)) &&
+         incoming().reportCount is int &&
+         incoming().reportCount == (existing().get('reportCount', 0) + 1) &&
+         incoming().updatedAt is string && incoming().updatedAt.size() <= 64 &&
+         ((incoming().reportCount >= 3 && incoming().moderationStatus == 'under_review') ||
+          (incoming().reportCount < 3 && incoming().moderationStatus == existing().get('moderationStatus', 'active'))))
       );
+
       allow delete: if isValidId(novelId) && isSignedIn() && (existing().authorId == request.auth.uid || isAdmin());
+
+      // ---- Novel Sections / Volumes ---- //
+      match /sections/{sectionId} {
+        allow read: if isValidId(novelId) && isValidId(sectionId) && (
+          isNovelPubliclyVisible(novelId) || isNovelAuthor(novelId) || isAdmin()
+        );
+        allow create: if isValidId(novelId) && isValidId(sectionId) &&
+          isApprovedWriter() &&
+          isNovelAuthor(novelId) &&
+          incoming().id == sectionId &&
+          incoming().authorId == request.auth.uid &&
+          isValidSectionPayload(incoming(), novelId);
+        allow update: if isValidId(novelId) && isValidId(sectionId) && (
+          isAdmin() ||
+          (isApprovedWriter() &&
+           isNovelAuthor(novelId) &&
+           existing().authorId == request.auth.uid &&
+           incoming().id == existing().id &&
+           incoming().authorId == existing().authorId &&
+           isValidSectionPayload(incoming(), novelId))
+        );
+        allow delete: if isValidId(novelId) && isValidId(sectionId) && (
+          isNovelAuthor(novelId) || isAdmin()
+        );
+      }
+
+      // ---- Atomic Chapter Slot Lock (Unique chapterNumber per novel) ---- //
+      match /chapter_slots/{slotId} {
+        allow read: if isValidId(novelId) && slotId.matches('^slot_[1-9][0-9]{0,5}$') && (
+          isNovelAuthor(novelId) || isAdmin()
+        );
+        allow create: if isValidId(novelId) &&
+          slotId.matches('^slot_[1-9][0-9]{0,5}$') &&
+          isApprovedWriter() &&
+          isNovelAuthor(novelId) &&
+          incoming().keys().hasAll(['chapterId', 'chapterNumber', 'authorId', 'createdAt']) &&
+          incoming().keys().hasOnly(['chapterId', 'chapterNumber', 'authorId', 'createdAt']) &&
+          incoming().authorId == request.auth.uid &&
+          incoming().chapterId is string && isValidId(incoming().chapterId) &&
+          incoming().chapterNumber is int &&
+          incoming().chapterNumber >= 1 &&
+          slotId == ('slot_' + string(incoming().chapterNumber)) &&
+          incoming().createdAt is string && incoming().createdAt.size() <= 64 &&
+          !exists(/databases/$(database)/documents/novels/$(novelId)/chapter_slots/$(slotId)) &&
+          existsAfter(/databases/$(database)/documents/novels/$(novelId)/chapters/$(incoming().chapterId));
+        allow update: if false;
+        allow delete: if isValidId(novelId) &&
+          slotId.matches('^slot_[1-9][0-9]{0,5}$') &&
+          (isNovelAuthor(novelId) || isAdmin());
+      }
+
+      // ---- Logical Bilingual Chapters ---- //
+      match /chapters/{chapterId} {
+        allow read: if isValidId(novelId) && isValidId(chapterId) && (
+          (resource.data.isPublished == true && isNovelPubliclyVisible(novelId)) ||
+          isNovelAuthor(novelId) ||
+          isAdmin()
+        );
+        allow create: if isValidId(novelId) && isValidId(chapterId) &&
+          isApprovedWriter() &&
+          isNovelAuthor(novelId) &&
+          incoming().id == chapterId &&
+          incoming().authorId == request.auth.uid &&
+          incoming().revision == 1 &&
+          isValidChapterPayload(incoming(), novelId) &&
+          !exists(/databases/$(database)/documents/novels/$(novelId)/chapter_slots/$('slot_' + string(incoming().chapterNumber))) &&
+          existsAfter(/databases/$(database)/documents/novels/$(novelId)/chapter_slots/$('slot_' + string(incoming().chapterNumber)));
+        allow update: if isValidId(novelId) && isValidId(chapterId) && (
+          isAdmin() ||
+          (isApprovedWriter() &&
+           isNovelAuthor(novelId) &&
+           existing().authorId == request.auth.uid &&
+           incoming().id == existing().id &&
+           incoming().authorId == existing().authorId &&
+           incoming().chapterNumber == existing().chapterNumber &&
+           incoming().revision == existing().revision + 1 &&
+           isValidChapterPayload(incoming(), novelId))
+        );
+        allow delete: if isValidId(novelId) && isValidId(chapterId) && (
+          isNovelAuthor(novelId) || isAdmin()
+        );
+      }
+
+      // ---- Server-Timed 60-Second Read Sessions & Verified Reads ---- //
+      match /read_sessions/{sessionId} {
+        allow get: if isValidId(novelId) && isValidId(sessionId);
+        allow list: if isNovelAuthor(novelId) || isAdmin();
+        allow create: if isValidId(novelId) && isValidId(sessionId) &&
+          isNovelPubliclyVisible(novelId) &&
+          incoming().keys().hasAll(['sessionId', 'novelId', 'chapterId', 'readerKey', 'startedAt', 'consumed']) &&
+          incoming().keys().hasOnly(['sessionId', 'novelId', 'chapterId', 'readerKey', 'userId', 'startedAt', 'consumed']) &&
+          incoming().sessionId == sessionId &&
+          incoming().novelId == novelId &&
+          incoming().chapterId is string && isValidId(incoming().chapterId) &&
+          incoming().readerKey is string && isValidId(incoming().readerKey) &&
+          (!('userId' in incoming()) || !isSignedIn() || incoming().userId == request.auth.uid) &&
+          incoming().startedAt == request.time &&
+          incoming().consumed == false;
+        allow update: if isValidId(novelId) && isValidId(sessionId) &&
+          existing().consumed == false &&
+          incoming().consumed == true &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['consumed']) &&
+          request.time >= existing().startedAt + duration.value(60, 's') &&
+          existsAfter(/databases/$(database)/documents/novels/$(novelId)/verified_reads/$(existing().readerKey));
+        allow delete: if isNovelAuthor(novelId) || isAdmin();
+      }
+
+      match /verified_reads/{readerKey} {
+        allow get: if isValidId(novelId) && isValidId(readerKey);
+        allow list: if isNovelAuthor(novelId) || isAdmin();
+        allow create: if isValidId(novelId) && isValidId(readerKey) &&
+          isNovelPubliclyVisible(novelId) &&
+          !exists(/databases/$(database)/documents/novels/$(novelId)/verified_reads/$(readerKey)) &&
+          incoming().keys().hasAll(['novelId', 'readerKey', 'chapterId', 'sessionId', 'verifiedAt']) &&
+          incoming().keys().hasOnly(['novelId', 'readerKey', 'userId', 'chapterId', 'sessionId', 'verifiedAt']) &&
+          incoming().novelId == novelId &&
+          incoming().readerKey == readerKey &&
+          incoming().sessionId is string && isValidId(incoming().sessionId) &&
+          incoming().chapterId is string && isValidId(incoming().chapterId) &&
+          incoming().verifiedAt == request.time &&
+          exists(/databases/$(database)/documents/novels/$(novelId)/read_sessions/$(incoming().sessionId)) &&
+          get(/databases/$(database)/documents/novels/$(novelId)/read_sessions/$(incoming().sessionId)).data.readerKey == readerKey &&
+          get(/databases/$(database)/documents/novels/$(novelId)/read_sessions/$(incoming().sessionId)).data.consumed == false &&
+          getAfter(/databases/$(database)/documents/novels/$(novelId)/read_sessions/$(incoming().sessionId)).data.consumed == true &&
+          request.time >= get(/databases/$(database)/documents/novels/$(novelId)/read_sessions/$(incoming().sessionId)).data.startedAt + duration.value(60, 's');
+        allow update: if false;
+        allow delete: if isNovelAuthor(novelId) || isAdmin();
+      }
+    }
+
+    // ================= WORK REPORTS & MODERATION TRIAGE ================= //
+    match /work_reports/{reportId} {
+      allow get: if isValidId(reportId) && isSignedIn() && (
+        resource.data.reporterUid == request.auth.uid || isAdmin()
+      );
+      allow list: if isAdmin();
+      allow create: if isSignedIn() && isValidId(reportId) &&
+        incoming().keys().hasAll(['id', 'novelId', 'novelTitle', 'authorId', 'reporterUid', 'reason', 'status', 'createdAt', 'updatedAt']) &&
+        incoming().keys().hasOnly(['id', 'novelId', 'novelTitle', 'authorId', 'reporterUid', 'reason', 'details', 'status', 'createdAt', 'updatedAt']) &&
+        incoming().id == reportId &&
+        incoming().novelId is string && isValidId(incoming().novelId) &&
+        incoming().novelTitle is string && incoming().novelTitle.size() <= 140 &&
+        incoming().authorId is string && incoming().authorId.size() <= 128 &&
+        incoming().reporterUid == request.auth.uid &&
+        reportId == (incoming().novelId + '__' + request.auth.uid) &&
+        !exists(/databases/$(database)/documents/work_reports/$(reportId)) &&
+        incoming().reason is string && incoming().reason.size() >= 2 && incoming().reason.size() <= 120 &&
+        (!('details' in incoming()) || (incoming().details is string && incoming().details.size() <= 1000)) &&
+        incoming().status == 'open' &&
+        incoming().createdAt is string && incoming().createdAt.size() <= 64 &&
+        incoming().updatedAt is string && incoming().updatedAt.size() <= 64;
+      allow update: if isValidId(reportId) && isAdmin() &&
+        incoming().id == existing().id &&
+        incoming().novelId == existing().novelId &&
+        incoming().reporterUid == existing().reporterUid &&
+        incoming().status in ['open', 'reviewed_kept', 'rejected_removed'];
+      allow delete: if isValidId(reportId) && isAdmin();
     }
 
     // ================= PUBLIC CHAPTER COMMENTS & MODERATION ================= //
     match /comments/{commentId} {
-      allow read: if true;
+      allow get: if isValidId(commentId);
+      allow list: if resource.data.text is string;
       allow create: if isSignedIn() && isValidId(commentId) &&
         incoming().userId == request.auth.uid &&
         incoming().text is string && incoming().text.size() <= 1500 &&
@@ -482,7 +785,8 @@ service cloud.firestore {
         (existing().userId == request.auth.uid || isAdmin());
 
       match /reactions/{reactionUserId} {
-        allow read: if true;
+        allow get: if isValidId(commentId) && isValidId(reactionUserId);
+        allow list: if isValidId(commentId) && resource.data.userId is string;
         allow create: if isSignedIn() &&
           isValidId(reactionUserId) &&
           reactionUserId == request.auth.uid &&
@@ -496,7 +800,8 @@ service cloud.firestore {
     }
 
     match /audit_reviews/{reviewId} {
-      allow read: if true;
+      allow get: if isValidId(reviewId);
+      allow list: if resource.data.novelId is string;
       allow create: if isAuditor() && isValidId(reviewId) &&
         incoming().reviewerId == request.auth.uid &&
         incoming().decision in ['approved', 'issues_found'] &&
@@ -505,7 +810,8 @@ service cloud.firestore {
     }
 
     match /work_moderation/{novelId} {
-      allow read: if true;
+      allow get: if isValidId(novelId);
+      allow list: if resource.data.status is string;
       allow write: if isAdmin() || isAuditor();
     }
 

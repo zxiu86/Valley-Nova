@@ -153,34 +153,106 @@ export function validateFirebaseConfig(
   };
 }
 
+let runtimeAppletConfig: CentralizedFirebaseConfig | null = null;
+let runtimeLoadPromise: Promise<boolean> | null = null;
+
+interface RawAppletConfigJson {
+  apiKey?: string;
+  authDomain?: string;
+  projectId?: string;
+  storageBucket?: string;
+  messagingSenderId?: string;
+  appId?: string;
+  measurementId?: string;
+  firestoreDatabaseId?: string;
+  oAuthClientId?: string;
+}
+
 export function isFirebaseConfigComplete(): boolean {
-  return validateFirebaseConfig().isValid;
+  return validateFirebaseConfig().isValid || runtimeAppletConfig !== null;
+}
+
+export async function hydrateRuntimeFirebaseAppletConfig(): Promise<boolean> {
+  if (validateFirebaseConfig().isValid) {
+    return true;
+  }
+  if (runtimeAppletConfig) {
+    return true;
+  }
+  if (typeof window === 'undefined' || typeof fetch !== 'function') {
+    return false;
+  }
+  if (!runtimeLoadPromise) {
+    runtimeLoadPromise = (async () => {
+      try {
+        const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+        const timer = controller ? setTimeout(() => controller.abort(), 1800) : null;
+        const res = await fetch('/firebase-applet-config.json', {
+          cache: 'no-store',
+          signal: controller?.signal,
+        });
+        if (timer) clearTimeout(timer);
+        if (!res.ok) return false;
+        const raw = (await res.json()) as RawAppletConfigJson;
+        if (!raw.apiKey || !raw.authDomain || !raw.projectId || !raw.appId) {
+          return false;
+        }
+        runtimeAppletConfig = {
+          firebaseOptions: {
+            apiKey: raw.apiKey.trim(),
+            authDomain: raw.authDomain.trim(),
+            projectId: raw.projectId.trim(),
+            storageBucket: (raw.storageBucket || '').trim(),
+            messagingSenderId: (raw.messagingSenderId || '').trim(),
+            appId: raw.appId.trim(),
+            ...(raw.measurementId?.trim() ? { measurementId: raw.measurementId.trim() } : {}),
+          },
+          firestoreDatabaseId: (raw.firestoreDatabaseId || '(default)').trim(),
+          oAuthClientId: (raw.oAuthClientId || '').trim(),
+        };
+        return true;
+      } catch {
+        return false;
+      }
+    })();
+  }
+  return runtimeLoadPromise;
 }
 
 export function getMissingFirebaseSecretKeys(): readonly FirebaseSecretKey[] {
+  if (runtimeAppletConfig) return [];
   return validateFirebaseConfig().missingKeys;
 }
 
 export function getFirebaseClientConfig(): FirebaseOptions {
   const result = validateFirebaseConfig();
-  if (!result.isValid) {
-    throw new Error(result.errorMessage ?? 'Firebase configuration is incomplete.');
+  if (result.isValid) {
+    return result.config.firebaseOptions;
   }
-  return result.config.firebaseOptions;
+  if (runtimeAppletConfig) {
+    return runtimeAppletConfig.firebaseOptions;
+  }
+  throw new Error(result.errorMessage ?? 'Firebase configuration is incomplete.');
 }
 
 export function getFirestoreDatabaseId(): string {
   const result = validateFirebaseConfig();
-  if (!result.isValid) {
-    throw new Error(result.errorMessage ?? 'Firebase configuration is incomplete.');
+  if (result.isValid) {
+    return result.config.firestoreDatabaseId;
   }
-  return result.config.firestoreDatabaseId;
+  if (runtimeAppletConfig) {
+    return runtimeAppletConfig.firestoreDatabaseId;
+  }
+  throw new Error(result.errorMessage ?? 'Firebase configuration is incomplete.');
 }
 
 export function getFirebaseOAuthClientId(): string {
   const result = validateFirebaseConfig();
-  if (!result.isValid) {
-    throw new Error(result.errorMessage ?? 'Firebase configuration is incomplete.');
+  if (result.isValid) {
+    return result.config.oAuthClientId;
   }
-  return result.config.oAuthClientId;
+  if (runtimeAppletConfig) {
+    return runtimeAppletConfig.oAuthClientId;
+  }
+  throw new Error(result.errorMessage ?? 'Firebase configuration is incomplete.');
 }

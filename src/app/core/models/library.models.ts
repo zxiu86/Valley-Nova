@@ -2,11 +2,82 @@ export type SiteLanguage = 'ar' | 'en';
 export type ChapterLanguage = 'ar' | 'en';
 export type ExploreLanguageScope = 'all' | 'ar' | 'non-ar';
 
+export type WorkType = 'original' | 'translated' | 'republish';
+export type NovelStatus = 'ongoing' | 'completed' | 'paused';
+export type ModerationStatus = 'active' | 'under_review' | 'rejected_removed';
+export type ChapterType = 'narrative' | 'explanatory';
+export type ChapterEndStatus = 'ongoing' | 'ending';
+export type ChapterLanguageMode = 'ar' | 'en' | 'both';
+export type WriterRoleKind = 'founder' | 'author' | 'auditor' | 'translate' | 'reader';
+
+export interface ChapterBlock {
+  id: string;
+  type: 'paragraph' | 'heading' | 'quote' | 'divider';
+  text: string;
+}
+
+export interface ChapterLanguageEdition {
+  title: string;
+  blocks: ChapterBlock[];
+  plainText: string;
+  wordCount: number;
+  updatedAt: string;
+}
+
+export interface NovelSection {
+  id: string;
+  novelId: string;
+  authorId: string;
+  title: string;
+  titleEn?: string;
+  orderIndex: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LogicalChapter {
+  id: string;
+  novelId: string;
+  authorId: string;
+  chapterNumber: number;
+  title: string;
+  titleEn?: string;
+  sectionId?: string;
+  chapterType: ChapterType;
+  endStatus: ChapterEndStatus;
+  languageMode: ChapterLanguageMode;
+  editions: {
+    ar?: ChapterLanguageEdition;
+    en?: ChapterLanguageEdition;
+  };
+  wordCountAr: number;
+  wordCountEn: number;
+  isPublished: boolean;
+  revision: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkReport {
+  id: string;
+  novelId: string;
+  novelTitle: string;
+  authorId: string;
+  reporterUid: string;
+  reason: string;
+  details?: string;
+  status: 'open' | 'reviewed_kept' | 'rejected_removed';
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface NovelCard {
   id: string;
   title: string;
+  titleEn?: string;
   author?: string;
   authorId?: string;
+  authorUsername?: string;
   genre: string;
   coverUrl: string;
   coverAlt: string;
@@ -21,6 +92,18 @@ export interface NovelCard {
   metaPrimary?: string;
   metaSecondary?: string;
   isCompleted?: boolean;
+  novelStatus?: NovelStatus;
+  workType?: WorkType;
+  originalAuthor?: string;
+  firstAuthor?: string;
+  supportMethod?: string;
+  moderationStatus?: ModerationStatus;
+  moderationNote?: string;
+  reportCount?: number;
+  verifiedReadsCount?: number;
+  publishedChapterCount?: number;
+  publishedWordsAr?: number;
+  publishedWordsEn?: number;
   readingHours?: number;
   originLanguage?: string;
   languageCode?: string;
@@ -29,6 +112,7 @@ export interface NovelCard {
   isOriginal?: boolean;
   isTranslated?: boolean;
   isManuscript?: boolean;
+  isFirestoreBacked?: boolean;
 }
 
 export interface SerendipityNovel {
@@ -43,16 +127,28 @@ export interface SerendipityNovel {
 
 export interface ChapterItem {
   id: number;
+  firestoreChapterId?: string;
   chapterNumber?: number;
   language?: ChapterLanguage;
   translationGroupId?: string;
   arabicNumber: string;
   title: string;
+  titleEn?: string;
   duration: string;
   publishDate: string;
   status: 'read' | 'current' | 'unread';
   partition: 1 | 2 | 3;
   isLast?: boolean;
+  chapterType?: ChapterType;
+  endStatus?: ChapterEndStatus;
+  sectionId?: string;
+  sectionTitle?: string;
+  sectionTitleEn?: string;
+  revision?: number;
+  editions?: {
+    ar?: ChapterLanguageEdition;
+    en?: ChapterLanguageEdition;
+  };
 }
 
 export interface LiterarySalon {
@@ -122,7 +218,7 @@ export interface FullAccountProfile extends PublicProfile {
 
 export interface UserRoleRecord {
   userId: string;
-  role: 'reader' | 'author' | 'auditor' | 'translate' | 'founder';
+  role: WriterRoleKind;
   roles?: string[];
   status: 'active' | 'revoked';
   canPublish?: boolean;
@@ -134,6 +230,7 @@ export interface VerifiedWriterStatus {
   isWriterBadge: boolean;
   canPublish: boolean;
   isAdmin: boolean;
+  roleKind: 'founder' | 'author' | 'none';
   roleRecord: UserRoleRecord | null;
 }
 
@@ -156,8 +253,17 @@ export interface WriterApplication {
 export interface PublishedNovelRecord {
   id: string;
   title: string;
+  titleEn?: string;
   authorId: string;
   authorName: string;
+  workType?: WorkType;
+  originalAuthor?: string;
+  firstAuthor?: string;
+  supportMethod?: string;
+  novelStatus?: NovelStatus;
+  moderationStatus?: ModerationStatus;
+  moderationNote?: string;
+  reportCount?: number;
   genre: string;
   categoryGroup: CorridorId;
   coverUrl: string;
@@ -165,9 +271,124 @@ export interface PublishedNovelRecord {
   readingHours: number;
   originLanguage?: string;
   languageCode?: string;
+  verifiedReadsCount?: number;
+  lastVerifiedReadKey?: string;
+  publishedChapterCount?: number;
+  publishedWordsAr?: number;
+  publishedWordsEn?: number;
+  tags?: string[];
   isPublished: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface LocalNovelDraft {
+  localId: string;
+  authorId: string;
+  title: string;
+  titleEn: string;
+  workType: WorkType;
+  originalAuthor: string;
+  firstAuthor: string;
+  supportMethod: string;
+  novelStatus: NovelStatus;
+  categoryGroup: CorridorId;
+  genre: string;
+  originLanguage: string;
+  languageCode: string;
+  description: string;
+  coverUrl: string;
+  tags: string[];
+  sections: Array<{ id: string; title: string; titleEn?: string; orderIndex: number }>;
+  chapters: Array<{
+    localChapterId: string;
+    chapterNumber: number;
+    title: string;
+    titleEn?: string;
+    sectionId?: string;
+    chapterType: ChapterType;
+    endStatus: ChapterEndStatus;
+    languageMode: ChapterLanguageMode;
+    editions: {
+      ar?: ChapterLanguageEdition;
+      en?: ChapterLanguageEdition;
+    };
+    updatedAt: string;
+  }>;
+  updatedAt: string;
+}
+
+export interface LocalChapterAutosave {
+  key: string;
+  novelId: string;
+  chapterId: string | null;
+  chapterNumber: number;
+  title: string;
+  titleEn: string;
+  sectionId: string;
+  chapterType: ChapterType;
+  endStatus: ChapterEndStatus;
+  languageMode: ChapterLanguageMode;
+  arTitle: string;
+  arBlocks: ChapterBlock[];
+  enTitle: string;
+  enBlocks: ChapterBlock[];
+  baseRevision: number;
+  savedAt: string;
+  pendingSync?: boolean;
+}
+
+export interface ChapterConflictState {
+  novelId: string;
+  chapterId: string;
+  serverChapter: LogicalChapter;
+  localSnapshot: LocalChapterAutosave;
+}
+
+export interface FullNovelMtxArchive {
+  format: 'mtx-full-novel-v1';
+  exportedAt: string;
+  sha256: string;
+  novel: {
+    id: string;
+    title: string;
+    titleEn?: string;
+    authorId: string;
+    authorName: string;
+    workType: WorkType;
+    originalAuthor?: string;
+    firstAuthor?: string;
+    supportMethod?: string;
+    novelStatus: NovelStatus;
+    categoryGroup: CorridorId;
+    genre: string;
+    originLanguage?: string;
+    languageCode?: string;
+    description: string;
+    coverUrl?: string;
+    tags?: string[];
+  };
+  sections: Array<{
+    id: string;
+    title: string;
+    titleEn?: string;
+    orderIndex: number;
+  }>;
+  chapters: Array<{
+    id: string;
+    chapterNumber: number;
+    title: string;
+    titleEn?: string;
+    sectionId?: string;
+    chapterType: ChapterType;
+    endStatus: ChapterEndStatus;
+    languageMode: ChapterLanguageMode;
+    isPublished: boolean;
+    editions: {
+      ar?: ChapterLanguageEdition;
+      en?: ChapterLanguageEdition;
+    };
+  }>;
 }
 
 export interface UsernameCheckResult {
@@ -177,7 +398,7 @@ export interface UsernameCheckResult {
   suggestions: string[];
 }
 
-export type AppView = 'novels' | 'details' | 'explore' | 'auth' | 'profile' | 'reader';
+export type AppView = 'novels' | 'details' | 'explore' | 'auth' | 'profile' | 'reader' | 'writer';
 export type CorridorId = 'novels' | 'epics' | 'wisdom' | 'heritage';
 export type ReaderThemeId = 'andalusian' | 'parchment' | 'ivory' | 'daylight';
 export type ReaderFontFamilyId =
