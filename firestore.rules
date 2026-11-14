@@ -83,7 +83,7 @@ service cloud.firestore {
         isFounder() ||
         (exists(/databases/$(database)/documents/user_roles/$(request.auth.uid)) &&
          get(/databases/$(database)/documents/user_roles/$(request.auth.uid)).data.status == 'active' &&
-         get(/databases/$(database)/documents/user_roles/$(request.auth.uid)).data.canPublish == true &&
+         get(/databases/$(database)/documents/user_roles/$(request.auth.uid)).data.get('canPublish', true) == true &&
          (get(/databases/$(database)/documents/user_roles/$(request.auth.uid)).data.role == 'author' ||
           (get(/databases/$(database)/documents/user_roles/$(request.auth.uid)).data.roles is list &&
            'author' in get(/databases/$(database)/documents/user_roles/$(request.auth.uid)).data.roles)))
@@ -176,21 +176,52 @@ service cloud.firestore {
         data.penName.size() >= 2 &&
         data.penName.size() <= 80 &&
         data.shortBio is string &&
-        data.shortBio.size() >= 10 &&
-        data.shortBio.size() <= 400 &&
+        data.shortBio.size() >= 5 &&
+        data.shortBio.size() <= 500 &&
         data.genres is list &&
         data.genres.size() >= 1 &&
         data.genres.size() <= 8 &&
         data.genres[0] is string &&
+        data.genres[0].size() <= 60 &&
         data.writingSample is string &&
-        data.writingSample.size() >= 50 &&
-        data.writingSample.size() <= 8000 &&
+        data.writingSample.size() >= 20 &&
+        data.writingSample.size() <= 10000 &&
         data.status in ['pending', 'approved', 'rejected'] &&
-        (!('reviewNote' in data) || (data.reviewNote is string && data.reviewNote.size() <= 500)) &&
-        (!('reviewedBy' in data) || (data.reviewedBy is string && data.reviewedBy.size() <= 128)) &&
-        (!('reviewedAt' in data) || (data.reviewedAt is string && data.reviewedAt.size() <= 64)) &&
+        (!('reviewNote' in data) || data.reviewNote == null || (data.reviewNote is string && data.reviewNote.size() <= 500)) &&
+        (!('reviewedBy' in data) || data.reviewedBy == null || (data.reviewedBy is string && data.reviewedBy.size() <= 128)) &&
+        (!('reviewedAt' in data) || data.reviewedAt == null || (data.reviewedAt is string && data.reviewedAt.size() <= 64)) &&
         (!('submittedAt' in data) || (data.submittedAt is string && data.submittedAt.size() <= 64)) &&
         (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 64));
+    }
+
+    function isValidRoleRequest(data) {
+      return data.id is string &&
+        isValidId(data.id) &&
+        data.userId is string &&
+        data.userId.size() <= 128 &&
+        data.userEmail is string &&
+        data.userEmail.size() <= 200 &&
+        (!('userName' in data) || (data.userName is string && data.userName.size() <= 80)) &&
+        data.role in ['auditor', 'author', 'translate'] &&
+        data.statement is string &&
+        data.statement.size() >= 10 &&
+        data.statement.size() <= 2000 &&
+        data.status in ['pending', 'approved', 'rejected'] &&
+        (!('reviewNote' in data) || data.reviewNote == null || (data.reviewNote is string && data.reviewNote.size() <= 500)) &&
+        (!('reviewedBy' in data) || data.reviewedBy == null || (data.reviewedBy is string && data.reviewedBy.size() <= 128)) &&
+        (!('reviewedAt' in data) || data.reviewedAt == null || (data.reviewedAt is string && data.reviewedAt.size() <= 64)) &&
+        data.createdAt is string && data.createdAt.size() <= 64 &&
+        (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 64));
+    }
+
+    function isValidUserRolePayload(data, userId) {
+      return data.userId == userId &&
+        data.role in ['reader', 'author', 'auditor', 'translate', 'founder'] &&
+        data.status in ['active', 'revoked'] &&
+        (!('roles' in data) || (data.roles is list && data.roles.size() >= 1 && data.roles.size() <= 8 && data.roles[0] is string)) &&
+        (!('canPublish' in data) || data.canPublish is bool) &&
+        (!('assignedBy' in data) || (data.assignedBy is string && data.assignedBy.size() <= 128)) &&
+        (!('assignedAt' in data) || (data.assignedAt is string && data.assignedAt.size() <= 64));
     }
 
     function isValidNovelPayload(data) {
@@ -304,10 +335,7 @@ service cloud.firestore {
     match /user_roles/{userId} {
       allow get: if isValidId(userId);
       allow list: if isAdmin();
-      allow create, update: if isValidId(userId) && isAdmin() &&
-        incoming().userId == userId &&
-        incoming().role in ['reader', 'author', 'auditor', 'translate', 'founder'] &&
-        incoming().status in ['active', 'revoked'];
+      allow create, update: if isValidId(userId) && isAdmin() && isValidUserRolePayload(incoming(), userId);
       allow delete: if isValidId(userId) && isAdmin();
     }
 
@@ -317,7 +345,6 @@ service cloud.firestore {
       allow list: if isAdmin();
       allow create: if isValidId(userId) &&
         isOwner(userId) &&
-        !exists(/databases/$(database)/documents/writer_applications/$(userId)) &&
         isValidWriterApplication(incoming()) &&
         incoming().keys().hasAll(['userId', 'penName', 'shortBio', 'genres', 'writingSample', 'status', 'submittedAt', 'updatedAt']) &&
         incoming().keys().hasOnly(['userId', 'penName', 'shortBio', 'genres', 'writingSample', 'status', 'submittedAt', 'updatedAt']) &&
@@ -326,7 +353,7 @@ service cloud.firestore {
       allow update: if isValidId(userId) && isValidWriterApplication(incoming()) && (
         (isAdmin() && incoming().userId == existing().userId) ||
         (isOwner(userId) &&
-         existing().status == 'rejected' &&
+         (existing().status == 'rejected' || (existing().status == 'approved' && !isApprovedWriter())) &&
          incoming().userId == existing().userId &&
          incoming().status == 'pending' &&
          incoming().diff(existing()).affectedKeys().hasOnly(['penName', 'shortBio', 'genres', 'writingSample', 'status', 'submittedAt', 'updatedAt']))
@@ -334,17 +361,35 @@ service cloud.firestore {
       allow delete: if isValidId(userId) && (isOwner(userId) || isAdmin());
     }
 
-    // Legacy Role Join Requests Collection
+    // Unified Multi-Role Requests Collection (auditor / author / translate)
     match /role_requests/{requestId} {
       allow get: if isValidId(requestId) && isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
       allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
-      allow create: if isSignedIn() && isValidId(requestId) &&
+      allow create: if isSignedIn() &&
+        isValidId(requestId) &&
+        isValidRoleRequest(incoming()) &&
+        incoming().keys().hasAll(['id', 'userId', 'userEmail', 'role', 'statement', 'status', 'createdAt']) &&
+        incoming().keys().hasOnly(['id', 'userId', 'userEmail', 'userName', 'role', 'statement', 'status', 'createdAt', 'updatedAt']) &&
+        incoming().id == requestId &&
+        requestId == (request.auth.uid + '__' + incoming().role) &&
         incoming().userId == request.auth.uid &&
-        incoming().status == 'pending' &&
-        incoming().role in ['auditor', 'author', 'translate'] &&
-        incoming().userEmail is string && incoming().userEmail.size() <= 200;
-      allow update: if isAdmin();
-      allow delete: if isValidId(requestId) && isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+        incoming().status == 'pending';
+      allow update: if isValidId(requestId) && isValidRoleRequest(incoming()) && (
+        (isAdmin() &&
+         incoming().id == existing().id &&
+         incoming().userId == existing().userId &&
+         incoming().role == existing().role &&
+         incoming().createdAt == existing().createdAt) ||
+        (isOwner(existing().userId) &&
+         existing().status == 'rejected' &&
+         incoming().id == existing().id &&
+         incoming().userId == existing().userId &&
+         incoming().role == existing().role &&
+         incoming().createdAt == existing().createdAt &&
+         incoming().status == 'pending' &&
+         incoming().diff(existing()).affectedKeys().hasOnly(['userName', 'statement', 'status', 'updatedAt']))
+      );
+      allow delete: if isValidId(requestId) && isSignedIn() && (existing().userId == request.auth.uid || isAdmin());
     }
 
     // ================= PRIVATE OWNER ACCOUNT DOCS (PII ISOLATED) ================= //

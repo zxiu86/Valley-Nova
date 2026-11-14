@@ -16,6 +16,13 @@ import { AuthSessionService } from '../../core/services/auth-session.service';
 import { AccountService, CroppedImageDraft } from '../../core/services/account.service';
 import { LibraryStateService } from '../../core/services/library-state.service';
 import { WriterBadge } from '../../shared/components/writer-badge/writer-badge';
+import { RoleRequest, RoleRequestRole } from '../../core/models/library.models';
+import {
+  ROLE_REQUEST_LIMITS,
+  WRITER_APPLICATION_LIMITS,
+  validateRoleRequestInput,
+  validateWriterApplicationInput,
+} from '../../core/mtx-firebase';
 
 const APPLICATION_GENRE_OPTIONS = [
   'الرواية التاريخية',
@@ -47,6 +54,8 @@ export class ProfilePage {
   );
 
   readonly genreOptions = APPLICATION_GENRE_OPTIONS;
+  readonly writerLimits = WRITER_APPLICATION_LIMITS;
+  readonly roleLimits = ROLE_REQUEST_LIMITS;
 
   // Edit Profile Form
   readonly editForm = new FormGroup({
@@ -71,8 +80,48 @@ export class ProfilePage {
   });
   readonly selectedWriterGenres = signal<string[]>(['الرواية التاريخية']);
 
+  // Live trimmed character counters for Writer Application & Role Requests
+  private readonly penNameVal = toSignal(this.writerForm.controls.penName.valueChanges, {
+    initialValue: '',
+  });
+  private readonly shortBioVal = toSignal(this.writerForm.controls.shortBio.valueChanges, {
+    initialValue: '',
+  });
+  private readonly writingSampleVal = toSignal(
+    this.writerForm.controls.writingSample.valueChanges,
+    { initialValue: '' }
+  );
+
+  readonly penNameLength = computed(() => (this.penNameVal() || '').trim().length);
+  readonly shortBioLength = computed(() => (this.shortBioVal() || '').trim().length);
+  readonly writingSampleLength = computed(() => (this.writingSampleVal() || '').trim().length);
+
+  // Unified Specialty Role Requests (Auditor / Translator)
+  readonly selectedSpecialtyRole = signal<RoleRequestRole>('auditor');
+  readonly roleStatementControl = new FormControl('', { nonNullable: true });
+  private readonly roleStatementVal = toSignal(this.roleStatementControl.valueChanges, {
+    initialValue: '',
+  });
+  readonly roleStatementLength = computed(() => (this.roleStatementVal() || '').trim().length);
+
+  readonly activeSpecialtyRoleRequest = computed<RoleRequest | null>(() => {
+    const role = this.selectedSpecialtyRole();
+    return this.account.ownRoleRequests().find((r) => r.role === role) ?? null;
+  });
+
+  readonly hasSelectedSpecialtyRole = computed<boolean>(() => {
+    const role = this.selectedSpecialtyRole();
+    const status = this.account.ownWriterStatus();
+    if (status.isAdmin) return true;
+    const record = status.roleRecord;
+    if (!record || record.status !== 'active') return false;
+    return record.role === role || (Array.isArray(record.roles) && record.roles.includes(role));
+  });
+
   // Admin Review Note Control
   readonly adminNoteControl = new FormControl('', { nonNullable: true });
+
+  private lastLoadedProfileKey: string | null = null;
 
   // Account Deletion & Logout Confirm States
   readonly confirmLogoutPrompt = signal<boolean>(false);
@@ -150,10 +199,16 @@ export class ProfilePage {
       if (!ready) return;
 
       if (!paramUsername && !uid) {
+        this.lastLoadedProfileKey = null;
         void this.router.navigateByUrl('/auth');
         return;
       }
 
+      const nextKey = `${uid || 'anon'}::${paramUsername || '@self'}`;
+      if (this.lastLoadedProfileKey === nextKey && this.account.viewedState() === 'ok') {
+        return;
+      }
+      this.lastLoadedProfileKey = nextKey;
       void this.account.openProfileView(paramUsername, uid);
     });
 
@@ -240,6 +295,7 @@ export class ProfilePage {
   retryLoadProfile(): void {
     const uid = this.auth.currentUser()?.uid ?? null;
     const paramUsername = this.routeUsername() ?? null;
+    this.lastLoadedProfileKey = null;
     void this.account.openProfileView(paramUsername, uid);
   }
 
@@ -501,12 +557,24 @@ export class ProfilePage {
     const uid = this.auth.currentUser()?.uid;
     if (!uid) return;
 
+    const lang = this.lib.i18n.lang();
     const val = this.writerForm.getRawValue();
-    if (!val.penName.trim() || !val.shortBio.trim() || !val.writingSample.trim()) {
+    const check = validateWriterApplicationInput(
+      {
+        penName: val.penName,
+        shortBio: val.shortBio,
+        genres: this.selectedWriterGenres(),
+        writingSample: val.writingSample,
+      },
+      lang
+    );
+
+    if (!check.valid) {
       this.account.settingsError.set(
-        this.lib.i18n.lang() === 'en'
-          ? 'Please complete your pen name, short bio, and writing sample.'
-          : 'يرجى تعبئة الاسم الأدبي، والنبذة، ونموذج الكتابة بالكامل.'
+        check.message ||
+          (lang === 'en'
+            ? 'Please ensure all writer application fields meet the minimum lengths.'
+            : 'يرجى التأكد من استيفاء الحد الأدنى لطول الحقول المطلوبة.')
       );
       return;
     }
@@ -519,9 +587,53 @@ export class ProfilePage {
     });
     if (ok) {
       this.lib.showToast(
-        this.lib.i18n.lang() === 'en'
+        lang === 'en'
           ? 'Writer application submitted for review'
           : 'تم إرسال طلب الانضمام ككاتب للمراجعة بنجاح'
+      );
+    }
+  }
+
+  selectSpecialtyRole(role: RoleRequestRole): void {
+    this.selectedSpecialtyRole.set(role);
+    const existing = this.account.ownRoleRequests().find((r) => r.role === role);
+    if (existing && existing.status === 'rejected') {
+      this.roleStatementControl.setValue(existing.statement || '');
+    } else if (!existing) {
+      this.roleStatementControl.setValue('');
+    }
+    this.account.settingsError.set(null);
+  }
+
+  async submitSpecialtyRoleRequest(): Promise<void> {
+    const uid = this.auth.currentUser()?.uid;
+    if (!uid) return;
+
+    const lang = this.lib.i18n.lang();
+    const role = this.selectedSpecialtyRole();
+    const statement = this.roleStatementControl.value;
+    const check = validateRoleRequestInput({ role, statement }, lang);
+    if (!check.valid) {
+      this.account.settingsError.set(
+        check.message ||
+          (lang === 'en'
+            ? 'Please enter at least 10 characters explaining your qualifications.'
+            : 'يرجى كتابة نبذة لا تقل عن ١٠ أحرف عن مؤهلاتك وخبرتك.')
+      );
+      return;
+    }
+
+    const email = this.auth.displayEmail();
+    const displayName = this.account.ownProfile()?.displayName || this.auth.displayName();
+    const ok = await this.account.submitRoleRequest(uid, email, displayName, {
+      role,
+      statement,
+    });
+    if (ok) {
+      this.lib.showToast(
+        lang === 'en'
+          ? 'Specialty role request sent for review'
+          : 'تم إرسال طلب الرتبة التخصصية للمراجعة بنجاح'
       );
     }
   }
@@ -542,6 +654,29 @@ export class ProfilePage {
           : isEn
             ? 'Application declined'
             : 'تم رفض الطلب'
+      );
+    }
+  }
+
+  async handleAdminRoleRequestReview(
+    request: RoleRequest,
+    decision: 'approved' | 'rejected'
+  ): Promise<void> {
+    const adminUid = this.auth.currentUser()?.uid;
+    if (!adminUid) return;
+    const note = this.adminNoteControl.value.trim();
+    const ok = await this.account.reviewRoleRequest(request, decision, adminUid, note);
+    if (ok) {
+      this.adminNoteControl.setValue('');
+      const isEn = this.lib.i18n.lang() === 'en';
+      this.lib.showToast(
+        decision === 'approved'
+          ? isEn
+            ? 'Specialty role approved'
+            : 'تم اعتماد الرتبة بنجاح'
+          : isEn
+            ? 'Role request declined'
+            : 'تم رفض طلب الرتبة'
       );
     }
   }

@@ -1233,7 +1233,17 @@
 
                   <form [formGroup]="writerForm" (ngSubmit)="submitWriterRequest()" class="space-y-4">
                     <div class="space-y-1.5">
-                      <label for="writer-pen-name" class="text-xs font-semibold text-on-surface block">{{ t.profile.penNameLabel }}</label>
+                      <div class="flex items-center justify-between gap-2">
+                        <label for="writer-pen-name" class="text-xs font-semibold text-on-surface block">{{ t.profile.penNameLabel }}</label>
+                        <span
+                          class="text-[11px] font-mono"
+                          [class.text-emerald-600]="penNameLength() >= writerLimits.penNameMin"
+                          [class.dark:text-emerald-400]="penNameLength() >= writerLimits.penNameMin"
+                          [class.text-outline]="penNameLength() < writerLimits.penNameMin"
+                        >
+                          {{ penNameLength() }} / {{ writerLimits.penNameMin }}–{{ writerLimits.penNameMax }}
+                        </span>
+                      </div>
                       <input
                         id="writer-pen-name"
                         type="text"
@@ -1261,7 +1271,17 @@
                     </div>
 
                     <div class="space-y-1.5">
-                      <label for="writer-short-bio" class="text-xs font-semibold text-on-surface block">{{ t.profile.writerBioLabel }}</label>
+                      <div class="flex items-center justify-between gap-2">
+                        <label for="writer-short-bio" class="text-xs font-semibold text-on-surface block">{{ t.profile.writerBioLabel }}</label>
+                        <span
+                          class="text-[11px] font-mono"
+                          [class.text-emerald-600]="shortBioLength() >= writerLimits.shortBioMin"
+                          [class.dark:text-emerald-400]="shortBioLength() >= writerLimits.shortBioMin"
+                          [class.text-outline]="shortBioLength() < writerLimits.shortBioMin"
+                        >
+                          {{ shortBioLength() }} / {{ writerLimits.shortBioMin }}–{{ writerLimits.shortBioMax }}
+                        </span>
+                      </div>
                       <textarea
                         id="writer-short-bio"
                         rows="2"
@@ -1272,7 +1292,17 @@
                     </div>
 
                     <div class="space-y-1.5">
-                      <label for="writer-sample" class="text-xs font-semibold text-on-surface block">{{ t.profile.writerSampleLabel }}</label>
+                      <div class="flex items-center justify-between gap-2">
+                        <label for="writer-sample" class="text-xs font-semibold text-on-surface block">{{ t.profile.writerSampleLabel }}</label>
+                        <span
+                          class="text-[11px] font-mono"
+                          [class.text-emerald-600]="writingSampleLength() >= writerLimits.sampleMin"
+                          [class.dark:text-emerald-400]="writingSampleLength() >= writerLimits.sampleMin"
+                          [class.text-outline]="writingSampleLength() < writerLimits.sampleMin"
+                        >
+                          {{ writingSampleLength() }} / {{ writerLimits.sampleMin }}–{{ writerLimits.sampleMax }}
+                        </span>
+                      </div>
                       <textarea
                         id="writer-sample"
                         rows="4"
@@ -1297,6 +1327,101 @@
                     </button>
                   </form>
                 }
+
+                <!-- Unified Specialty Role Requests (Auditor / Translator) -->
+                <div class="p-4 rounded-2xl bg-surface-container border border-surface-variant/45 space-y-3 mt-4">
+                  <div class="space-y-1">
+                    <h4 class="text-xs font-bold text-on-surface flex items-center gap-1.5">
+                      <span class="material-symbols-outlined text-[17px] text-primary">workspace_premium</span>
+                      <span>{{ t.profile.specialtyRolesTitle }}</span>
+                    </h4>
+                    <p class="text-[11px] text-outline leading-relaxed">{{ t.profile.specialtyRolesDesc }}</p>
+                  </div>
+
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      (click)="selectSpecialtyRole('auditor')"
+                      [class]="selectedSpecialtyRole() === 'auditor'
+                        ? 'p-3 rounded-xl border border-primary bg-primary/10 text-start cursor-pointer transition-all'
+                        : 'p-3 rounded-xl border border-surface-variant/50 bg-surface-container-low text-start hover:border-primary/40 cursor-pointer transition-all'"
+                    >
+                      <div class="text-xs font-bold text-on-surface">{{ t.profile.roleAuditorLabel }}</div>
+                      <div class="text-[11px] text-outline mt-0.5">{{ t.profile.roleAuditorDesc }}</div>
+                    </button>
+
+                    <button
+                      type="button"
+                      (click)="selectSpecialtyRole('translate')"
+                      [class]="selectedSpecialtyRole() === 'translate'
+                        ? 'p-3 rounded-xl border border-primary bg-primary/10 text-start cursor-pointer transition-all'
+                        : 'p-3 rounded-xl border border-surface-variant/50 bg-surface-container-low text-start hover:border-primary/40 cursor-pointer transition-all'"
+                    >
+                      <div class="text-xs font-bold text-on-surface">{{ t.profile.roleTranslatorLabel }}</div>
+                      <div class="text-[11px] text-outline mt-0.5">{{ t.profile.roleTranslatorDesc }}</div>
+                    </button>
+                  </div>
+
+                  @if (hasSelectedSpecialtyRole()) {
+                    <div class="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/35 text-xs text-emerald-700 dark:text-emerald-300 font-semibold flex items-center gap-2">
+                      <span class="material-symbols-outlined text-[18px]">verified</span>
+                      <span>{{ t.profile.roleStatusApproved }}</span>
+                    </div>
+                  } @else if (activeSpecialtyRoleRequest()?.status === 'pending') {
+                    <div class="p-3 rounded-xl bg-secondary/10 border border-secondary/35 text-xs text-secondary font-semibold flex items-center gap-2">
+                      <span class="material-symbols-outlined text-[18px]">hourglass_top</span>
+                      <span>{{ t.profile.roleStatusPending }}</span>
+                    </div>
+                  } @else {
+                    @if (activeSpecialtyRoleRequest()?.status === 'rejected') {
+                      <div class="p-3 rounded-xl bg-rose-500/10 border border-rose-500/35 text-xs text-rose-700 dark:text-rose-300 space-y-1">
+                        <div class="font-bold flex items-center gap-1.5">
+                          <span class="material-symbols-outlined text-[16px]">cancel</span>
+                          <span>{{ t.profile.roleStatusRejected }}</span>
+                        </div>
+                        @if (activeSpecialtyRoleRequest()?.reviewNote) {
+                          <p class="opacity-90">{{ activeSpecialtyRoleRequest()!.reviewNote }}</p>
+                        }
+                      </div>
+                    }
+
+                    <div class="space-y-1.5">
+                      <div class="flex items-center justify-between gap-2">
+                        <label for="specialty-role-statement" class="text-xs font-semibold text-on-surface block">{{ t.profile.roleStatementLabel }}</label>
+                        <span
+                          class="text-[11px] font-mono"
+                          [class.text-emerald-600]="roleStatementLength() >= roleLimits.statementMin"
+                          [class.dark:text-emerald-400]="roleStatementLength() >= roleLimits.statementMin"
+                          [class.text-outline]="roleStatementLength() < roleLimits.statementMin"
+                        >
+                          {{ roleStatementLength() }} / {{ roleLimits.statementMin }}–{{ roleLimits.statementMax }}
+                        </span>
+                      </div>
+                      <textarea
+                        id="specialty-role-statement"
+                        rows="3"
+                        [formControl]="roleStatementControl"
+                        [placeholder]="lib.i18n.lang() === 'en' ? 'Outline your editorial auditing or literary translation background...' : 'اذكر خبرتك في التدقيق اللغوي أو الترجمة الأدبية مع نماذج أو لغات الإتقان...'"
+                        class="w-full p-3 rounded-xl bg-surface-container-low border border-surface-variant/60 text-xs text-on-surface focus:outline-none focus:border-primary leading-relaxed"
+                      ></textarea>
+                    </div>
+
+                    <button
+                      type="button"
+                      (click)="submitSpecialtyRoleRequest()"
+                      [disabled]="account.isSubmittingRoleRequest()"
+                      class="btn-tactile w-full py-2.5 rounded-xl bg-primary text-on-primary font-bold text-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                    >
+                      @if (account.isSubmittingRoleRequest()) {
+                        <span class="material-symbols-outlined animate-spin text-[16px]">progress_activity</span>
+                        <span>{{ t.profile.saving }}</span>
+                      } @else {
+                        <span class="material-symbols-outlined text-[16px]">send</span>
+                        <span>{{ t.profile.submitRoleRequestBtn }}</span>
+                      }
+                    </button>
+                  }
+                </div>
               </div>
             }
 
@@ -1491,6 +1616,46 @@
                     </div>
                   }
                 }
+
+                <!-- Pending Specialty Role Requests -->
+                <div class="pt-3 border-t border-surface-variant/40 space-y-3">
+                  <span class="text-xs font-bold text-on-surface block">{{ t.profile.adminRoleRequestsTitle }}</span>
+                  @if (account.pendingAdminRoleRequests().length === 0) {
+                    <div class="p-5 rounded-2xl bg-surface-container text-center text-xs text-outline">
+                      {{ t.profile.adminNoRoleRequests }}
+                    </div>
+                  } @else {
+                    @for (roleReq of account.pendingAdminRoleRequests(); track roleReq.id) {
+                      <div class="p-4 rounded-2xl bg-surface-container border border-surface-variant/40 space-y-2.5 text-xs">
+                        <div class="flex items-center justify-between gap-2">
+                          <strong class="text-sm text-on-surface">{{ roleReq.userName || roleReq.userEmail || roleReq.userId }}</strong>
+                          <span class="px-2.5 py-0.5 rounded-full bg-primary/15 text-primary font-bold text-[11px] uppercase">
+                            {{ roleReq.role }}
+                          </span>
+                        </div>
+                        <div class="p-2.5 rounded-xl bg-surface-container-low text-on-surface-variant/90 leading-relaxed max-h-28 overflow-y-auto">
+                          {{ roleReq.statement }}
+                        </div>
+                        <div class="flex items-center justify-end gap-2 pt-1">
+                          <button
+                            type="button"
+                            (click)="handleAdminRoleRequestReview(roleReq, 'rejected')"
+                            class="px-3.5 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-700 dark:text-rose-300 font-bold cursor-pointer"
+                          >
+                            {{ t.profile.adminRejectRole }}
+                          </button>
+                          <button
+                            type="button"
+                            (click)="handleAdminRoleRequestReview(roleReq, 'approved')"
+                            class="px-3.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold cursor-pointer"
+                          >
+                            {{ t.profile.adminApproveRole }}
+                          </button>
+                        </div>
+                      </div>
+                    }
+                  }
+                </div>
               </div>
             }
           </div>

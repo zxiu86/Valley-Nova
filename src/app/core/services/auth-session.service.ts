@@ -6,7 +6,6 @@ import {
   StoredUserProfile,
   ensureUserDocumentsOnLogin,
   getUserBookmarksFromFirestore,
-  getUserProfileFromFirestore,
   loginWithEmail,
   loginWithGoogle,
   logoutFirebaseUser,
@@ -255,6 +254,8 @@ export class AuthSessionService {
   private authUnsubscribe: Unsubscribe | null = null;
   private tokenUnsubscribe: Unsubscribe | null = null;
   private initialized = false;
+  private initialLoadedUid: string | null = null;
+  private readonly inFlightUserDataLoads = new Map<string, Promise<void>>();
   private onBookmarksSyncedCallback: ((ids: string[]) => void) | null = null;
   private onAuthRestoredCallback: ((user: User | null) => void) | null = null;
 
@@ -274,25 +275,27 @@ export class AuthSessionService {
     if (!isFirebaseConfigComplete()) {
       await hydrateRuntimeFirebaseAppletConfig().catch(() => false);
     }
-    verifyFirestoreConnection().catch(() => false);
+    void verifyFirestoreConnection().catch(() => false);
 
     try {
       const initialUser = await waitForAuthSessionReady();
       this.currentUser.set(initialUser);
+      this.authReady.set(true);
+      this.onAuthRestoredCallback?.(initialUser);
 
       if (initialUser) {
+        this.initialLoadedUid = initialUser.uid;
         this.saveDisplayHint(initialUser);
-        await refreshAuthTokenIfNeeded(initialUser);
+        void refreshAuthTokenIfNeeded(initialUser);
         await ensureUserDocumentsOnLogin(initialUser).catch((err) => {
           console.warn('Initial user Firestore doc sync warning:', err);
         });
         await this.loadUserData(initialUser.uid);
       } else {
+        this.initialLoadedUid = null;
         this.clearDisplayHint();
         this.accountService.clearOwnerState();
       }
-      this.authReady.set(true);
-      this.onAuthRestoredCallback?.(initialUser);
     } catch (err) {
       console.warn('Auth initialization readiness warning:', err);
       this.authReady.set(true);
@@ -304,8 +307,15 @@ export class AuthSessionService {
         this.authReady.set(true);
         if (user) {
           this.saveDisplayHint(user);
+          if (this.initialLoadedUid === user.uid) {
+            this.initialLoadedUid = null;
+            return;
+          }
+          this.initialLoadedUid = null;
+          await ensureUserDocumentsOnLogin(user).catch(() => undefined);
           await this.loadUserData(user.uid);
         } else {
+          this.initialLoadedUid = null;
           this.userProfile.set(null);
           this.clearDisplayHint();
           this.accountService.clearOwnerState();
@@ -331,25 +341,52 @@ export class AuthSessionService {
       this.tokenUnsubscribe();
       this.tokenUnsubscribe = null;
     }
+    this.inFlightUserDataLoads.clear();
+    this.initialLoadedUid = null;
     this.initialized = false;
   }
 
   async loadUserData(userId: string): Promise<void> {
-    try {
-      const [profile, bookmarks] = await Promise.all([
-        getUserProfileFromFirestore(userId).catch(() => null),
-        getUserBookmarksFromFirestore(userId).catch(() => []),
-        this.accountService.loadOwnerAccount(userId).catch(() => false),
-      ]);
-      if (profile) {
-        this.userProfile.set(profile);
+    if (!userId) return;
+    const existing = this.inFlightUserDataLoads.get(userId);
+    if (existing) return existing;
+
+    const task = (async () => {
+      try {
+        const [bookmarks] = await Promise.all([
+          getUserBookmarksFromFirestore(userId).catch(() => []),
+          this.accountService.loadOwnerAccount(userId).catch(() => false),
+        ]);
+        const own = this.accountService.ownProfile();
+        if (own && own.uid === userId) {
+          this.userProfile.set({
+            id: own.uid,
+            email: own.email || this.currentUser()?.email || '',
+            displayName: own.displayName,
+            username: own.username,
+            bio: own.bio,
+            photoURL: own.photoURL,
+            coverURL: own.coverURL,
+            isPublic: own.isPublic,
+            showSavedNovels: own.showSavedNovels,
+            showReadingHistory: own.showReadingHistory,
+            showProfileInfo: own.showProfileInfo,
+            createdAt: own.createdAt,
+            updatedAt: own.updatedAt,
+          });
+        }
+        if (bookmarks && bookmarks.length > 0 && this.onBookmarksSyncedCallback) {
+          this.onBookmarksSyncedCallback(bookmarks);
+        }
+      } catch (err) {
+        console.warn('Error loading user data from Firestore:', err);
+      } finally {
+        this.inFlightUserDataLoads.delete(userId);
       }
-      if (bookmarks && bookmarks.length > 0 && this.onBookmarksSyncedCallback) {
-        this.onBookmarksSyncedCallback(bookmarks);
-      }
-    } catch (err) {
-      console.warn('Error loading user data from Firestore:', err);
-    }
+    })();
+
+    this.inFlightUserDataLoads.set(userId, task);
+    return task;
   }
 
   async loginWithEmailForm(): Promise<User | null> {

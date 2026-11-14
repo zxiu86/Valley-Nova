@@ -250,6 +250,24 @@ export interface WriterApplication {
   updatedAt: string;
 }
 
+export type RoleRequestRole = 'auditor' | 'author' | 'translate';
+export type RoleRequestStatus = 'none' | 'pending' | 'approved' | 'rejected';
+
+export interface RoleRequest {
+  id: string;
+  userId: string;
+  userEmail: string;
+  userName?: string;
+  role: RoleRequestRole;
+  statement: string;
+  status: 'pending' | 'approved' | 'rejected';
+  reviewNote?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
 export interface PublishedNovelRecord {
   id: string;
   title: string;

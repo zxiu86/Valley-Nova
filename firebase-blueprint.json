@@ -246,9 +246,9 @@
       "properties": {
         "userId": { "type": "string" },
         "penName": { "type": "string", "minLength": 2, "maxLength": 80 },
-        "shortBio": { "type": "string", "minLength": 10, "maxLength": 400 },
+        "shortBio": { "type": "string", "minLength": 5, "maxLength": 500 },
         "genres": { "type": "array" },
-        "writingSample": { "type": "string", "minLength": 50, "maxLength": 8000 },
+        "writingSample": { "type": "string", "minLength": 20, "maxLength": 10000 },
         "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
         "reviewNote": { "type": "string", "maxLength": 500 },
         "reviewedBy": { "type": "string" },
@@ -352,16 +352,18 @@
       "properties": {
         "id": { "type": "string" },
         "userId": { "type": "string" },
-        "userEmail": { "type": "string" },
-        "userName": { "type": "string" },
-        "role": { "type": "string" },
-        "statement": { "type": "string" },
-        "status": { "type": "string" },
-        "createdAt": { "type": "string" },
+        "userEmail": { "type": "string", "maxLength": 200 },
+        "userName": { "type": "string", "maxLength": 80 },
+        "role": { "type": "string", "enum": ["auditor", "author", "translate"] },
+        "statement": { "type": "string", "minLength": 10, "maxLength": 2000 },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "reviewNote": { "type": "string", "maxLength": 500 },
         "reviewedAt": { "type": "string" },
-        "reviewedBy": { "type": "string" }
+        "reviewedBy": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
       },
-      "required": ["id", "userId", "userEmail", "role", "status"]
+      "required": ["id", "userId", "userEmail", "role", "statement", "status"]
     },
     "AuditReview": {
       "title": "AuditReview",

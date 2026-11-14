@@ -60,4 +60,18 @@ describe('Firestore Security Rules & Dirty Dozen Spec Verification', () => {
     expect(specText).toContain('Duplicate Chapter Slot Bypass');
     expect(specText).toContain('Stale Overwrite / Revision Tampering');
   });
+
+  it('supports legacy author roles without explicit canPublish flag and null-safe application fields', () => {
+    expect(rulesText).toContain("get('canPublish', true) == true");
+    expect(rulesText).toContain("data.reviewNote == null || (data.reviewNote is string");
+    expect(rulesText).toContain("existing().status == 'approved' && !isApprovedWriter()");
+  });
+
+  it('enforces hardened deterministic role_requests validation and admin-only approval', () => {
+    expect(rulesText).toContain('function isValidRoleRequest(data)');
+    expect(rulesText).toContain("requestId == (request.auth.uid + '__' + incoming().role)");
+    expect(rulesText).toContain('function isValidUserRolePayload(data, userId)');
+    expect(rulesText).toContain('isValidUserRolePayload(incoming(), userId)');
+  });
 });
+

@@ -36,6 +36,7 @@ import {
   commitVerifiedReadTransaction,
   fetchAllPublishedNovels,
   fetchCloudVaultBooks,
+  formatFirestoreErrorForUser,
   getPublicAuthorAppearance,
   hasUserReportedNovel,
   publishNovelToFirestore,
@@ -1235,12 +1236,11 @@ export class LibraryStateService {
       },
     });
 
-    await this.authSession.init();
-
     try {
-      const [cached, publishedNovels] = await Promise.all([
-        fetchCloudVaultBooks(),
-        fetchAllPublishedNovels(),
+      const [, cached, publishedNovels] = await Promise.all([
+        this.authSession.init(),
+        fetchCloudVaultBooks().catch(() => []),
+        fetchAllPublishedNovels().catch(() => []),
       ]);
       if (cached && cached.length > 0) {
         const nextSet = new Set(this.bookmarkedIds());
@@ -3365,7 +3365,12 @@ export class LibraryStateService {
         this.reportError.set(this.i18n.copy().reports.alreadyReported);
       } else {
         this.reportError.set(
-          this.isEn() ? 'Could not submit your report. Please try again.' : 'تعذر إرسال البلاغ حالياً. يرجى المحاولة مجدداً.'
+          formatFirestoreErrorForUser(
+            err,
+            this.i18n.lang(),
+            'تعذر إرسال البلاغ حالياً. يرجى المحاولة مجدداً.',
+            'Could not submit your report. Please try again.'
+          )
         );
       }
     } finally {
@@ -3385,11 +3390,13 @@ export class LibraryStateService {
     }
 
     const val = this.publishForm.getRawValue();
-    if (!val.title.trim() || !val.synopsis.trim()) {
+    const cleanTitle = val.title.trim();
+    const cleanSynopsis = val.synopsis.trim();
+    if (cleanTitle.length < 2 || cleanSynopsis.length < 10) {
       this.showToast(
         this.isEn()
-          ? 'Please enter the work title and synopsis'
-          : 'يرجى كتابة عنوان المصنف وملخصه الأدبي'
+          ? 'Please enter a valid work title (min 2 chars) and synopsis (min 10 chars).'
+          : 'يرجى كتابة عنوان المصنف (حرفان على الأقل) وملخص أدبي (١٠ أحرف على الأقل).'
       );
       return;
     }
@@ -3398,7 +3405,7 @@ export class LibraryStateService {
     const isEnglishOrigin = val.originLanguage === 'الإنجليزية' || val.originLanguage === 'English';
     const record: PublishedNovelRecord = {
       id: 'usr-' + Date.now(),
-      title: val.title.trim(),
+      title: cleanTitle.slice(0, 140),
       authorId: user.uid,
       authorName: val.authorName.trim() || this.authSession.displayName(),
       genre: val.genreLabel || 'رواية أدبية معاصرة',
@@ -3406,7 +3413,7 @@ export class LibraryStateService {
       originLanguage: val.originLanguage || 'عربي أصيل',
       languageCode: isEnglishOrigin ? 'en' : 'ar',
       coverUrl: val.coverUrl.trim() || '/images/writers_sanctuary_bg.jpg',
-      description: val.synopsis.trim(),
+      description: cleanSynopsis.slice(0, 2000),
       readingHours: val.readingHours || 4,
       isPublished: true,
       createdAt: now,
@@ -3415,11 +3422,14 @@ export class LibraryStateService {
 
     try {
       await publishNovelToFirestore(record);
-    } catch {
+    } catch (err) {
       this.showToast(
-        this.isEn()
-          ? 'Could not publish work. Please verify writer permissions.'
-          : 'تعذر حفظ العمل في قاعدة البيانات. تحقق من صلاحيات الكاتب.'
+        formatFirestoreErrorForUser(
+          err,
+          this.i18n.lang(),
+          'تعذر حفظ العمل في قاعدة البيانات. تحقق من صلاحيات الكاتب.',
+          'Could not publish work. Please verify writer permissions.'
+        )
       );
       return;
     }

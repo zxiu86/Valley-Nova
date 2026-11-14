@@ -478,4 +478,97 @@ describe('MTX Compression, Shell, Theme, Bilingual i18n, Chapters & Copy Protect
     );
     expect(exploreTitles.length).toBeGreaterThan(0);
   });
+
+  it('should validate writer application & role request bounds and localize Firestore permission errors without exposing JSON', async () => {
+    const {
+      validateWriterApplicationInput,
+      validateRoleRequestInput,
+      parseFirestoreErrorInfo,
+      formatFirestoreErrorForUser,
+      sanitizeNovelRecordForFirestore,
+    } = await import('./core/mtx-firebase');
+
+    // Writer application bounds match firestore.rules (penName>=2, shortBio>=5, genres>=1, writingSample>=20)
+    expect(
+      validateWriterApplicationInput(
+        { penName: 'أ', shortBio: 'نبذة صالحة', genres: ['الرواية التاريخية'], writingSample: 'نص أدبي طويل يتجاوز عشرين حرفاً بوضوح.' },
+        'ar'
+      ).valid
+    ).toBe(false);
+    expect(
+      validateWriterApplicationInput(
+        { penName: 'طارق الأندلسي', shortBio: 'قليل', genres: ['الرواية التاريخية'], writingSample: 'نص أدبي طويل يتجاوز عشرين حرفاً بوضوح.' },
+        'ar'
+      ).valid
+    ).toBe(false);
+    expect(
+      validateWriterApplicationInput(
+        { penName: 'طارق الأندلسي', shortBio: 'كاتب روائي مهتم بالتاريخ', genres: ['الرواية التاريخية'], writingSample: 'قصير' },
+        'en'
+      ).valid
+    ).toBe(false);
+    expect(
+      validateWriterApplicationInput(
+        {
+          penName: 'طارق الأندلسي',
+          shortBio: 'كاتب روائي مهتم بالتاريخ',
+          genres: ['الرواية التاريخية'],
+          writingSample: 'في ليالي قرطبة الهادئة، كانت المخطوطات تروي ما عجزت عنه السيوف.',
+        },
+        'ar'
+      ).valid
+    ).toBe(true);
+
+    // Role request validator
+    expect(validateRoleRequestInput({ role: 'auditor', statement: 'قصير' }, 'ar').valid).toBe(false);
+    expect(
+      validateRoleRequestInput({ role: 'translate', statement: 'خبرة في الترجمة الأدبية من الإنجليزية إلى العربية.' }, 'en').valid
+    ).toBe(true);
+
+    // Raw FirestoreErrorInfo JSON must be parsed and converted to user-friendly localized messages (never dumped verbatim)
+    const rawJsonErr = new Error(
+      JSON.stringify({
+        error: 'Missing or insufficient permissions.',
+        operationType: 'create',
+        path: 'writer_applications/user-123',
+        authInfo: { userId: 'user-123', emailVerified: true },
+      })
+    );
+    const parsed = parseFirestoreErrorInfo(rawJsonErr);
+    expect(parsed?.path).toBe('writer_applications/user-123');
+
+    const arMsg = formatFirestoreErrorForUser(rawJsonErr, 'ar');
+    const enMsg = formatFirestoreErrorForUser(rawJsonErr, 'en');
+    expect(arMsg).not.toContain('operationType');
+    expect(enMsg).not.toContain('operationType');
+    expect(arMsg).toContain('طلب الكاتب');
+    expect(enMsg).toContain('writer application');
+
+    const unauthErr = new Error(
+      JSON.stringify({
+        error: 'Missing or insufficient permissions.',
+        operationType: 'write',
+        path: 'role_requests/user-123__auditor',
+        authInfo: { userId: null },
+      })
+    );
+    expect(formatFirestoreErrorForUser(unauthErr, 'en')).toContain('sign in again');
+
+    // sanitizeNovelRecordForFirestore strips unknown legacy keys that would break keys().hasOnly()
+    const sanitized = sanitizeNovelRecordForFirestore({
+      id: 'novel-test-1',
+      title: '  أصداء الأندلس  ',
+      authorId: 'uid-author-1',
+      authorName: 'كاتب',
+      description: 'ملخص أدبي متكامل لعمل روائي تاريخي طويل.',
+      categoryGroup: 'novels',
+      genre: 'رواية تاريخية',
+      // Extra legacy fields casted in via Record
+      ...({ author: 'Legacy Field', isCompleted: true, coverAlt: 'Alt' } as Record<string, unknown>),
+    });
+    expect('author' in sanitized).toBe(false);
+    expect('isCompleted' in sanitized).toBe(false);
+    expect('coverAlt' in sanitized).toBe(false);
+    expect(sanitized.title).toBe('أصداء الأندلس');
+  });
 });

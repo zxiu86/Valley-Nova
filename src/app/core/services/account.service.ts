@@ -6,6 +6,8 @@ import {
   NovelCard,
   PrivacySettings,
   PublishedNovelRecord,
+  RoleRequest,
+  RoleRequestRole,
   UsernameCheckResult,
   VerifiedWriterStatus,
   WriterApplication,
@@ -16,18 +18,24 @@ import {
   checkUsernameAvailability,
   deleteAppAccountAndData,
   fetchAuthorPublishedNovels,
+  fetchPendingRoleRequestsForAdmin,
   fetchPendingWriterApplicationsForAdmin,
+  fetchUserRoleRequests,
+  formatFirestoreErrorForUser,
   getPublicAuthorAppearance,
-  getUserReadChaptersCount,
   getVerifiedWriterStatus,
   getWriterApplicationFromFirestore,
+  invalidateAuthorAppearanceCache,
+  invalidateWriterStatusCache,
   loadOwnerAccountProfile,
   loadVisitorAccountProfile,
   normalizeUsername,
   resolveUsernameToUid,
+  reviewRoleRequestAsAdmin,
   reviewWriterApplicationAsAdmin,
   saveAccountProfileChanges,
   savePrivacySettingsToFirestore,
+  submitRoleRequestToFirestore,
   submitWriterApplicationToFirestore,
   uploadProfileImageAsset,
 } from '../mtx-firebase';
@@ -78,6 +86,8 @@ export class AccountService implements OnDestroy {
   readonly ownPublishedNovels = signal<PublishedNovelRecord[]>([]);
   readonly ownApplication = signal<WriterApplication | null>(null);
   readonly pendingAdminApplications = signal<WriterApplication[]>([]);
+  readonly ownRoleRequests = signal<RoleRequest[]>([]);
+  readonly pendingAdminRoleRequests = signal<RoleRequest[]>([]);
 
   readonly ownApplicationStatus = computed<WriterApplicationStatus>(() => {
     return this.ownApplication()?.status ?? 'none';
@@ -103,6 +113,7 @@ export class AccountService implements OnDestroy {
   readonly isSavingProfile = signal<boolean>(false);
   readonly isSavingPrivacy = signal<boolean>(false);
   readonly isSubmittingApplication = signal<boolean>(false);
+  readonly isSubmittingRoleRequest = signal<boolean>(false);
   readonly isDeletingAccount = signal<boolean>(false);
   readonly settingsError = signal<string | null>(null);
   readonly settingsSuccess = signal<string | null>(null);
@@ -113,6 +124,9 @@ export class AccountService implements OnDestroy {
     suggestions: [],
   });
 
+  private readonly inFlightOwnerLoads = new Map<string, Promise<boolean>>();
+  private readonly ownerAccountLoadedAt = new Map<string, number>();
+  private readonly OWNER_ACCOUNT_TTL_MS = 10_000;
   private usernameCheckTimer: ReturnType<typeof setTimeout> | null = null;
 
   ngOnDestroy(): void {
@@ -226,59 +240,89 @@ export class AccountService implements OnDestroy {
     return null;
   }
 
-  async loadOwnerAccount(uid: string): Promise<boolean> {
+  async loadOwnerAccount(uid: string, forceRefresh = false): Promise<boolean> {
     if (!uid || !isPlatformBrowser(this.platformId)) return false;
 
-    try {
-      const [profile, writerStatus, readCount, appDoc] = await Promise.all([
-        loadOwnerAccountProfile(uid),
-        getVerifiedWriterStatus(uid).catch(() => DEFAULT_WRITER_STATUS),
-        getUserReadChaptersCount(uid).catch(() => 0),
-        getWriterApplicationFromFirestore(uid).catch(() => null),
-      ]);
-
-      if (profile) {
-        this.ownProfile.set(profile);
-        this.authorAppearanceCache.update((prev) => ({
-          ...prev,
-          [uid]: {
-            photoURL: profile.photoURL || '',
-            coverURL: profile.coverURL || '',
-            displayName: profile.displayName || '',
-          },
-        }));
-      }
-      this.ownWriterStatus.set(writerStatus);
-      this.writerBadgeCache.update((prev) => ({
-        ...prev,
-        [uid]: writerStatus.isWriterBadge,
-      }));
-      this.writerRoleCache.update((prev) => ({
-        ...prev,
-        [uid]: writerStatus.roleKind,
-      }));
-      this.ownReadChaptersCount.set(readCount);
-      this.ownApplication.set(appDoc);
-
-      if (writerStatus.canPublish) {
-        const works = await fetchAuthorPublishedNovels(uid).catch(() => []);
-        this.ownPublishedNovels.set(works);
-      } else {
-        this.ownPublishedNovels.set([]);
-      }
-
-      if (writerStatus.isAdmin) {
-        const pending = await fetchPendingWriterApplicationsForAdmin().catch(() => []);
-        this.pendingAdminApplications.set(pending);
-      } else {
-        this.pendingAdminApplications.set([]);
-      }
-
-      return Boolean(profile);
-    } catch (err) {
-      console.warn('Error hydrating owner account:', err);
-      return false;
+    const lastLoaded = this.ownerAccountLoadedAt.get(uid) ?? 0;
+    if (
+      !forceRefresh &&
+      this.ownProfile()?.uid === uid &&
+      Date.now() - lastLoaded < this.OWNER_ACCOUNT_TTL_MS
+    ) {
+      return true;
     }
+
+    const existing = !forceRefresh ? this.inFlightOwnerLoads.get(uid) : undefined;
+    if (existing) {
+      return existing;
+    }
+
+    const task = (async (): Promise<boolean> => {
+      try {
+        const [profile, writerStatus, appDoc, roleReqs] = await Promise.all([
+          loadOwnerAccountProfile(uid),
+          getVerifiedWriterStatus(uid, forceRefresh).catch(() => DEFAULT_WRITER_STATUS),
+          getWriterApplicationFromFirestore(uid).catch(() => null),
+          fetchUserRoleRequests(uid).catch(() => []),
+        ]);
+
+        if (profile) {
+          this.ownProfile.set(profile);
+          this.ownReadChaptersCount.set(profile.readChaptersCount ?? 0);
+          this.authorAppearanceCache.update((prev) => ({
+            ...prev,
+            [uid]: {
+              photoURL: profile.photoURL || '',
+              coverURL: profile.coverURL || '',
+              displayName: profile.displayName || '',
+            },
+          }));
+        } else {
+          this.ownReadChaptersCount.set(0);
+        }
+
+        this.ownWriterStatus.set(writerStatus);
+        this.writerBadgeCache.update((prev) => ({
+          ...prev,
+          [uid]: writerStatus.isWriterBadge,
+        }));
+        this.writerRoleCache.update((prev) => ({
+          ...prev,
+          [uid]: writerStatus.roleKind,
+        }));
+        this.ownApplication.set(appDoc);
+        this.ownRoleRequests.set(roleReqs);
+
+        const [works, pendingApps, pendingRoleReqs] = await Promise.all([
+          writerStatus.canPublish
+            ? fetchAuthorPublishedNovels(uid).catch(() => [])
+            : Promise.resolve<PublishedNovelRecord[]>([]),
+          writerStatus.isAdmin
+            ? fetchPendingWriterApplicationsForAdmin().catch(() => [])
+            : Promise.resolve<WriterApplication[]>([]),
+          writerStatus.isAdmin
+            ? fetchPendingRoleRequestsForAdmin().catch(() => [])
+            : Promise.resolve<RoleRequest[]>([]),
+        ]);
+
+        this.ownPublishedNovels.set(works);
+        this.pendingAdminApplications.set(pendingApps);
+        this.pendingAdminRoleRequests.set(pendingRoleReqs);
+
+        if (profile) {
+          this.ownerAccountLoadedAt.set(uid, Date.now());
+        }
+        return Boolean(profile);
+      } catch (err) {
+        console.warn('Error hydrating owner account:', err);
+        return false;
+      } finally {
+        this.inFlightOwnerLoads.delete(uid);
+      }
+    })();
+
+    this.inFlightOwnerLoads.set(uid, task);
+    return task;
   }
 
   clearOwnerState(): void {
@@ -288,6 +332,10 @@ export class AccountService implements OnDestroy {
     this.ownPublishedNovels.set([]);
     this.ownApplication.set(null);
     this.pendingAdminApplications.set([]);
+    this.ownRoleRequests.set([]);
+    this.pendingAdminRoleRequests.set([]);
+    this.ownerAccountLoadedAt.clear();
+    this.inFlightOwnerLoads.clear();
     this.isSettingsOpen.set(false);
     this.settingsError.set(null);
     this.settingsSuccess.set(null);
@@ -500,28 +548,27 @@ export class AccountService implements OnDestroy {
         }
       }
 
-      // Upload cropped images ONLY now when user explicitly confirms Save
-      let finalPhotoURL = current.photoURL || '';
-      if (payload.avatarDraft?.blob && payload.avatarDraft.previewDataUrl) {
-        finalPhotoURL = await uploadProfileImageAsset(
-          uid,
-          'avatar',
-          payload.avatarDraft.blob,
-          payload.avatarDraft.previewDataUrl,
-          current.photoURL
-        );
-      }
-
-      let finalCoverURL = current.coverURL || '';
-      if (payload.bannerDraft?.blob && payload.bannerDraft.previewDataUrl) {
-        finalCoverURL = await uploadProfileImageAsset(
-          uid,
-          'banner',
-          payload.bannerDraft.blob,
-          payload.bannerDraft.previewDataUrl,
-          current.coverURL
-        );
-      }
+      // Upload cropped images in parallel ONLY now when user explicitly confirms Save
+      const [finalPhotoURL, finalCoverURL] = await Promise.all([
+        payload.avatarDraft?.blob && payload.avatarDraft.previewDataUrl
+          ? uploadProfileImageAsset(
+              uid,
+              'avatar',
+              payload.avatarDraft.blob,
+              payload.avatarDraft.previewDataUrl,
+              current.photoURL
+            )
+          : Promise.resolve(current.photoURL || ''),
+        payload.bannerDraft?.blob && payload.bannerDraft.previewDataUrl
+          ? uploadProfileImageAsset(
+              uid,
+              'banner',
+              payload.bannerDraft.blob,
+              payload.bannerDraft.previewDataUrl,
+              current.coverURL
+            )
+          : Promise.resolve(current.coverURL || ''),
+      ]);
 
       const privacy: PrivacySettings = {
         isPublic: current.isPublic,
@@ -543,7 +590,8 @@ export class AccountService implements OnDestroy {
         privacy
       );
 
-      await this.loadOwnerAccount(uid);
+      invalidateAuthorAppearanceCache(uid);
+      await this.loadOwnerAccount(uid, true);
       if (this.viewedIsOwner() && this.ownProfile()) {
         this.viewedProfile.set(this.ownProfile());
       }
@@ -560,10 +608,12 @@ export class AccountService implements OnDestroy {
       );
       return true;
     } catch (err) {
-      const fallback = isEn
-        ? 'Could not save changes. Please try again later.'
-        : 'تعذر حفظ التغييرات، يرجى المحاولة لاحقاً.';
-      const msg = err instanceof Error ? err.message : fallback;
+      const msg = formatFirestoreErrorForUser(
+        err,
+        isEn ? 'en' : 'ar',
+        'تعذر حفظ التغييرات، يرجى المحاولة لاحقاً.',
+        'Could not save changes. Please try again later.'
+      );
       this.settingsError.set(msg);
       return false;
     } finally {
@@ -618,7 +668,7 @@ export class AccountService implements OnDestroy {
     }
   }
 
-  // ================= WRITER APPLICATION ================= //
+  // ================= WRITER APPLICATION & UNIFIED ROLE REQUESTS ================= //
 
   async submitWriterApplication(
     uid: string,
@@ -629,7 +679,8 @@ export class AccountService implements OnDestroy {
       writingSample: string;
     }
   ): Promise<boolean> {
-    const isEn = this.i18n.lang() === 'en';
+    const lang = this.i18n.lang();
+    const isEn = lang === 'en';
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       this.settingsError.set(
         isEn
@@ -644,8 +695,9 @@ export class AccountService implements OnDestroy {
     this.settingsSuccess.set(null);
 
     try {
-      const appDoc = await submitWriterApplicationToFirestore(uid, payload);
+      const appDoc = await submitWriterApplicationToFirestore(uid, payload, lang);
       this.ownApplication.set(appDoc);
+      this.ownerAccountLoadedAt.delete(uid);
       this.settingsSuccess.set(
         isEn
           ? 'Writer application submitted for editorial review.'
@@ -653,8 +705,12 @@ export class AccountService implements OnDestroy {
       );
       return true;
     } catch (err) {
-      const fallback = isEn ? 'Could not submit application.' : 'تعذر إرسال الطلب حالياً.';
-      const msg = err instanceof Error ? err.message : fallback;
+      const msg = formatFirestoreErrorForUser(
+        err,
+        lang,
+        'تعذر إرسال الطلب حالياً. تحقق من استيفاء شروط الحقول وأعد المحاولة.',
+        'Could not submit application. Check field requirements and try again.'
+      );
       this.settingsError.set(msg);
       return false;
     } finally {
@@ -668,7 +724,8 @@ export class AccountService implements OnDestroy {
     adminUid: string,
     reviewNote = ''
   ): Promise<boolean> {
-    const isEn = this.i18n.lang() === 'en';
+    const lang = this.i18n.lang();
+    const isEn = lang === 'en';
     this.settingsError.set(null);
     this.settingsSuccess.set(null);
     if (!this.ownWriterStatus().isAdmin) {
@@ -681,13 +738,15 @@ export class AccountService implements OnDestroy {
     }
     try {
       await reviewWriterApplicationAsAdmin(applicantUid, decision, adminUid, reviewNote);
+      invalidateWriterStatusCache(applicantUid);
       this.pendingAdminApplications.update((list) =>
         list.filter((item) => item.userId !== applicantUid)
       );
       if (decision === 'approved') {
         this.writerBadgeCache.update((prev) => ({ ...prev, [applicantUid]: true }));
+        this.writerRoleCache.update((prev) => ({ ...prev, [applicantUid]: 'author' }));
         if (applicantUid === this.ownProfile()?.uid) {
-          await this.loadOwnerAccount(applicantUid);
+          await this.loadOwnerAccount(applicantUid, true);
         }
       }
       this.settingsSuccess.set(
@@ -700,9 +759,116 @@ export class AccountService implements OnDestroy {
             : 'تم رفض الطلب مع حفظ النتيجة.'
       );
       return true;
-    } catch {
+    } catch (err) {
       this.settingsError.set(
-        isEn ? 'Failed to process review decision.' : 'تعذر تنفيذ قرار المراجعة. تحقق من الصلاحيات.'
+        formatFirestoreErrorForUser(
+          err,
+          lang,
+          'تعذر تنفيذ قرار المراجعة. تحقق من الصلاحيات.',
+          'Failed to process review decision. Please verify admin permissions.'
+        )
+      );
+      return false;
+    }
+  }
+
+  async submitRoleRequest(
+    uid: string,
+    email: string,
+    displayName: string,
+    payload: { role: RoleRequestRole; statement: string }
+  ): Promise<boolean> {
+    const lang = this.i18n.lang();
+    const isEn = lang === 'en';
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      this.settingsError.set(
+        isEn ? 'Cannot submit request while offline.' : 'تعذر إرسال الطلب بسبب انقطاع الاتصال بالإنترنت.'
+      );
+      return false;
+    }
+
+    this.isSubmittingRoleRequest.set(true);
+    this.settingsError.set(null);
+    this.settingsSuccess.set(null);
+
+    try {
+      const saved = await submitRoleRequestToFirestore(uid, email, displayName, payload, lang);
+      this.ownRoleRequests.update((list) => {
+        const rest = list.filter((r) => r.id !== saved.id);
+        return [saved, ...rest];
+      });
+      this.settingsSuccess.set(
+        isEn
+          ? 'Role request submitted for official admin review.'
+          : 'تم إرسال طلب الرتبة للمراجعة الإدارية بنجاح.'
+      );
+      return true;
+    } catch (err) {
+      this.settingsError.set(
+        formatFirestoreErrorForUser(
+          err,
+          lang,
+          'تعذر إرسال طلب الرتبة. تأكد من استيفاء الشروط والمحاولة مجدداً.',
+          'Could not submit role request. Check input requirements and retry.'
+        )
+      );
+      return false;
+    } finally {
+      this.isSubmittingRoleRequest.set(false);
+    }
+  }
+
+  async reviewRoleRequest(
+    request: RoleRequest,
+    decision: 'approved' | 'rejected',
+    adminUid: string,
+    reviewNote = ''
+  ): Promise<boolean> {
+    const lang = this.i18n.lang();
+    const isEn = lang === 'en';
+    this.settingsError.set(null);
+    this.settingsSuccess.set(null);
+
+    if (!this.ownWriterStatus().isAdmin) {
+      this.settingsError.set(
+        isEn
+          ? 'Only official Sanctuary admins can review role requests.'
+          : 'مراجعة طلبات الصلاحيات حكرٌ على المشرف الرسمي فقط.'
+      );
+      return false;
+    }
+
+    try {
+      await reviewRoleRequestAsAdmin(request, decision, adminUid, reviewNote);
+      invalidateWriterStatusCache(request.userId);
+      this.pendingAdminRoleRequests.update((list) =>
+        list.filter((item) => item.id !== request.id)
+      );
+      if (decision === 'approved' && request.role === 'author') {
+        this.writerBadgeCache.update((prev) => ({ ...prev, [request.userId]: true }));
+        this.writerRoleCache.update((prev) => ({ ...prev, [request.userId]: 'author' }));
+      }
+      if (request.userId === this.ownProfile()?.uid) {
+        await this.loadOwnerAccount(request.userId, true);
+      }
+      this.settingsSuccess.set(
+        decision === 'approved'
+          ? isEn
+            ? 'Role approved and assigned cleanly.'
+            : 'تمت الموافقة ومنح الرتبة المطلوبة بنجاح.'
+          : isEn
+            ? 'Role request declined.'
+            : 'تم رفض طلب الرتبة مع حفظ الملاحظة.'
+      );
+      return true;
+    } catch (err) {
+      this.settingsError.set(
+        formatFirestoreErrorForUser(
+          err,
+          lang,
+          'تعذر تنفيذ قرار المراجعة. تحقق من الصلاحيات.',
+          'Failed to process role request decision.'
+        )
       );
       return false;
     }

@@ -37,6 +37,7 @@ import {
   fetchNovelChapters,
   fetchNovelSections,
   fetchWorkReportsForAdmin,
+  formatFirestoreErrorForUser,
   importFullNovelArchiveToFirestore,
   publishNovelToFirestore,
   recomputeNovelStatsInFirestore,
@@ -136,10 +137,18 @@ export class WriterStudioService implements OnDestroy {
   private onlineListener: (() => void) | null = null;
   private offlineListener: (() => void) | null = null;
   private initializedListeners = false;
+  private readonly inFlightPublicNovelLoads = new Map<
+    string,
+    Promise<{ sections: NovelSection[]; chapters: LogicalChapter[] }>
+  >();
 
   constructor() {
     this.restoreLocalStorageState();
     this.bindNetworkListeners();
+  }
+
+  private formatError(err: unknown, fallbackAr: string, fallbackEn: string): string {
+    return formatFirestoreErrorForUser(err, this.i18n.lang(), fallbackAr, fallbackEn);
   }
 
   ngOnDestroy(): void {
@@ -270,7 +279,13 @@ export class WriterStudioService implements OnDestroy {
         await this.loadNovelWorkspace(works[0].id);
       }
     } catch (err) {
-      this.errorMessage.set(err instanceof Error ? err.message : 'تعذر تحميل بيانات استوديو الكاتب.');
+      this.errorMessage.set(
+        this.formatError(
+          err,
+          'تعذر تحميل بيانات استوديو الكاتب.',
+          'Could not load writer studio workspace.'
+        )
+      );
     } finally {
       this.isLoading.set(false);
     }
@@ -295,7 +310,13 @@ export class WriterStudioService implements OnDestroy {
         },
       }));
     } catch (err) {
-      this.errorMessage.set(err instanceof Error ? err.message : 'تعذر تحميل أقسام وفصول الرواية.');
+      this.errorMessage.set(
+        this.formatError(
+          err,
+          'تعذر تحميل أقسام وفصول الرواية.',
+          'Could not load novel sections and chapters.'
+        )
+      );
     } finally {
       this.isLoading.set(false);
     }
@@ -312,13 +333,28 @@ export class WriterStudioService implements OnDestroy {
     if (cached && !forceRefresh) {
       return cached;
     }
-    const [sections, chapters] = await Promise.all([
-      fetchNovelSections(novelId).catch(() => []),
-      fetchNovelChapters(novelId, false).catch(() => []),
-    ]);
-    const payload = { sections, chapters };
-    this.publicNovelDetailsCache.update((prev) => ({ ...prev, [novelId]: payload }));
-    return payload;
+
+    const inflight = !forceRefresh ? this.inFlightPublicNovelLoads.get(novelId) : undefined;
+    if (inflight) {
+      return inflight;
+    }
+
+    const task = (async () => {
+      try {
+        const [sections, chapters] = await Promise.all([
+          fetchNovelSections(novelId).catch(() => []),
+          fetchNovelChapters(novelId, false).catch(() => []),
+        ]);
+        const payload = { sections, chapters };
+        this.publicNovelDetailsCache.update((prev) => ({ ...prev, [novelId]: payload }));
+        return payload;
+      } finally {
+        this.inFlightPublicNovelLoads.delete(novelId);
+      }
+    })();
+
+    this.inFlightPublicNovelLoads.set(novelId, task);
+    return task;
   }
 
   // ================= STRICTLY LOCAL NOVEL DRAFTS ================= //
@@ -379,28 +415,32 @@ export class WriterStudioService implements OnDestroy {
     });
 
     if (record) {
-      // Transfer any local sections & chapters from the draft
+      // Transfer local sections & chapters in bounded parallel batches for faster publishing
+      const baseTs = Date.now();
+      const now = new Date().toISOString();
       const sectionIdMap = new Map<string, string>();
-      for (let i = 0; i < draft.sections.length; i++) {
-        const s = draft.sections[i];
-        const newSecId = `sec_${Date.now()}_${i}`;
+      const sectionTasks = draft.sections.map((s, i) => {
+        const newSecId = `sec_${baseTs}_${i}`;
         sectionIdMap.set(s.id, newSecId);
-        await upsertNovelSection({
-          id: newSecId,
-          novelId: record.id,
-          authorId,
-          title: s.title,
-          titleEn: s.titleEn,
-          orderIndex: s.orderIndex ?? i,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
+        return () =>
+          upsertNovelSection({
+            id: newSecId,
+            novelId: record.id,
+            authorId,
+            title: s.title,
+            titleEn: s.titleEn,
+            orderIndex: s.orderIndex ?? i,
+            createdAt: now,
+            updatedAt: now,
+          });
+      });
+      for (let i = 0; i < sectionTasks.length; i += 10) {
+        await Promise.all(sectionTasks.slice(i, i + 10).map((fn) => fn()));
       }
 
-      for (let i = 0; i < draft.chapters.length; i++) {
-        const ch = draft.chapters[i];
-        await createChapterWithSlotTransaction({
-          id: `ch_${ch.chapterNumber}_${Date.now()}_${i}`,
+      const chapterTasks = draft.chapters.map((ch, i) => () =>
+        createChapterWithSlotTransaction({
+          id: `ch_${ch.chapterNumber}_${baseTs}_${i}`,
           novelId: record.id,
           authorId,
           chapterNumber: ch.chapterNumber,
@@ -415,15 +455,20 @@ export class WriterStudioService implements OnDestroy {
           wordCountEn: ch.editions.en?.wordCount || 0,
           isPublished: true,
           revision: 1,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        });
+          createdAt: now,
+          updatedAt: now,
+        })
+      );
+      for (let i = 0; i < chapterTasks.length; i += 5) {
+        await Promise.all(chapterTasks.slice(i, i + 5).map((fn) => fn()));
       }
 
       await recomputeNovelStatsInFirestore(record.id);
       this.deleteLocalNovelDraft(localId);
-      await this.loadStudioForAuthor(authorId);
-      await this.loadNovelWorkspace(record.id);
+      await Promise.all([
+        this.loadStudioForAuthor(authorId),
+        this.loadNovelWorkspace(record.id),
+      ]);
     }
 
     return record;
@@ -591,7 +636,11 @@ export class WriterStudioService implements OnDestroy {
       return savedRecord;
     } catch (err) {
       this.errorMessage.set(
-        err instanceof Error ? err.message : isEn ? 'Could not save novel.' : 'تعذر حفظ بيانات الرواية.'
+        this.formatError(
+          err,
+          'تعذر حفظ بيانات الرواية.',
+          'Could not save novel details.'
+        )
       );
       return null;
     } finally {
@@ -637,7 +686,7 @@ export class WriterStudioService implements OnDestroy {
       );
       return saved;
     } catch (err) {
-      this.errorMessage.set(err instanceof Error ? err.message : 'تعذر حفظ القسم.');
+      this.errorMessage.set(this.formatError(err, 'تعذر حفظ القسم.', 'Could not save section.'));
       return null;
     }
   }
@@ -670,7 +719,7 @@ export class WriterStudioService implements OnDestroy {
         this.i18n.lang() === 'en' ? 'Section removed.' : 'تم حذف القسم (بقيت الفصول محفوظة بدون قسم).'
       );
     } catch (err) {
-      this.errorMessage.set(err instanceof Error ? err.message : 'تعذر حذف القسم.');
+      this.errorMessage.set(this.formatError(err, 'تعذر حذف القسم.', 'Could not remove section.'));
     }
   }
 
@@ -957,7 +1006,7 @@ export class WriterStudioService implements OnDestroy {
         this.errorMessage.set('هذا الفصل موجود');
         return { status: 'duplicate' };
       }
-      const msg = err instanceof Error ? err.message : 'تعذر حفظ الفصل.';
+      const msg = this.formatError(err, 'تعذر حفظ الفصل.', 'Could not save chapter.');
       this.errorMessage.set(msg);
       return { status: 'error', message: msg };
     } finally {
@@ -1044,7 +1093,7 @@ export class WriterStudioService implements OnDestroy {
       );
       return true;
     } catch (err) {
-      this.errorMessage.set(err instanceof Error ? err.message : 'تعذر حذف الفصل.');
+      this.errorMessage.set(this.formatError(err, 'تعذر حذف الفصل.', 'Could not delete chapter.'));
       return false;
     } finally {
       this.isBusy.set(false);
@@ -1208,8 +1257,10 @@ export class WriterStudioService implements OnDestroy {
         archive,
         publishImmediately
       );
-      await this.loadStudioForAuthor(authorId);
-      await this.loadNovelWorkspace(created.id);
+      await Promise.all([
+        this.loadStudioForAuthor(authorId),
+        this.loadNovelWorkspace(created.id),
+      ]);
       this.successMessage.set(
         this.i18n.lang() === 'en'
           ? `Imported "${created.title}" with ${archive.chapters.length} chapter(s).`
@@ -1217,7 +1268,7 @@ export class WriterStudioService implements OnDestroy {
       );
       return created;
     } catch (err) {
-      this.errorMessage.set(err instanceof Error ? err.message : 'تعذر استيراد ملف MTX.');
+      this.errorMessage.set(this.formatError(err, 'تعذر استيراد ملف MTX.', 'Could not import MTX archive.'));
       return null;
     } finally {
       this.isBusy.set(false);
@@ -1237,7 +1288,7 @@ export class WriterStudioService implements OnDestroy {
       this.workReports.set(reports);
       this.moderatedNovels.set(modNovels);
     } catch (err) {
-      this.errorMessage.set(err instanceof Error ? err.message : 'تعذر تحميل سجل البلاغات.');
+      this.errorMessage.set(this.formatError(err, 'تعذر تحميل سجل البلاغات.', 'Could not load moderation queue.'));
     } finally {
       this.adminLoading.set(false);
     }
@@ -1256,7 +1307,7 @@ export class WriterStudioService implements OnDestroy {
       );
       return true;
     } catch (err) {
-      this.errorMessage.set(err instanceof Error ? err.message : 'تعذر حفظ القرار الإداري.');
+      this.errorMessage.set(this.formatError(err, 'تعذر حفظ القرار الإداري.', 'Could not save moderation decision.'));
       return false;
     } finally {
       this.isBusy.set(false);
@@ -1276,7 +1327,7 @@ export class WriterStudioService implements OnDestroy {
       );
       return true;
     } catch (err) {
-      this.errorMessage.set(err instanceof Error ? err.message : 'تعذر تنفيذ الإزالة.');
+      this.errorMessage.set(this.formatError(err, 'تعذر تنفيذ الإزالة.', 'Could not remove novel from catalog.'));
       return false;
     } finally {
       this.isBusy.set(false);

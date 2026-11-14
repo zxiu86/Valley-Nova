@@ -29,6 +29,7 @@ import {
   updateDoc,
   deleteDoc,
   getDocFromServer,
+  getCountFromServer,
   collection,
   getDocs,
   query,
@@ -63,6 +64,8 @@ import {
   PrivacySettings,
   PublishedNovelRecord,
   PublicProfile,
+  RoleRequest,
+  RoleRequestRole,
   UserRoleRecord,
   UsernameCheckResult,
   VerifiedWriterStatus,
@@ -254,9 +257,175 @@ export function handleFirestoreError(
   throw new Error(JSON.stringify(errInfo));
 }
 
-function isPermissionDeniedError(err: unknown): boolean {
-  const msg = err instanceof Error ? err.message : String(err);
-  return msg.includes('permission-denied') || msg.includes('Missing or insufficient permissions');
+export function isPermissionDeniedError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err ?? '');
+  return (
+    msg.includes('permission-denied') ||
+    msg.includes('Missing or insufficient permissions') ||
+    msg.includes('"operationType"')
+  );
+}
+
+export function parseFirestoreErrorInfo(err: unknown): FirestoreErrorInfo | null {
+  const raw = err instanceof Error ? err.message : typeof err === 'string' ? err : '';
+  if (!raw || !raw.trim().startsWith('{')) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<FirestoreErrorInfo>;
+    if (parsed && typeof parsed.error === 'string' && typeof parsed.operationType === 'string') {
+      return {
+        error: parsed.error,
+        operationType: parsed.operationType,
+        path: parsed.path ?? null,
+        authInfo: parsed.authInfo ?? {},
+      };
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+export function formatFirestoreErrorForUser(
+  err: unknown,
+  lang: 'ar' | 'en' = 'ar',
+  fallbackAr = 'تعذر إتمام العملية حالياً. يرجى المحاولة مجدداً.',
+  fallbackEn = 'Could not complete the operation. Please try again.'
+): string {
+  const isEn = lang === 'en';
+  const info = parseFirestoreErrorInfo(err);
+  const rawMsg = info?.error || (err instanceof Error ? err.message : String(err ?? ''));
+
+  if (!rawMsg) return isEn ? fallbackEn : fallbackAr;
+
+  // Already a clean localized non-JSON application error
+  if (!info && !rawMsg.includes('permission-denied') && !rawMsg.includes('Missing or insufficient permissions') && !rawMsg.includes('Quota exceeded')) {
+    return rawMsg;
+  }
+
+  if (rawMsg.includes('Quota exceeded')) {
+    return isEn
+      ? 'Daily database quota has been reached. Quota resets tomorrow.'
+      : 'تم بلوغ الحد اليومي لقاعدة البيانات مؤقتاً، وسيتم تصفير الحصة غداً.';
+  }
+
+  if (info?.authInfo && !info.authInfo.userId) {
+    return isEn
+      ? 'Your session has expired. Please sign in again to continue.'
+      : 'انتهت جلسة تسجيل الدخول. يرجى إعادة تسجيل الدخول ثم المحاولة.';
+  }
+
+  const path = info?.path || '';
+  if (path.startsWith('writer_applications/')) {
+    return isEn
+      ? 'Could not save writer application. Verify all fields meet minimum lengths and that you do not already have an active pending/approved request.'
+      : 'تعذر حفظ طلب الكاتب. تأكد من استيفاء الحد الأدنى لطول الحقول وعدم وجود طلب نشط قيد المراجعة أو معتمد مسبقاً.';
+  }
+  if (path.startsWith('role_requests/')) {
+    return isEn
+      ? 'Could not submit role request. Ensure your statement is at least 10 characters and no duplicate pending request exists.'
+      : 'تعذر إرسال طلب الرتبة. تأكد من كتابة مبرر لا يقل عن ١٠ أحرف وعدم تكرار طلب معلق لنفس الرتبة.';
+  }
+  if (path.startsWith('novels/')) {
+    return isEn
+      ? 'Publishing permission denied. Ensure your account holds an active verified author role and all required novel fields are valid.'
+      : 'تعذر حفظ العمل في قاعدة البيانات. تحقق من تفعيل صلاحية الكاتب المعتمد واستيفاء الحقول المطلوبة.';
+  }
+  if (path.startsWith('public_profiles/') || path.startsWith('users/')) {
+    return isEn
+      ? 'Could not update profile permissions. Refresh your session and verify username/bio rules.'
+      : 'تعذر حفظ بيانات الملف الشخصي. تأكد من صحة اسم المستخدم وحدود الحقول وأعد المحاولة.';
+  }
+
+  return isEn
+    ? 'Action denied by security rules. Please verify your account permissions and input constraints.'
+    : 'تم رفض العملية بواسطة قواعد الصلاحيات. تحقق من صلاحية حسابك واستيفاء شروط الحقول.';
+}
+
+export const WRITER_APPLICATION_LIMITS = {
+  penNameMin: 2,
+  penNameMax: 80,
+  shortBioMin: 5,
+  shortBioMax: 500,
+  sampleMin: 20,
+  sampleMax: 10000,
+  genresMin: 1,
+  genresMax: 3,
+} as const;
+
+export const ROLE_REQUEST_LIMITS = {
+  statementMin: 10,
+  statementMax: 2000,
+} as const;
+
+export function validateWriterApplicationInput(
+  payload: {
+    penName: string;
+    shortBio: string;
+    genres: string[];
+    writingSample: string;
+  },
+  lang: 'ar' | 'en' = 'ar'
+): { valid: boolean; message?: string } {
+  const isEn = lang === 'en';
+  const penName = (payload.penName || '').trim();
+  const shortBio = (payload.shortBio || '').trim();
+  const sample = (payload.writingSample || '').trim();
+  const genres = Array.isArray(payload.genres) ? payload.genres.filter((g) => typeof g === 'string' && g.trim()) : [];
+
+  if (penName.length < WRITER_APPLICATION_LIMITS.penNameMin || penName.length > WRITER_APPLICATION_LIMITS.penNameMax) {
+    return {
+      valid: false,
+      message: isEn
+        ? `Pen name must be between ${WRITER_APPLICATION_LIMITS.penNameMin} and ${WRITER_APPLICATION_LIMITS.penNameMax} characters.`
+        : `يجب أن يتراوح الاسم الأدبي بين ${WRITER_APPLICATION_LIMITS.penNameMin} و ${WRITER_APPLICATION_LIMITS.penNameMax} حرفاً.`,
+    };
+  }
+  if (shortBio.length < WRITER_APPLICATION_LIMITS.shortBioMin || shortBio.length > WRITER_APPLICATION_LIMITS.shortBioMax) {
+    return {
+      valid: false,
+      message: isEn
+        ? `Literary bio must be between ${WRITER_APPLICATION_LIMITS.shortBioMin} and ${WRITER_APPLICATION_LIMITS.shortBioMax} characters (currently ${shortBio.length}).`
+        : `يجب أن تتراوح النبذة الأدبية بين ${WRITER_APPLICATION_LIMITS.shortBioMin} و ${WRITER_APPLICATION_LIMITS.shortBioMax} حرفاً (الحالي: ${shortBio.length}).`,
+    };
+  }
+  if (genres.length < WRITER_APPLICATION_LIMITS.genresMin || genres.length > 8) {
+    return {
+      valid: false,
+      message: isEn ? 'Select at least one literary genre.' : 'يرجى اختيار مجال أدبي واحد على الأقل.',
+    };
+  }
+  if (sample.length < WRITER_APPLICATION_LIMITS.sampleMin || sample.length > WRITER_APPLICATION_LIMITS.sampleMax) {
+    return {
+      valid: false,
+      message: isEn
+        ? `Writing sample must be between ${WRITER_APPLICATION_LIMITS.sampleMin} and ${WRITER_APPLICATION_LIMITS.sampleMax} characters (currently ${sample.length}).`
+        : `يجب أن يتراوح نموذج الكتابة بين ${WRITER_APPLICATION_LIMITS.sampleMin} و ${WRITER_APPLICATION_LIMITS.sampleMax} حرفاً (الحالي: ${sample.length}).`,
+    };
+  }
+  return { valid: true };
+}
+
+export function validateRoleRequestInput(
+  payload: { role: RoleRequestRole; statement: string },
+  lang: 'ar' | 'en' = 'ar'
+): { valid: boolean; message?: string } {
+  const isEn = lang === 'en';
+  if (!['auditor', 'author', 'translate'].includes(payload.role)) {
+    return {
+      valid: false,
+      message: isEn ? 'Invalid requested role.' : 'نوع الرتبة المطلوبة غير صالح.',
+    };
+  }
+  const statement = (payload.statement || '').trim();
+  if (statement.length < ROLE_REQUEST_LIMITS.statementMin || statement.length > ROLE_REQUEST_LIMITS.statementMax) {
+    return {
+      valid: false,
+      message: isEn
+        ? `Statement must be between ${ROLE_REQUEST_LIMITS.statementMin} and ${ROLE_REQUEST_LIMITS.statementMax} characters (currently ${statement.length}).`
+        : `يجب أن يتراوح مبرر الطلب بين ${ROLE_REQUEST_LIMITS.statementMin} و ${ROLE_REQUEST_LIMITS.statementMax} حرفاً (الحالي: ${statement.length}).`,
+    };
+  }
+  return { valid: true };
 }
 
 export async function verifyFirestoreConnection(): Promise<boolean> {
@@ -562,123 +731,143 @@ export async function resolveUsernameToUid(rawUsername: string): Promise<{
 
 // ================= USER INITIALIZATION & PROFILE CRUD ================= //
 
+const ensuredSessionUids = new Set<string>();
+const ensuredSessionPromises = new Map<string, Promise<void>>();
+
 export async function ensureUserDocumentsOnLogin(
   user: User,
   overrideDisplayName?: string
 ): Promise<void> {
   if (!isFirebaseConfigured()) return;
-  const db = getDb();
-  const now = new Date().toISOString();
-  const userRef = doc(db, 'users', user.uid);
-  const publicRef = doc(db, 'public_profiles', user.uid);
-  const bioRef = doc(db, 'public_profiles', user.uid, 'details', 'bio');
-  const savedStatRef = doc(db, 'public_profiles', user.uid, 'stats', 'saved');
-  const readingStatRef = doc(db, 'public_profiles', user.uid, 'stats', 'reading');
+  if (!overrideDisplayName && ensuredSessionUids.has(user.uid)) {
+    return;
+  }
+  const existingPromise = ensuredSessionPromises.get(user.uid);
+  if (!overrideDisplayName && existingPromise) {
+    return existingPromise;
+  }
 
-  const initialDisplayName =
-    overrideDisplayName?.trim() || user.displayName?.trim() || 'قارئ أروقة الخلود';
-  const initialEmail = user.email || '';
-  const initialPhoto = user.photoURL || '';
+  const run = (async () => {
+    const db = getDb();
+    const now = new Date().toISOString();
+    const userRef = doc(db, 'users', user.uid);
+    const publicRef = doc(db, 'public_profiles', user.uid);
+    const bioRef = doc(db, 'public_profiles', user.uid, 'details', 'bio');
+    const savedStatRef = doc(db, 'public_profiles', user.uid, 'stats', 'saved');
+    const readingStatRef = doc(db, 'public_profiles', user.uid, 'stats', 'reading');
 
-  try {
-    const [userSnap, publicSnap] = await Promise.all([getDoc(userRef), getDoc(publicRef)]);
-    const batch = writeBatch(db);
-    let hasWrites = false;
+    const initialDisplayName =
+      overrideDisplayName?.trim() || user.displayName?.trim() || 'قارئ أروقة الخلود';
+    const initialEmail = user.email || '';
+    const initialPhoto = user.photoURL || '';
 
-    if (!userSnap.exists()) {
-      batch.set(userRef, {
-        id: user.uid,
-        email: initialEmail,
-        displayName: initialDisplayName,
-        username: '',
-        bio: '',
-        photoURL: initialPhoto,
-        coverURL: '',
-        isPublic: true,
-        showSavedNovels: true,
-        showReadingHistory: true,
-        showProfileInfo: true,
-        createdAt: now,
-        updatedAt: now,
-      });
-      hasWrites = true;
-    }
+    try {
+      const [userSnap, publicSnap] = await Promise.all([getDoc(userRef), getDoc(publicRef)]);
+      const batch = writeBatch(db);
+      let hasWrites = false;
 
-    if (!publicSnap.exists()) {
-      const existingPrivate = userSnap.exists() ? (userSnap.data() as StoredUserProfile) : null;
-      batch.set(publicRef, {
-        uid: user.uid,
-        displayName: existingPrivate?.displayName || initialDisplayName,
-        username: existingPrivate?.username || '',
-        photoURL: existingPrivate?.photoURL || initialPhoto,
-        coverURL: existingPrivate?.coverURL || '',
-        isPublic: existingPrivate?.isPublic ?? true,
-        showSavedNovels: existingPrivate?.showSavedNovels ?? true,
-        showReadingHistory: existingPrivate?.showReadingHistory ?? true,
-        showProfileInfo: existingPrivate?.showProfileInfo ?? true,
-        createdAt: existingPrivate?.createdAt || now,
-        updatedAt: now,
-      });
-      batch.set(bioRef, {
-        uid: user.uid,
-        bio: existingPrivate?.bio || '',
-        updatedAt: now,
-      });
-      batch.set(savedStatRef, { uid: user.uid, count: 0, updatedAt: now });
-      batch.set(readingStatRef, { uid: user.uid, count: 0, updatedAt: now });
-      hasWrites = true;
-    }
-
-    if (hasWrites) {
-      await batch.commit();
-    }
-
-    // Bootstrap official Founder seal & role idempotently for designated Founder email
-    if (user.emailVerified === true && DESIGNATED_ADMIN_EMAILS.has(initialEmail)) {
-      const founderRef = doc(db, 'founders', user.uid);
-      const roleRef = doc(db, 'user_roles', user.uid);
-      const [founderSnap, roleSnap] = await Promise.all([
-        getDoc(founderRef).catch(() => null),
-        getDoc(roleRef).catch(() => null),
-      ]);
-      const founderBatch = writeBatch(db);
-      let needsFounderWrite = false;
-      if (!founderSnap || !founderSnap.exists()) {
-        founderBatch.set(founderRef, {
-          uid: user.uid,
-          badge: 'founder',
-          handle: ADMIN_EXCLUSIVE_USERNAME,
-          titleAr: 'مؤسس رواق الخلود — المشرف الرسمي',
-          titleEn: 'Founder of Eternity Corridors — Official Admin',
-          active: true,
+      if (!userSnap.exists()) {
+        batch.set(userRef, {
+          id: user.uid,
+          email: initialEmail,
+          displayName: initialDisplayName,
+          username: '',
+          bio: '',
+          photoURL: initialPhoto,
+          coverURL: '',
+          isPublic: true,
+          showSavedNovels: true,
+          showReadingHistory: true,
+          showProfileInfo: true,
+          createdAt: now,
           updatedAt: now,
         });
-        needsFounderWrite = true;
+        hasWrites = true;
       }
-      if (!roleSnap || !roleSnap.exists() || (roleSnap.data() as UserRoleRecord)?.role !== 'founder') {
-        founderBatch.set(roleRef, {
-          userId: user.uid,
-          role: 'founder',
-          roles: ['founder', 'author'],
-          status: 'active',
-          canPublish: true,
-          assignedBy: user.uid,
-          assignedAt: now,
+
+      if (!publicSnap.exists()) {
+        const existingPrivate = userSnap.exists() ? (userSnap.data() as StoredUserProfile) : null;
+        batch.set(publicRef, {
+          uid: user.uid,
+          displayName: existingPrivate?.displayName || initialDisplayName,
+          username: existingPrivate?.username || '',
+          photoURL: existingPrivate?.photoURL || initialPhoto,
+          coverURL: existingPrivate?.coverURL || '',
+          isPublic: existingPrivate?.isPublic ?? true,
+          showSavedNovels: existingPrivate?.showSavedNovels ?? true,
+          showReadingHistory: existingPrivate?.showReadingHistory ?? true,
+          showProfileInfo: existingPrivate?.showProfileInfo ?? true,
+          createdAt: existingPrivate?.createdAt || now,
+          updatedAt: now,
         });
-        needsFounderWrite = true;
-      }
-      if (needsFounderWrite) {
-        await founderBatch.commit().catch((err) => {
-          console.warn('Founder seal bootstrap warning:', err);
+        batch.set(bioRef, {
+          uid: user.uid,
+          bio: existingPrivate?.bio || '',
+          updatedAt: now,
         });
+        batch.set(savedStatRef, { uid: user.uid, count: 0, updatedAt: now });
+        batch.set(readingStatRef, { uid: user.uid, count: 0, updatedAt: now });
+        hasWrites = true;
       }
+
+      if (hasWrites) {
+        await batch.commit();
+      }
+
+      // Bootstrap official Founder seal & role idempotently for designated Founder email
+      if (user.emailVerified === true && DESIGNATED_ADMIN_EMAILS.has(initialEmail)) {
+        const founderRef = doc(db, 'founders', user.uid);
+        const roleRef = doc(db, 'user_roles', user.uid);
+        const [founderSnap, roleSnap] = await Promise.all([
+          getDoc(founderRef).catch(() => null),
+          getDoc(roleRef).catch(() => null),
+        ]);
+        const founderBatch = writeBatch(db);
+        let needsFounderWrite = false;
+        if (!founderSnap || !founderSnap.exists()) {
+          founderBatch.set(founderRef, {
+            uid: user.uid,
+            badge: 'founder',
+            handle: ADMIN_EXCLUSIVE_USERNAME,
+            titleAr: 'مؤسس رواق الخلود — المشرف الرسمي',
+            titleEn: 'Founder of Eternity Corridors — Official Admin',
+            active: true,
+            updatedAt: now,
+          });
+          needsFounderWrite = true;
+        }
+        if (!roleSnap || !roleSnap.exists() || (roleSnap.data() as UserRoleRecord)?.role !== 'founder') {
+          founderBatch.set(roleRef, {
+            userId: user.uid,
+            role: 'founder',
+            roles: ['founder', 'author'],
+            status: 'active',
+            canPublish: true,
+            assignedBy: user.uid,
+            assignedAt: now,
+          });
+          needsFounderWrite = true;
+        }
+        if (needsFounderWrite) {
+          await founderBatch.commit().catch((err) => {
+            console.warn('Founder seal bootstrap warning:', err);
+          });
+          invalidateWriterStatusCache(user.uid);
+        }
+      }
+      ensuredSessionUids.add(user.uid);
+    } catch (error) {
+      if (isPermissionDeniedError(error)) {
+        handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}`);
+      }
+      throw error;
+    } finally {
+      ensuredSessionPromises.delete(user.uid);
     }
-  } catch (error) {
-    if (isPermissionDeniedError(error)) {
-      handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}`);
-    }
-    throw error;
-  }
+  })();
+
+  ensuredSessionPromises.set(user.uid, run);
+  return run;
 }
 
 export async function loadOwnerAccountProfile(uid: string): Promise<FullAccountProfile | null> {
@@ -686,13 +875,13 @@ export async function loadOwnerAccountProfile(uid: string): Promise<FullAccountP
   const db = getDb();
   const auth = getFirebaseAuth();
   try {
-    const [initialUserSnap, initialPublicSnap, initialBioSnap, bookmarksSnap, historySnap] =
+    const [initialUserSnap, initialPublicSnap, initialBioSnap, savedStatSnap, readStatSnap] =
       await Promise.all([
         getDoc(doc(db, 'users', uid)),
         getDoc(doc(db, 'public_profiles', uid)),
         getDoc(doc(db, 'public_profiles', uid, 'details', 'bio')).catch(() => null),
-        getDocs(query(collection(db, 'users', uid, 'bookmarks'), limit(200))).catch(() => null),
-        getDocs(query(collection(db, 'users', uid, 'history'), limit(500))).catch(() => null),
+        getDoc(doc(db, 'public_profiles', uid, 'stats', 'saved')).catch(() => null),
+        getDoc(doc(db, 'public_profiles', uid, 'stats', 'reading')).catch(() => null),
       ]);
 
     let userSnap = initialUserSnap;
@@ -707,6 +896,16 @@ export async function loadOwnerAccountProfile(uid: string): Promise<FullAccountP
         getDoc(doc(db, 'public_profiles', uid)),
         getDoc(doc(db, 'public_profiles', uid, 'details', 'bio')).catch(() => null),
       ]);
+    } else if (
+      auth.currentUser?.uid === uid &&
+      auth.currentUser.emailVerified === true &&
+      auth.currentUser.email &&
+      DESIGNATED_ADMIN_EMAILS.has(auth.currentUser.email) &&
+      !ensuredSessionUids.has(uid)
+    ) {
+      void ensureUserDocumentsOnLogin(auth.currentUser).catch(() => undefined);
+    } else if (userSnap.exists() && publicSnap.exists()) {
+      ensuredSessionUids.add(uid);
     }
 
     const priv = userSnap.exists() ? (userSnap.data() as StoredUserProfile) : null;
@@ -715,8 +914,37 @@ export async function loadOwnerAccountProfile(uid: string): Promise<FullAccountP
 
     if (!priv && !pub) return null;
 
-    const savedCount = bookmarksSnap ? bookmarksSnap.size : 0;
-    const readCount = historySnap ? historySnap.size : 0;
+    let savedCount = savedStatSnap && savedStatSnap.exists()
+      ? Number((savedStatSnap.data() as { count?: number })?.count ?? 0)
+      : -1;
+    let readCount = readStatSnap && readStatSnap.exists()
+      ? Number((readStatSnap.data() as { count?: number })?.count ?? 0)
+      : -1;
+
+    if (savedCount < 0 || readCount < 0) {
+      const [bookmarksCount, historyCount] = await Promise.all([
+        savedCount < 0
+          ? getCountFromServer(collection(db, 'users', uid, 'bookmarks'))
+              .then((c) => c.data().count)
+              .catch(() =>
+                getDocs(query(collection(db, 'users', uid, 'bookmarks'), limit(200)))
+                  .then((s) => s.size)
+                  .catch(() => 0)
+              )
+          : Promise.resolve(savedCount),
+        readCount < 0
+          ? getCountFromServer(collection(db, 'users', uid, 'history'))
+              .then((c) => c.data().count)
+              .catch(() =>
+                getDocs(query(collection(db, 'users', uid, 'history'), limit(500)))
+                  .then((s) => s.size)
+                  .catch(() => 0)
+              )
+          : Promise.resolve(readCount),
+      ]);
+      savedCount = bookmarksCount;
+      readCount = historyCount;
+    }
 
     return {
       uid,
@@ -1284,8 +1512,13 @@ export async function recordChapterReadInFirestore(
       chapterTitle,
       readAt: now,
     });
-    const historySnap = await getDocs(query(collection(db, 'users', userId, 'history'), limit(500)));
-    const count = historySnap.size;
+    const count = await getCountFromServer(collection(db, 'users', userId, 'history'))
+      .then((c) => c.data().count)
+      .catch(() =>
+        getDocs(query(collection(db, 'users', userId, 'history'), limit(500)))
+          .then((s) => s.size)
+          .catch(() => 0)
+      );
     await setDoc(doc(db, 'public_profiles', userId, 'stats', 'reading'), {
       uid: userId,
       count,
@@ -1305,8 +1538,17 @@ export async function getUserReadChaptersCount(userId: string): Promise<number> 
   if (!isFirebaseConfigured()) return 0;
   try {
     const db = getDb();
-    const historySnap = await getDocs(query(collection(db, 'users', userId, 'history'), limit(500)));
-    return historySnap.size;
+    const statSnap = await getDoc(doc(db, 'public_profiles', userId, 'stats', 'reading')).catch(() => null);
+    if (statSnap && statSnap.exists()) {
+      return Number((statSnap.data() as { count?: number })?.count ?? 0);
+    }
+    return await getCountFromServer(collection(db, 'users', userId, 'history'))
+      .then((c) => c.data().count)
+      .catch(() =>
+        getDocs(query(collection(db, 'users', userId, 'history'), limit(500)))
+          .then((s) => s.size)
+          .catch(() => 0)
+      );
   } catch (err) {
     if (isPermissionDeniedError(err)) {
       handleFirestoreError(err, OperationType.LIST, `users/${userId}/history`);
@@ -1315,10 +1557,27 @@ export async function getUserReadChaptersCount(userId: string): Promise<number> 
   }
 }
 
-// ================= WRITER ROLE VERIFICATION & APPLICATIONS ================= //
+// ================= WRITER ROLE VERIFICATION, CACHE & APPLICATIONS ================= //
 
-export async function getVerifiedWriterStatus(userId: string): Promise<VerifiedWriterStatus> {
-  if (!isFirebaseConfigured()) {
+const WRITER_STATUS_CACHE_TTL_MS = 30_000;
+const writerStatusCache = new Map<string, { value: VerifiedWriterStatus; cachedAt: number }>();
+const inFlightWriterStatusLookups = new Map<string, Promise<VerifiedWriterStatus>>();
+
+export function invalidateWriterStatusCache(userId?: string): void {
+  if (userId) {
+    writerStatusCache.delete(userId);
+    inFlightWriterStatusLookups.delete(userId);
+  } else {
+    writerStatusCache.clear();
+    inFlightWriterStatusLookups.clear();
+  }
+}
+
+export async function getVerifiedWriterStatus(
+  userId: string,
+  forceRefresh = false
+): Promise<VerifiedWriterStatus> {
+  if (!isFirebaseConfigured() || !userId) {
     return {
       isWriterBadge: false,
       canPublish: false,
@@ -1327,70 +1586,90 @@ export async function getVerifiedWriterStatus(userId: string): Promise<VerifiedW
       roleRecord: null,
     };
   }
-  const auth = getFirebaseAuth();
-  const currentUser = auth.currentUser;
-  const isCurrentDesignatedAdmin =
-    Boolean(currentUser) &&
-    currentUser?.uid === userId &&
-    currentUser?.emailVerified === true &&
-    Boolean(currentUser?.email && DESIGNATED_ADMIN_EMAILS.has(currentUser.email));
 
-  const db = getDb();
-  try {
-    const [roleSnap, founderSnap] = await Promise.all([
-      getDoc(doc(db, 'user_roles', userId)).catch(() => null),
-      getDoc(doc(db, 'founders', userId)).catch(() => null),
-    ]);
-
-    const hasPublicFounderSeal = Boolean(
-      founderSnap &&
-        founderSnap.exists() &&
-        (founderSnap.data() as { active?: boolean; badge?: string })?.active === true &&
-        (founderSnap.data() as { badge?: string })?.badge === 'founder'
-    );
-
-    if (roleSnap && roleSnap.exists()) {
-      const record = roleSnap.data() as UserRoleRecord;
-      const isActive = record.status === 'active';
-      const hasAuthorRole =
-        record.role === 'author' ||
-        record.role === 'founder' ||
-        (Array.isArray(record.roles) &&
-          (record.roles.includes('author') || record.roles.includes('founder')));
-
-      const isFounder = isCurrentDesignatedAdmin || hasPublicFounderSeal || (record.role === 'founder' && isActive);
-      const isBadge = isFounder || (isActive && hasAuthorRole);
-      const canPublish = isFounder || (isActive && hasAuthorRole && record.canPublish === true);
-
-      return {
-        isWriterBadge: isBadge,
-        canPublish,
-        isAdmin: isFounder,
-        roleKind: isFounder ? 'founder' : isBadge ? 'author' : 'none',
-        roleRecord: record,
-      };
-    }
-
-    if (isCurrentDesignatedAdmin || hasPublicFounderSeal) {
-      return {
-        isWriterBadge: true,
-        canPublish: true,
-        isAdmin: true,
-        roleKind: 'founder',
-        roleRecord: null,
-      };
-    }
-  } catch (err) {
-    console.warn('Error fetching user role:', err);
+  const cached = !forceRefresh ? writerStatusCache.get(userId) : undefined;
+  if (cached && Date.now() - cached.cachedAt < WRITER_STATUS_CACHE_TTL_MS) {
+    return cached.value;
   }
 
-  return {
-    isWriterBadge: isCurrentDesignatedAdmin,
-    canPublish: isCurrentDesignatedAdmin,
-    isAdmin: isCurrentDesignatedAdmin,
-    roleKind: isCurrentDesignatedAdmin ? 'founder' : 'none',
-    roleRecord: null,
-  };
+  const inflight = !forceRefresh ? inFlightWriterStatusLookups.get(userId) : undefined;
+  if (inflight) {
+    return inflight;
+  }
+
+  const lookupPromise = (async (): Promise<VerifiedWriterStatus> => {
+    const auth = getFirebaseAuth();
+    const currentUser = auth.currentUser;
+    const isCurrentDesignatedAdmin =
+      Boolean(currentUser) &&
+      currentUser?.uid === userId &&
+      currentUser?.emailVerified === true &&
+      Boolean(currentUser?.email && DESIGNATED_ADMIN_EMAILS.has(currentUser.email));
+
+    const db = getDb();
+    let result: VerifiedWriterStatus = {
+      isWriterBadge: isCurrentDesignatedAdmin,
+      canPublish: isCurrentDesignatedAdmin,
+      isAdmin: isCurrentDesignatedAdmin,
+      roleKind: isCurrentDesignatedAdmin ? 'founder' : 'none',
+      roleRecord: null,
+    };
+
+    try {
+      const [roleSnap, founderSnap] = await Promise.all([
+        getDoc(doc(db, 'user_roles', userId)).catch(() => null),
+        getDoc(doc(db, 'founders', userId)).catch(() => null),
+      ]);
+
+      const hasPublicFounderSeal = Boolean(
+        founderSnap &&
+          founderSnap.exists() &&
+          (founderSnap.data() as { active?: boolean; badge?: string })?.active === true &&
+          (founderSnap.data() as { badge?: string })?.badge === 'founder'
+      );
+
+      if (roleSnap && roleSnap.exists()) {
+        const record = roleSnap.data() as UserRoleRecord;
+        const isActive = record.status === 'active';
+        const hasAuthorRole =
+          record.role === 'author' ||
+          record.role === 'founder' ||
+          (Array.isArray(record.roles) &&
+            (record.roles.includes('author') || record.roles.includes('founder')));
+
+        const isFounder =
+          isCurrentDesignatedAdmin || hasPublicFounderSeal || (record.role === 'founder' && isActive);
+        const isBadge = isFounder || (isActive && hasAuthorRole);
+        const canPublish = isFounder || (isActive && hasAuthorRole && record.canPublish !== false);
+
+        result = {
+          isWriterBadge: isBadge,
+          canPublish,
+          isAdmin: isFounder,
+          roleKind: isFounder ? 'founder' : isBadge ? 'author' : 'none',
+          roleRecord: record,
+        };
+      } else if (isCurrentDesignatedAdmin || hasPublicFounderSeal) {
+        result = {
+          isWriterBadge: true,
+          canPublish: true,
+          isAdmin: true,
+          roleKind: 'founder',
+          roleRecord: null,
+        };
+      }
+    } catch (err) {
+      console.warn('Error fetching user role:', err);
+    }
+
+    writerStatusCache.set(userId, { value: result, cachedAt: Date.now() });
+    return result;
+  })().finally(() => {
+    inFlightWriterStatusLookups.delete(userId);
+  });
+
+  inFlightWriterStatusLookups.set(userId, lookupPromise);
+  return lookupPromise;
 }
 
 export async function getWriterApplicationFromFirestore(
@@ -1415,8 +1694,31 @@ export async function submitWriterApplicationToFirestore(
     shortBio: string;
     genres: string[];
     writingSample: string;
-  }
+  },
+  lang: 'ar' | 'en' = 'ar'
 ): Promise<WriterApplication> {
+  const auth = getFirebaseAuth();
+  if (!auth.currentUser || auth.currentUser.uid !== userId) {
+    throw new Error(
+      lang === 'en'
+        ? 'Please sign in again before submitting your writer application.'
+        : 'يرجى تسجيل الدخول مجدداً قبل تقديم طلب الكاتب.'
+    );
+  }
+
+  const check = validateWriterApplicationInput(payload, lang);
+  if (!check.valid) {
+    throw new Error(check.message || (lang === 'en' ? 'Invalid application data.' : 'بيانات الطلب غير مكتملة.'));
+  }
+
+  const cleanPenName = payload.penName.trim().slice(0, WRITER_APPLICATION_LIMITS.penNameMax);
+  const cleanShortBio = payload.shortBio.trim().slice(0, WRITER_APPLICATION_LIMITS.shortBioMax);
+  const cleanGenres = payload.genres
+    .map((g) => g.trim().slice(0, 60))
+    .filter(Boolean)
+    .slice(0, 8);
+  const cleanSample = payload.writingSample.trim().slice(0, WRITER_APPLICATION_LIMITS.sampleMax);
+
   const db = getDb();
   const now = new Date().toISOString();
   const appRef = doc(db, 'writer_applications', userId);
@@ -1425,17 +1727,27 @@ export async function submitWriterApplicationToFirestore(
   if (existing.exists()) {
     const prev = existing.data() as WriterApplication;
     if (prev.status === 'pending') {
-      throw new Error('لديك طلب قيد المراجعة حالياً، لا يمكن إرسال طلب مكرر.');
+      throw new Error(
+        lang === 'en'
+          ? 'Your writer application is already pending editorial review.'
+          : 'لديك طلب قيد المراجعة حالياً، لا يمكن إرسال طلب مكرر.'
+      );
     }
     if (prev.status === 'approved') {
-      throw new Error('تمت الموافقة على طلبك مسبقاً.');
+      const liveStatus = await getVerifiedWriterStatus(userId, true);
+      if (liveStatus.canPublish) {
+        throw new Error(
+          lang === 'en' ? 'Your writer permission is already approved.' : 'تمت الموافقة على طلبك مسبقاً.'
+        );
+      }
+      // Prior approval was revoked -> allow clean resubmission via updateDoc
     }
 
     const updatedPayload = {
-      penName: payload.penName.trim(),
-      shortBio: payload.shortBio.trim(),
-      genres: payload.genres,
-      writingSample: payload.writingSample.trim(),
+      penName: cleanPenName,
+      shortBio: cleanShortBio,
+      genres: cleanGenres,
+      writingSample: cleanSample,
       status: 'pending' as const,
       submittedAt: now,
       updatedAt: now,
@@ -1457,10 +1769,10 @@ export async function submitWriterApplicationToFirestore(
 
   const newApplication: WriterApplication = {
     userId,
-    penName: payload.penName.trim(),
-    shortBio: payload.shortBio.trim(),
-    genres: payload.genres,
-    writingSample: payload.writingSample.trim(),
+    penName: cleanPenName,
+    shortBio: cleanShortBio,
+    genres: cleanGenres,
+    writingSample: cleanSample,
     status: 'pending',
     submittedAt: now,
     updatedAt: now,
@@ -1510,21 +1822,30 @@ export async function reviewWriterApplicationAsAdmin(
   }
   const db = getDb();
   const now = new Date().toISOString();
+  const existingRoleSnap =
+    decision === 'approved' ? await getDoc(doc(db, 'user_roles', applicantUid)).catch(() => null) : null;
   const batch = writeBatch(db);
 
   batch.update(doc(db, 'writer_applications', applicantUid), {
     status: decision,
-    reviewNote: reviewNote.trim(),
+    reviewNote: reviewNote.trim().slice(0, 500),
     reviewedBy: adminUid,
     reviewedAt: now,
     updatedAt: now,
   });
 
   if (decision === 'approved') {
+    const prevRoles = existingRoleSnap?.exists()
+      ? ((existingRoleSnap.data() as UserRoleRecord).roles ?? [])
+      : [];
+    const nextRoles = Array.from(new Set([...prevRoles, 'author'])).slice(0, 8);
+    const prevPrimary = existingRoleSnap?.exists()
+      ? (existingRoleSnap.data() as UserRoleRecord).role
+      : undefined;
     batch.set(doc(db, 'user_roles', applicantUid), {
       userId: applicantUid,
-      role: 'author',
-      roles: ['author'],
+      role: prevPrimary === 'founder' ? 'founder' : 'author',
+      roles: nextRoles,
       status: 'active',
       canPublish: true,
       assignedBy: adminUid,
@@ -1534,6 +1855,7 @@ export async function reviewWriterApplicationAsAdmin(
 
   try {
     await batch.commit();
+    invalidateWriterStatusCache(applicantUid);
   } catch (err) {
     if (isPermissionDeniedError(err)) {
       handleFirestoreError(err, OperationType.WRITE, `writer_applications/${applicantUid}`);
@@ -1542,18 +1864,261 @@ export async function reviewWriterApplicationAsAdmin(
   }
 }
 
+// ================= UNIFIED MULTI-ROLE REQUESTS (AUDITOR / TRANSLATE / AUTHOR) ================= //
+
+export async function fetchUserRoleRequests(userId: string): Promise<RoleRequest[]> {
+  if (!isFirebaseConfigured() || !userId) return [];
+  const db = getDb();
+  try {
+    const q = query(collection(db, 'role_requests'), where('userId', '==', userId), limit(10));
+    const snap = await getDocs(q);
+    return snap.docs.map((d) => d.data() as RoleRequest);
+  } catch (err) {
+    console.warn('Could not load role requests:', err);
+    return [];
+  }
+}
+
+export async function submitRoleRequestToFirestore(
+  userId: string,
+  userEmail: string,
+  userName: string,
+  payload: { role: RoleRequestRole; statement: string },
+  lang: 'ar' | 'en' = 'ar'
+): Promise<RoleRequest> {
+  const auth = getFirebaseAuth();
+  if (!auth.currentUser || auth.currentUser.uid !== userId) {
+    throw new Error(
+      lang === 'en' ? 'Please sign in again to submit your request.' : 'يرجى تسجيل الدخول مجدداً لتقديم الطلب.'
+    );
+  }
+
+  const check = validateRoleRequestInput(payload, lang);
+  if (!check.valid) {
+    throw new Error(check.message || (lang === 'en' ? 'Invalid role request.' : 'بيانات الطلب غير صالحة.'));
+  }
+
+  const db = getDb();
+  const requestId = `${userId}__${payload.role}`;
+  const reqRef = doc(db, 'role_requests', requestId);
+  const now = new Date().toISOString();
+  const cleanStatement = payload.statement.trim().slice(0, ROLE_REQUEST_LIMITS.statementMax);
+  const cleanUserName = (userName || auth.currentUser.displayName || '').trim().slice(0, 80);
+
+  const existing = await getDoc(reqRef).catch(() => null);
+  if (existing && existing.exists()) {
+    const prev = existing.data() as RoleRequest;
+    if (prev.status === 'pending') {
+      throw new Error(
+        lang === 'en'
+          ? 'You already have a pending request for this role.'
+          : 'لديك طلب معلق لنفس الرتبة قيد المراجعة حالياً.'
+      );
+    }
+    if (prev.status === 'approved') {
+      throw new Error(
+        lang === 'en' ? 'This role request was already approved.' : 'تمت الموافقة على هذا الطلب مسبقاً.'
+      );
+    }
+
+    try {
+      await updateDoc(reqRef, {
+        ...(cleanUserName ? { userName: cleanUserName } : {}),
+        statement: cleanStatement,
+        status: 'pending',
+        updatedAt: now,
+      });
+      return {
+        ...prev,
+        ...(cleanUserName ? { userName: cleanUserName } : {}),
+        statement: cleanStatement,
+        status: 'pending',
+        updatedAt: now,
+      };
+    } catch (err) {
+      if (isPermissionDeniedError(err)) {
+        handleFirestoreError(err, OperationType.UPDATE, `role_requests/${requestId}`);
+      }
+      throw err;
+    }
+  }
+
+  const docPayload: RoleRequest = {
+    id: requestId,
+    userId,
+    userEmail: (userEmail || auth.currentUser.email || '').trim().slice(0, 200),
+    ...(cleanUserName ? { userName: cleanUserName } : {}),
+    role: payload.role,
+    statement: cleanStatement,
+    status: 'pending',
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  try {
+    await setDoc(reqRef, docPayload);
+    return docPayload;
+  } catch (err) {
+    if (isPermissionDeniedError(err)) {
+      handleFirestoreError(err, OperationType.CREATE, `role_requests/${requestId}`);
+    }
+    throw err;
+  }
+}
+
+export async function fetchPendingRoleRequestsForAdmin(): Promise<RoleRequest[]> {
+  if (!isFirebaseConfigured()) return [];
+  const db = getDb();
+  try {
+    const q = query(collection(db, 'role_requests'), where('status', '==', 'pending'), limit(30));
+    const snap = await getDocs(q);
+    return snap.docs.map((d) => d.data() as RoleRequest);
+  } catch (err) {
+    console.warn('Admin role requests fetch warning:', err);
+    return [];
+  }
+}
+
+export async function reviewRoleRequestAsAdmin(
+  request: RoleRequest,
+  decision: 'approved' | 'rejected',
+  adminUid: string,
+  reviewNote = ''
+): Promise<void> {
+  const auth = getFirebaseAuth();
+  if (!auth.currentUser || auth.currentUser.uid !== adminUid) {
+    throw new Error('غير مصرح بتنفيذ هذا الإجراء الإداري.');
+  }
+  const callerStatus = await getVerifiedWriterStatus(adminUid);
+  if (!callerStatus.isAdmin) {
+    throw new Error('صلاحيات المشرف الرسمي مطلوبة لمراجعة الطلبات.');
+  }
+
+  const db = getDb();
+  const now = new Date().toISOString();
+  const existingRoleSnap =
+    decision === 'approved' ? await getDoc(doc(db, 'user_roles', request.userId)).catch(() => null) : null;
+  const batch = writeBatch(db);
+
+  batch.update(doc(db, 'role_requests', request.id), {
+    status: decision,
+    reviewNote: reviewNote.trim().slice(0, 500),
+    reviewedBy: adminUid,
+    reviewedAt: now,
+    updatedAt: now,
+  });
+
+  if (decision === 'approved') {
+    const prev = existingRoleSnap?.exists() ? (existingRoleSnap.data() as UserRoleRecord) : null;
+    const mergedRoles = Array.from(new Set([...(prev?.roles ?? []), ...(prev?.role ? [prev.role] : []), request.role])).slice(0, 8);
+    const canPublish = Boolean(prev?.canPublish || mergedRoles.includes('author') || mergedRoles.includes('founder'));
+    batch.set(doc(db, 'user_roles', request.userId), {
+      userId: request.userId,
+      role: prev?.role === 'founder' ? 'founder' : request.role,
+      roles: mergedRoles,
+      status: 'active',
+      canPublish,
+      assignedBy: adminUid,
+      assignedAt: now,
+    });
+  }
+
+  try {
+    await batch.commit();
+    invalidateWriterStatusCache(request.userId);
+  } catch (err) {
+    if (isPermissionDeniedError(err)) {
+      handleFirestoreError(err, OperationType.WRITE, `role_requests/${request.id}`);
+    }
+    throw err;
+  }
+}
+
 // ================= PUBLISHED NOVELS (PUBLIC CONTENT) ================= //
+
+const ALLOWED_NOVEL_WORK_TYPES = new Set(['original', 'translated', 'republish']);
+const ALLOWED_NOVEL_STATUSES = new Set(['ongoing', 'completed', 'paused']);
+const ALLOWED_MODERATION_STATUSES = new Set(['active', 'under_review', 'rejected_removed']);
+const ALLOWED_CORRIDORS = new Set(['novels', 'epics', 'wisdom', 'heritage']);
+
+export function sanitizeNovelRecordForFirestore(
+  raw: Partial<PublishedNovelRecord> & { id: string; authorId: string; title: string }
+): PublishedNovelRecord {
+  const now = new Date().toISOString();
+  const categoryGroup = ALLOWED_CORRIDORS.has(String(raw.categoryGroup || ''))
+    ? (raw.categoryGroup as PublishedNovelRecord['categoryGroup'])
+    : 'novels';
+  const workType = ALLOWED_NOVEL_WORK_TYPES.has(String(raw.workType || ''))
+    ? raw.workType
+    : 'original';
+  const novelStatus = ALLOWED_NOVEL_STATUSES.has(String(raw.novelStatus || ''))
+    ? raw.novelStatus
+    : 'ongoing';
+  const moderationStatus = ALLOWED_MODERATION_STATUSES.has(String(raw.moderationStatus || ''))
+    ? raw.moderationStatus
+    : 'active';
+
+  const clean: PublishedNovelRecord = {
+    id: String(raw.id).slice(0, 128),
+    title: String(raw.title).trim().slice(0, 140),
+    authorId: String(raw.authorId).slice(0, 128),
+    authorName: String(raw.authorName || 'أروقة الخلود').trim().slice(0, 80),
+    workType,
+    novelStatus,
+    moderationStatus,
+    reportCount: Math.max(0, Math.floor(Number(raw.reportCount || 0))),
+    genre: String(raw.genre || 'رواية أدبية معاصرة').trim().slice(0, 80),
+    categoryGroup,
+    coverUrl: String(raw.coverUrl || '/images/writers_sanctuary_bg.jpg').slice(0, 450000),
+    description: String(raw.description || '').trim().slice(0, 2000),
+    readingHours: Math.max(0, Math.min(2000, Number(raw.readingHours ?? 1))),
+    originLanguage: String(raw.originLanguage || 'عربي أصيل').trim().slice(0, 60),
+    languageCode: String(raw.languageCode || 'ar').trim().slice(0, 12),
+    verifiedReadsCount: Math.max(0, Math.floor(Number(raw.verifiedReadsCount || 0))),
+    publishedChapterCount: Math.max(0, Math.floor(Number(raw.publishedChapterCount || 0))),
+    publishedWordsAr: Math.max(0, Math.floor(Number(raw.publishedWordsAr || 0))),
+    publishedWordsEn: Math.max(0, Math.floor(Number(raw.publishedWordsEn || 0))),
+    isPublished: Boolean(raw.isPublished),
+    createdAt: String(raw.createdAt || now).slice(0, 64),
+    updatedAt: String(raw.updatedAt || now).slice(0, 64),
+  };
+
+  if (typeof raw.titleEn === 'string' && raw.titleEn.trim()) {
+    clean.titleEn = raw.titleEn.trim().slice(0, 160);
+  }
+  if (workType === 'translated' && typeof raw.originalAuthor === 'string' && raw.originalAuthor.trim()) {
+    clean.originalAuthor = raw.originalAuthor.trim().slice(0, 80);
+  }
+  if (workType === 'republish' && typeof raw.firstAuthor === 'string' && raw.firstAuthor.trim()) {
+    clean.firstAuthor = raw.firstAuthor.trim().slice(0, 80);
+  }
+  if (typeof raw.supportMethod === 'string' && raw.supportMethod.trim()) {
+    clean.supportMethod = raw.supportMethod.trim().slice(0, 240);
+  }
+  if (typeof raw.moderationNote === 'string' && raw.moderationNote.trim()) {
+    clean.moderationNote = raw.moderationNote.trim().slice(0, 500);
+  }
+  if (typeof raw.lastVerifiedReadKey === 'string' && raw.lastVerifiedReadKey.trim()) {
+    clean.lastVerifiedReadKey = raw.lastVerifiedReadKey.trim().slice(0, 128);
+  }
+  if (Array.isArray(raw.tags) && raw.tags.length > 0) {
+    clean.tags = raw.tags.filter((t): t is string => typeof t === 'string' && t.trim().length > 0).slice(0, 12);
+  }
+
+  return clean;
+}
 
 export async function publishNovelToFirestore(
   novel: PublishedNovelRecord
 ): Promise<PublishedNovelRecord> {
   const db = getDb();
+  const cleanNovel = sanitizeNovelRecordForFirestore(novel);
   try {
-    await setDoc(doc(db, 'novels', novel.id), novel);
-    return novel;
+    await setDoc(doc(db, 'novels', cleanNovel.id), cleanNovel);
+    return cleanNovel;
   } catch (err) {
     if (isPermissionDeniedError(err)) {
-      handleFirestoreError(err, OperationType.CREATE, `novels/${novel.id}`);
+      handleFirestoreError(err, OperationType.CREATE, `novels/${cleanNovel.id}`);
     }
     throw err;
   }
@@ -1778,25 +2343,64 @@ export interface AuthorAppearance {
   username?: string;
 }
 
+const AUTHOR_APPEARANCE_TTL_MS = 60_000;
+const authorAppearanceCache = new Map<string, { value: AuthorAppearance | null; cachedAt: number }>();
+const inFlightAppearanceLookups = new Map<string, Promise<AuthorAppearance | null>>();
+
+export function invalidateAuthorAppearanceCache(authorUid?: string): void {
+  if (authorUid) {
+    authorAppearanceCache.delete(authorUid);
+    inFlightAppearanceLookups.delete(authorUid);
+  } else {
+    authorAppearanceCache.clear();
+    inFlightAppearanceLookups.clear();
+  }
+}
+
 export async function getPublicAuthorAppearance(
   authorUid: string
 ): Promise<AuthorAppearance | null> {
   if (!authorUid || !isFirebaseConfigured()) return null;
-  try {
-    const db = getDb();
-    const snap = await getDoc(doc(db, 'public_profiles', authorUid));
-    if (!snap.exists()) return null;
-    const pub = snap.data() as PublicProfile;
-    if (!pub.isPublic) return null;
-    return {
-      photoURL: pub.photoURL || '',
-      coverURL: pub.coverURL || '',
-      displayName: pub.showProfileInfo ? pub.displayName || '' : '',
-      username: pub.username || '',
-    };
-  } catch {
-    return null;
+
+  const cached = authorAppearanceCache.get(authorUid);
+  if (cached && Date.now() - cached.cachedAt < AUTHOR_APPEARANCE_TTL_MS) {
+    return cached.value;
   }
+  const inflight = inFlightAppearanceLookups.get(authorUid);
+  if (inflight) {
+    return inflight;
+  }
+
+  const lookup = (async (): Promise<AuthorAppearance | null> => {
+    try {
+      const db = getDb();
+      const snap = await getDoc(doc(db, 'public_profiles', authorUid));
+      if (!snap.exists()) {
+        authorAppearanceCache.set(authorUid, { value: null, cachedAt: Date.now() });
+        return null;
+      }
+      const pub = snap.data() as PublicProfile;
+      if (!pub.isPublic) {
+        authorAppearanceCache.set(authorUid, { value: null, cachedAt: Date.now() });
+        return null;
+      }
+      const result: AuthorAppearance = {
+        photoURL: pub.photoURL || '',
+        coverURL: pub.coverURL || '',
+        displayName: pub.showProfileInfo ? pub.displayName || '' : '',
+        username: pub.username || '',
+      };
+      authorAppearanceCache.set(authorUid, { value: result, cachedAt: Date.now() });
+      return result;
+    } catch {
+      return null;
+    } finally {
+      inFlightAppearanceLookups.delete(authorUid);
+    }
+  })();
+
+  inFlightAppearanceLookups.set(authorUid, lookup);
+  return lookup;
 }
 
 // ================= CLOUD VAULT (COMPATIBILITY) ================= //
@@ -1917,14 +2521,14 @@ export async function updateNovelRecordInFirestore(
       throw new Error('NOVEL_NOT_FOUND');
     }
     const current = snap.data() as PublishedNovelRecord;
-    const updated: PublishedNovelRecord = {
+    const updated = sanitizeNovelRecordForFirestore({
       ...current,
       ...patch,
       id: current.id,
       authorId: current.authorId,
       createdAt: current.createdAt,
       updatedAt: new Date().toISOString(),
-    };
+    });
     await setDoc(ref, updated);
     return updated;
   } catch (err) {
@@ -2191,7 +2795,10 @@ export async function recomputeNovelStatsInFirestore(novelId: string): Promise<{
   readingHours: number;
 }> {
   const db = getDb();
-  const chapters = await fetchNovelChapters(novelId, true);
+  const [chapters, snap] = await Promise.all([
+    fetchNovelChapters(novelId, true),
+    getDoc(doc(db, 'novels', novelId)),
+  ]);
   const published = chapters.filter((ch) => ch.isPublished === true);
 
   const publishedChapterCount = published.length;
@@ -2201,10 +2808,9 @@ export async function recomputeNovelStatsInFirestore(novelId: string): Promise<{
   const readingHours = publishedChapterCount === 0 ? 1 : Math.max(1, Math.round(maxWords / 9000) || 1);
 
   try {
-    const snap = await getDoc(doc(db, 'novels', novelId));
     if (snap.exists()) {
       const current = snap.data() as PublishedNovelRecord;
-      await setDoc(doc(db, 'novels', novelId), {
+      const sanitized = sanitizeNovelRecordForFirestore({
         ...current,
         publishedChapterCount,
         publishedWordsAr,
@@ -2212,6 +2818,7 @@ export async function recomputeNovelStatsInFirestore(novelId: string): Promise<{
         readingHours,
         updatedAt: new Date().toISOString(),
       });
+      await setDoc(doc(db, 'novels', novelId), sanitized);
     }
   } catch (err) {
     if (isPermissionDeniedError(err)) {
@@ -2244,16 +2851,16 @@ export async function importFullNovelArchiveToFirestore(
     .filter((c) => c.isPublished || publishImmediately)
     .reduce((sum, c) => sum + (c.editions.en?.wordCount || 0), 0);
 
-  const novelDoc: PublishedNovelRecord = {
+  const novelDoc = sanitizeNovelRecordForFirestore({
     id: novelId,
     title: archive.novel.title,
-    ...(archive.novel.titleEn ? { titleEn: archive.novel.titleEn } : {}),
+    titleEn: archive.novel.titleEn,
     authorId,
     authorName: authorName || archive.novel.authorName || 'أروقة الخلود',
     workType: archive.novel.workType || 'original',
-    ...(archive.novel.originalAuthor ? { originalAuthor: archive.novel.originalAuthor } : {}),
-    ...(archive.novel.firstAuthor ? { firstAuthor: archive.novel.firstAuthor } : {}),
-    ...(archive.novel.supportMethod ? { supportMethod: archive.novel.supportMethod } : {}),
+    originalAuthor: archive.novel.originalAuthor,
+    firstAuthor: archive.novel.firstAuthor,
+    supportMethod: archive.novel.supportMethod,
     novelStatus: archive.novel.novelStatus || 'ongoing',
     moderationStatus: 'active',
     reportCount: 0,
@@ -2268,39 +2875,41 @@ export async function importFullNovelArchiveToFirestore(
     readingHours: Math.max(1, Math.round(Math.max(totalAr, totalEn) / 9000) || 1),
     originLanguage: archive.novel.originLanguage || 'عربي أصيل',
     languageCode: archive.novel.languageCode || (totalAr === 0 && totalEn > 0 ? 'en' : 'ar'),
-    ...(archive.novel.tags?.length ? { tags: archive.novel.tags } : {}),
+    tags: archive.novel.tags,
     isPublished: publishImmediately,
     createdAt: now,
     updatedAt: now,
-  };
+  });
 
   try {
     await setDoc(doc(db, 'novels', novelId), novelDoc);
 
     const sectionIdMap = new Map<string, string>();
-    for (let i = 0; i < archive.sections.length; i++) {
-      const sec = archive.sections[i];
-      const newSecId = `sec_${Date.now()}_${i}`;
-      sectionIdMap.set(sec.id, newSecId);
-      const secPayload: NovelSection = {
-        id: newSecId,
-        novelId,
-        authorId,
-        title: sec.title,
-        ...(sec.titleEn ? { titleEn: sec.titleEn } : {}),
-        orderIndex: sec.orderIndex ?? i,
-        createdAt: now,
-        updatedAt: now,
-      };
-      await setDoc(doc(db, 'novels', novelId, 'sections', newSecId), secPayload);
+    if (archive.sections.length > 0) {
+      const sectionBatch = writeBatch(db);
+      for (let i = 0; i < archive.sections.length; i++) {
+        const sec = archive.sections[i];
+        const newSecId = `sec_${Date.now()}_${i}`;
+        sectionIdMap.set(sec.id, newSecId);
+        const secPayload: NovelSection = {
+          id: newSecId,
+          novelId,
+          authorId,
+          title: sec.title.trim().slice(0, 120),
+          ...(sec.titleEn?.trim() ? { titleEn: sec.titleEn.trim().slice(0, 120) } : {}),
+          orderIndex: sec.orderIndex ?? i,
+          createdAt: now,
+          updatedAt: now,
+        };
+        sectionBatch.set(doc(db, 'novels', novelId, 'sections', newSecId), secPayload);
+      }
+      await sectionBatch.commit();
     }
 
-    for (let i = 0; i < archive.chapters.length; i++) {
-      const ch = archive.chapters[i];
-      const newChapterId = `ch_${ch.chapterNumber}_${Date.now()}_${i}`;
+    const chapterPayloads: LogicalChapter[] = archive.chapters.map((ch, i) => {
       const mappedSectionId = ch.sectionId ? sectionIdMap.get(ch.sectionId) : undefined;
-      const chapterPayload: LogicalChapter = {
-        id: newChapterId,
+      return {
+        id: `ch_${ch.chapterNumber}_${Date.now()}_${i}`,
         novelId,
         authorId,
         chapterNumber: ch.chapterNumber,
@@ -2318,7 +2927,12 @@ export async function importFullNovelArchiveToFirestore(
         createdAt: now,
         updatedAt: now,
       };
-      await createChapterWithSlotTransaction(chapterPayload);
+    });
+
+    for (let i = 0; i < chapterPayloads.length; i += 5) {
+      await Promise.all(
+        chapterPayloads.slice(i, i + 5).map((cp) => createChapterWithSlotTransaction(cp))
+      );
     }
 
     return novelDoc;
@@ -2549,7 +3163,7 @@ export async function resolveReportKeepNovelAsAdmin(
     const batch = writeBatch(db);
     if (novelSnap.exists()) {
       const current = novelSnap.data() as PublishedNovelRecord;
-      batch.set(doc(db, 'novels', novelId), {
+      const cleaned = sanitizeNovelRecordForFirestore({
         ...current,
         moderationStatus: 'active',
         moderationNote: note.trim(),
@@ -2557,6 +3171,7 @@ export async function resolveReportKeepNovelAsAdmin(
         isPublished: true,
         updatedAt: now,
       });
+      batch.set(doc(db, 'novels', novelId), cleaned);
     }
     reportsSnap.docs.forEach((d) => {
       batch.update(d.ref, { status: 'reviewed_kept', updatedAt: now });
@@ -2593,7 +3208,7 @@ export async function resolveReportRemoveNovelAsAdmin(
     if (novelSnap.exists()) {
       const current = novelSnap.data() as PublishedNovelRecord;
       // Preserve author's writer role; only remove this specific work from public visibility
-      batch.set(doc(db, 'novels', novelId), {
+      const cleaned = sanitizeNovelRecordForFirestore({
         ...current,
         moderationStatus: 'rejected_removed',
         moderationNote:
@@ -2601,6 +3216,7 @@ export async function resolveReportRemoveNovelAsAdmin(
         isPublished: false,
         updatedAt: now,
       });
+      batch.set(doc(db, 'novels', novelId), cleaned);
     }
     reportsSnap.docs.forEach((d) => {
       batch.update(d.ref, { status: 'rejected_removed', updatedAt: now });
