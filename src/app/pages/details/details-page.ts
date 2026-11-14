@@ -13,4 +13,10 @@ import { WriterBadge } from '../../shared/components/writer-badge/writer-badge';
 export class DetailsPage {
   readonly lib = inject(LibraryStateService);
   readonly accountService = inject(AccountService);
+
+  isHttpUrl(value: string | undefined): boolean {
+    if (!value) return false;
+    const trimmed = value.trim().toLowerCase();
+    return trimmed.startsWith('https://') || trimmed.startsWith('http://');
+  }
 }

@@ -299,8 +299,8 @@ export interface LocalNovelDraft {
   description: string;
   coverUrl: string;
   tags: string[];
-  sections: Array<{ id: string; title: string; titleEn?: string; orderIndex: number }>;
-  chapters: Array<{
+  sections: { id: string; title: string; titleEn?: string; orderIndex: number }[];
+  chapters: {
     localChapterId: string;
     chapterNumber: number;
     title: string;
@@ -314,7 +314,7 @@ export interface LocalNovelDraft {
       en?: ChapterLanguageEdition;
     };
     updatedAt: string;
-  }>;
+  }[];
   updatedAt: string;
 }
 
@@ -368,13 +368,13 @@ export interface FullNovelMtxArchive {
     coverUrl?: string;
     tags?: string[];
   };
-  sections: Array<{
+  sections: {
     id: string;
     title: string;
     titleEn?: string;
     orderIndex: number;
-  }>;
-  chapters: Array<{
+  }[];
+  chapters: {
     id: string;
     chapterNumber: number;
     title: string;
@@ -388,7 +388,7 @@ export interface FullNovelMtxArchive {
       ar?: ChapterLanguageEdition;
       en?: ChapterLanguageEdition;
     };
-  }>;
+  }[];
 }
 
 export interface UsernameCheckResult {

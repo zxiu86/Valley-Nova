@@ -2,6 +2,7 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { LibraryStateService } from '../../../core/services/library-state.service';
 import { ThemeService } from '../../../core/services/theme.service';
 import { AuthSessionService } from '../../../core/services/auth-session.service';
+import { AccountService } from '../../../core/services/account.service';
 
 @Component({
   selector: 'app-site-header',
@@ -16,6 +17,7 @@ export class SiteHeader {
   readonly lib = inject(LibraryStateService);
   readonly themeService = inject(ThemeService);
   readonly auth = inject(AuthSessionService);
+  readonly account = inject(AccountService);
 
   onEscapePress(): void {
     if (this.lib.isMobileNavOpen()) {

@@ -1,7 +1,17 @@
-import { ChapterItem, ChapterLanguage, NovelCard } from './models/library.models';
+import {
+  ChapterBlock,
+  ChapterEndStatus,
+  ChapterItem,
+  ChapterLanguage,
+  ChapterType,
+  LogicalChapter,
+  NovelCard,
+  NovelSection,
+} from './models/library.models';
 
 export interface ChapterTextContent {
   chapterId: number;
+  firestoreChapterId?: string;
   chapterNumber: number;
   language: ChapterLanguage;
   translationGroupId: string;
@@ -11,6 +21,10 @@ export interface ChapterTextContent {
   epigraph: string;
   epigraphAuthor?: string;
   paragraphs: string[];
+  blocks?: ChapterBlock[];
+  chapterType?: ChapterType;
+  endStatus?: ChapterEndStatus;
+  sectionTitle?: string;
   marginalNote?: string;
   marginalia?: string[];
 }
@@ -106,13 +120,24 @@ const ENGLISH_ONLY_ORIGINAL_IDS = new Set([
   'frankenstein-classic',
 ]);
 
+function toArabicNumerals(n: number): string {
+  const digits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+  return n.toString().replace(/\d/g, (d) => digits[+d]);
+}
+
+function estimateDurationText(wordCount: number, lang: ChapterLanguage): string {
+  const mins = Math.max(1, Math.ceil((wordCount || 180) / 180));
+  return lang === 'en' ? `${mins} min read` : `${toArabicNumerals(mins)} دقيقة قراءة`;
+}
+
 export function getDefaultChapterLanguageForNovel(
   novel: NovelCard | null | undefined,
-  preferredLang?: ChapterLanguage
+  preferredLang?: ChapterLanguage,
+  firestoreChapters?: LogicalChapter[]
 ): ChapterLanguage {
   if (!novel) return preferredLang || 'ar';
-  const arList = getChaptersForNovel(novel.id, 'ar', novel);
-  const enList = getChaptersForNovel(novel.id, 'en', novel);
+  const arList = getChaptersForNovel(novel.id, 'ar', novel, firestoreChapters);
+  const enList = getChaptersForNovel(novel.id, 'en', novel, firestoreChapters);
 
   if (preferredLang) {
     if (preferredLang === 'en' && enList.length > 0) return 'en';
@@ -121,14 +146,67 @@ export function getDefaultChapterLanguageForNovel(
   if (novel.languageCode === 'en' && enList.length > 0) return 'en';
   if (arList.length > 0) return 'ar';
   if (enList.length > 0) return 'en';
-  return 'ar';
+  return preferredLang || (novel.languageCode === 'en' ? 'en' : 'ar');
 }
 
 export function getChaptersForNovel(
   novelId: string,
   lang: ChapterLanguage,
-  novel?: NovelCard | null
+  novel?: NovelCard | null,
+  firestoreChapters?: LogicalChapter[],
+  sections?: NovelSection[]
 ): ChapterItem[] {
+  // Real Firestore-backed novel: NEVER generate synthetic fallback chapters
+  if (novel?.isFirestoreBacked || (firestoreChapters && firestoreChapters.length > 0)) {
+    const source = (firestoreChapters || []).filter((ch) => ch.isPublished === true);
+    const matching = source
+      .filter((ch) => Boolean(lang === 'en' ? ch.editions?.en : ch.editions?.ar))
+      .sort((a, b) => a.chapterNumber - b.chapterNumber);
+
+    const sectionMap = new Map<string, NovelSection>((sections || []).map((s) => [s.id, s]));
+
+    return matching.map((ch, idx) => {
+      const edition = lang === 'en' ? ch.editions.en! : ch.editions.ar!;
+      const sec = ch.sectionId ? sectionMap.get(ch.sectionId) : undefined;
+      const partitionIndex = ((idx % 3) + 1) as 1 | 2 | 3;
+      const wordCount = edition.wordCount || (lang === 'en' ? ch.wordCountEn : ch.wordCountAr) || 0;
+      const titleForLang =
+        edition.title ||
+        (lang === 'en' ? ch.titleEn || ch.title : ch.title) ||
+        (lang === 'en' ? `Chapter ${ch.chapterNumber}` : `الفصل ${toArabicNumerals(ch.chapterNumber)}`);
+
+      return {
+        id: ch.chapterNumber,
+        firestoreChapterId: ch.id,
+        chapterNumber: ch.chapterNumber,
+        language: lang,
+        translationGroupId: `${novelId}__ch_${ch.chapterNumber}`,
+        arabicNumber: lang === 'en' ? `${ch.chapterNumber}` : toArabicNumerals(ch.chapterNumber),
+        title: titleForLang,
+        titleEn: ch.titleEn || ch.editions.en?.title,
+        duration: estimateDurationText(wordCount, lang),
+        publishDate:
+          ch.endStatus === 'ending'
+            ? lang === 'en'
+              ? 'Ending Chapter'
+              : 'انتهاء'
+            : lang === 'en'
+              ? 'Ongoing'
+              : 'مستمر',
+        status: idx === 0 ? 'current' : 'unread',
+        partition: partitionIndex,
+        isLast: idx === matching.length - 1,
+        chapterType: ch.chapterType || 'narrative',
+        endStatus: ch.endStatus || 'ongoing',
+        sectionId: ch.sectionId,
+        sectionTitle: sec?.title,
+        sectionTitleEn: sec?.titleEn,
+        revision: ch.revision,
+        editions: ch.editions,
+      };
+    });
+  }
+
   if (lang === 'en') {
     if (ARABIC_ONLY_HERITAGE_IDS.has(novelId) || (novel?.categoryGroup === 'heritage' && novelId !== 'cipher-cordoba')) {
       return [];
@@ -341,12 +419,66 @@ export const SAMARKAND_ENGLISH_TEXTS: Record<number, Omit<ChapterTextContent, 'c
 export function getChapterProse(
   novelTitle: string,
   chapter: ChapterItem,
-  novel?: NovelCard | null
+  novel?: NovelCard | null,
+  firestoreChapters?: LogicalChapter[],
+  sections?: NovelSection[]
 ): ChapterTextContent {
   const lang: ChapterLanguage = chapter.language || 'ar';
   const chNum = chapter.chapterNumber ?? chapter.id;
   const translationGroupId =
     chapter.translationGroupId || `${novel?.id || 'work'}__ch_${chNum}`;
+
+  // If this chapter carries a live Firestore edition (from Writer Studio / DB), render ONLY its real authored blocks & prose
+  const matchedLogical =
+    firestoreChapters?.find(
+      (c) => (chapter.firestoreChapterId && c.id === chapter.firestoreChapterId) || c.chapterNumber === chNum
+    ) || null;
+  const edition =
+    (lang === 'en' ? matchedLogical?.editions?.en : matchedLogical?.editions?.ar) ||
+    (lang === 'en' ? chapter.editions?.en : chapter.editions?.ar);
+
+  if (edition || novel?.isFirestoreBacked) {
+    const blocks = edition?.blocks && edition.blocks.length > 0 ? edition.blocks : [];
+    const plainLines = (edition?.plainText || '')
+      .split(/\n{2,}/)
+      .map((p) => p.trim())
+      .filter(Boolean);
+    const paragraphs =
+      blocks.length > 0
+        ? blocks
+            .filter((b) => b.type !== 'divider' && b.text.trim().length > 0)
+            .map((b) => b.text)
+        : plainLines;
+
+    const sectionMatch = (sections || []).find((s) => s.id === (matchedLogical?.sectionId || chapter.sectionId));
+    const sectionLabel =
+      lang === 'en'
+        ? sectionMatch?.titleEn || sectionMatch?.title || chapter.sectionTitleEn || chapter.sectionTitle
+        : sectionMatch?.title || chapter.sectionTitle;
+
+    return {
+      chapterId: chapter.id,
+      firestoreChapterId: matchedLogical?.id || chapter.firestoreChapterId,
+      chapterNumber: chNum,
+      language: lang,
+      translationGroupId,
+      arabicNumber: lang === 'en' ? `${chNum}` : toArabicNumerals(chNum),
+      title: edition?.title || chapter.title,
+      subtitle: sectionLabel ? `${novelTitle} · ${sectionLabel}` : novelTitle,
+      epigraph: '',
+      epigraphAuthor: novel?.author,
+      paragraphs,
+      blocks,
+      chapterType: matchedLogical?.chapterType || chapter.chapterType || 'narrative',
+      endStatus: matchedLogical?.endStatus || chapter.endStatus || 'ongoing',
+      sectionTitle: sectionLabel,
+      marginalNote:
+        lang === 'en'
+          ? `Authored Edition · ${novel?.author || 'Eternity Corridors'}`
+          : `طبعة المؤلف الأصلية · ${novel?.author || 'أروقة الخلود'}`,
+      marginalia: [],
+    };
+  }
 
   if (lang === 'en') {
     const prebuiltEn = SAMARKAND_ENGLISH_TEXTS[chNum];

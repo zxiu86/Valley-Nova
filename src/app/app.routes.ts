@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { writerGuard } from './core/guards/writer.guard';
 
 export const routes: Routes = [
   {
@@ -35,6 +36,12 @@ export const routes: Routes = [
     path: 'profile/:username',
     loadComponent: () => import('./pages/profile/profile-page').then((m) => m.ProfilePage),
     data: { titleKey: 'profile' },
+  },
+  {
+    path: 'writer',
+    canActivate: [writerGuard],
+    loadComponent: () => import('./pages/writer/writer-studio').then((m) => m.WriterStudioPage),
+    data: { titleKey: 'writer' },
   },
   {
     path: '**',

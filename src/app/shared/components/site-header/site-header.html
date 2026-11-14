@@ -277,6 +277,32 @@
           </span>
         </button>
 
+        <!-- Writer Studio Entry Point (strictly visible to approved writers & Founder/Admin) -->
+        @if (auth.currentUser() && (account.ownWriterStatus().canPublish || account.ownWriterStatus().isAdmin)) {
+          <button
+            type="button"
+            (click)="lib.openWriterStudio()"
+            class="liquid-glass-card w-full p-3.5 rounded-2xl flex items-center justify-between gap-3 text-start transition-all cursor-pointer min-h-[58px] group hover:border-secondary/50"
+          >
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-10 h-10 rounded-xl bg-secondary/15 border border-secondary/35 text-secondary flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined text-[20px]">history_edu</span>
+              </div>
+              <div class="flex flex-col min-w-0">
+                <span class="text-xs sm:text-sm font-bold text-on-surface truncate group-hover:text-secondary transition-colors">
+                  {{ t.drawer.writerStudio }}
+                </span>
+                <span class="text-[11px] text-on-surface-variant truncate">
+                  {{ t.drawer.writerStudioSub }}
+                </span>
+              </div>
+            </div>
+            <span class="material-symbols-outlined text-[18px] text-secondary shrink-0">
+              {{ lib.i18n.isRtl() ? 'arrow_back' : 'arrow_forward' }}
+            </span>
+          </button>
+        }
+
         <!-- Primary Destinations & Quick Tools -->
         <section class="space-y-2.5">
           <h3 class="text-[11px] font-bold text-outline uppercase tracking-wider px-1">{{ t.drawer.quickNav }}</h3>

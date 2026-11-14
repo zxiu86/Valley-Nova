@@ -54,6 +54,7 @@ import {
   isFirebaseConfigComplete,
 } from './firebase-config';
 import {
+  ChapterConflictState,
   FullAccountProfile,
   FullNovelMtxArchive,
   LogicalChapter,
@@ -1774,6 +1775,7 @@ export interface AuthorAppearance {
   photoURL: string;
   coverURL: string;
   displayName: string;
+  username?: string;
 }
 
 export async function getPublicAuthorAppearance(
@@ -1790,6 +1792,7 @@ export async function getPublicAuthorAppearance(
       photoURL: pub.photoURL || '',
       coverURL: pub.coverURL || '',
       displayName: pub.showProfileInfo ? pub.displayName || '' : '',
+      username: pub.username || '',
     };
   } catch {
     return null;

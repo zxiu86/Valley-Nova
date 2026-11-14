@@ -120,7 +120,7 @@ export class ProfilePage {
 
   readonly canShowPublishedWorksSection = computed<boolean>(() => {
     const status = this.account.viewedWriterStatus();
-    return Boolean(status.isWriterBadge && status.canPublish);
+    return Boolean((status.isWriterBadge && status.canPublish) || status.isAdmin);
   });
 
   readonly usesEmailPasswordProvider = computed<boolean>(() => {

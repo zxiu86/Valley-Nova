@@ -306,6 +306,7 @@ describe('MTX Compression, Shell, Theme, Bilingual i18n, Chapters & Copy Protect
       isWriterBadge: false,
       canPublish: false,
       isAdmin: false,
+      roleKind: 'none',
       roleRecord: null,
     });
     accountService.viewedProfile.set({

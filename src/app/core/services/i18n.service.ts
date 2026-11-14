@@ -74,7 +74,9 @@ export class I18nService {
     return next;
   }
 
-  syncDocumentMeta(view: 'novels' | 'details' | 'explore' | 'auth' | 'profile' | 'reader' = 'novels'): void {
+  syncDocumentMeta(
+    view: 'novels' | 'details' | 'explore' | 'auth' | 'profile' | 'reader' | 'writer' = 'novels'
+  ): void {
     if (!isPlatformBrowser(this.platformId)) return;
     const dict = this.copy();
     const title = dict.site.titles[view] || dict.site.pageTitleDefault;

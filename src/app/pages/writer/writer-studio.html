@@ -1,0 +1,1807 @@
+@let t = i18n.copy();
+@let isEn = i18n.lang() === 'en';
+@let own = account.ownProfile();
+@let writerStatus = account.ownWriterStatus();
+
+<div class="w-full min-h-screen bg-surface pb-16 animate-fadeIn" [attr.dir]="i18n.dir()">
+  <!-- Ambient Background Sanctuary Glow -->
+  <div class="relative overflow-hidden">
+    <div class="pointer-events-none absolute -top-24 start-1/4 w-[460px] h-[460px] rounded-full bg-secondary/12 blur-[120px]"></div>
+    <div class="pointer-events-none absolute top-40 end-1/4 w-[420px] h-[420px] rounded-full bg-primary/10 blur-[120px]"></div>
+
+    <div class="relative z-10 max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 pt-6 sm:pt-8 space-y-6">
+      <!-- ================= STUDIO HEADER SHELL ================= -->
+      <section class="liquid-glass-card rounded-3xl p-5 sm:p-7 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-5">
+        <div class="flex items-start sm:items-center gap-4 min-w-0">
+          <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-surface-container-high border border-secondary/35 flex items-center justify-center shrink-0 overflow-hidden shadow-md">
+            @if (own?.photoURL) {
+              <img
+                [src]="own!.photoURL"
+                [alt]="own!.displayName"
+                class="w-full h-full object-cover"
+                referrerpolicy="no-referrer"
+              />
+            } @else {
+              <span class="material-symbols-outlined text-[30px] text-secondary">ink_pen</span>
+            }
+          </div>
+
+          <div class="flex flex-col gap-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <h1 class="font-display-hero text-xl sm:text-3xl font-bold text-on-surface tracking-tight">
+                {{ t.writerStudio.pageHeading }}
+              </h1>
+              @if (own?.uid) {
+                <app-writer-badge [authorId]="own!.uid" [compact]="false" />
+              }
+            </div>
+            <p class="text-xs sm:text-sm text-on-surface-variant leading-relaxed max-w-2xl">
+              {{ t.writerStudio.pageSub }}
+            </p>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2.5 shrink-0">
+          @if (!studio.isOnline()) {
+            <span class="px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/35 text-amber-800 dark:text-amber-300 text-xs font-bold flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[16px]">cloud_off</span>
+              <span>{{ isEn ? 'Offline (Local Save Active)' : 'غير متصل (الحفظ المحلي مفعّل)' }}</span>
+            </span>
+          }
+          @if (studio.pendingSyncQueue().length > 0 && studio.isOnline() && own?.uid) {
+            <button
+              type="button"
+              (click)="studio.flushPendingOfflineSync(own!.uid)"
+              class="btn-tactile px-3.5 py-2 rounded-xl bg-emerald-600/15 text-emerald-800 dark:text-emerald-300 border border-emerald-600/35 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+            >
+              <span class="material-symbols-outlined text-[16px]">cloud_sync</span>
+              <span class="tabular-nums">
+                {{ isEn ? 'Sync Pending' : 'مزامنة المعلقة' }} ({{ i18n.formatNumber(studio.pendingSyncQueue().length) }})
+              </span>
+            </button>
+          }
+
+          <button
+            type="button"
+            (click)="openNewNovelTab()"
+            class="btn-tactile px-4 py-2.5 rounded-xl bg-primary hover:bg-primary-fixed-dim text-on-primary text-xs sm:text-sm font-bold flex items-center gap-1.5 shadow-md cursor-pointer"
+          >
+            <span class="material-symbols-outlined text-[18px]">add_circle</span>
+            <span>{{ t.writerStudio.createNovelBtn }}</span>
+          </button>
+
+          <button
+            type="button"
+            (click)="lib.navigateToOwnProfile()"
+            class="btn-tactile px-3.5 py-2.5 rounded-xl liquid-glass-pill text-on-surface text-xs sm:text-sm font-semibold flex items-center gap-1.5 cursor-pointer"
+          >
+            <span class="material-symbols-outlined text-[18px] text-secondary">person</span>
+            <span>{{ t.drawer.account }}</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- ================= NAVIGATION TABS ================= -->
+      <nav class="liquid-glass-card rounded-2xl p-2 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+        <button
+          type="button"
+          (click)="setTab('dashboard')"
+          [class]="activeTab() === 'dashboard'
+            ? 'btn-tactile shrink-0 px-4 py-2.5 rounded-xl bg-primary text-on-primary font-bold text-xs sm:text-sm flex items-center gap-2 shadow-sm cursor-pointer'
+            : 'btn-tactile shrink-0 px-4 py-2.5 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high/70 font-semibold text-xs sm:text-sm flex items-center gap-2 cursor-pointer'"
+        >
+          <span class="material-symbols-outlined text-[18px]">space_dashboard</span>
+          <span>{{ t.writerStudio.tabDashboard }}</span>
+        </button>
+
+        <button
+          type="button"
+          (click)="setTab('novel')"
+          [class]="activeTab() === 'novel'
+            ? 'btn-tactile shrink-0 px-4 py-2.5 rounded-xl bg-primary text-on-primary font-bold text-xs sm:text-sm flex items-center gap-2 shadow-sm cursor-pointer'
+            : 'btn-tactile shrink-0 px-4 py-2.5 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high/70 font-semibold text-xs sm:text-sm flex items-center gap-2 cursor-pointer'"
+        >
+          <span class="material-symbols-outlined text-[18px]">menu_book</span>
+          <span>{{ t.writerStudio.tabNovelEditor }}</span>
+        </button>
+
+        <button
+          type="button"
+          (click)="setTab('chapters')"
+          [class]="activeTab() === 'chapters'
+            ? 'btn-tactile shrink-0 px-4 py-2.5 rounded-xl bg-primary text-on-primary font-bold text-xs sm:text-sm flex items-center gap-2 shadow-sm cursor-pointer'
+            : 'btn-tactile shrink-0 px-4 py-2.5 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high/70 font-semibold text-xs sm:text-sm flex items-center gap-2 cursor-pointer'"
+        >
+          <span class="material-symbols-outlined text-[18px]">edit_document</span>
+          <span>{{ t.writerStudio.tabChapterEditor }}</span>
+        </button>
+
+        <button
+          type="button"
+          (click)="setTab('archive')"
+          [class]="activeTab() === 'archive'
+            ? 'btn-tactile shrink-0 px-4 py-2.5 rounded-xl bg-primary text-on-primary font-bold text-xs sm:text-sm flex items-center gap-2 shadow-sm cursor-pointer'
+            : 'btn-tactile shrink-0 px-4 py-2.5 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high/70 font-semibold text-xs sm:text-sm flex items-center gap-2 cursor-pointer'"
+        >
+          <span class="material-symbols-outlined text-[18px]">inventory_2</span>
+          <span>{{ t.writerStudio.tabMtxArchive }}</span>
+        </button>
+
+        @if (writerStatus.isAdmin) {
+          <button
+            type="button"
+            (click)="setTab('moderation')"
+            [class]="activeTab() === 'moderation'
+              ? 'btn-tactile shrink-0 px-4 py-2.5 rounded-xl bg-amber-600 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-sm cursor-pointer'
+              : 'btn-tactile shrink-0 px-4 py-2.5 rounded-xl text-amber-800 dark:text-amber-300 hover:bg-amber-500/15 font-semibold text-xs sm:text-sm flex items-center gap-2 cursor-pointer'"
+          >
+            <span class="material-symbols-outlined text-[18px]">gavel</span>
+            <span>{{ t.writerStudio.tabModeration }}</span>
+            @if (studio.workReports().length > 0) {
+              <span class="px-1.5 py-0.5 rounded-md bg-rose-600 text-white text-[10px] font-mono tabular-nums">
+                {{ studio.workReports().length }}
+              </span>
+            }
+          </button>
+        }
+      </nav>
+
+      <!-- ================= FEEDBACK ALERTS ================= -->
+      @if (studio.errorMessage()) {
+        <div class="liquid-glass-card rounded-2xl p-4 border-rose-500/45 bg-rose-500/10 flex items-center justify-between gap-3 text-rose-800 dark:text-rose-200 text-xs sm:text-sm font-semibold">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-[20px]">error</span>
+            <span>{{ studio.errorMessage() }}</span>
+          </div>
+          <button
+            type="button"
+            (click)="studio.clearMessages()"
+            class="w-8 h-8 rounded-lg hover:bg-rose-500/15 flex items-center justify-center cursor-pointer shrink-0"
+            [attr.aria-label]="t.modals.close"
+          >
+            <span class="material-symbols-outlined text-[18px]">close</span>
+          </button>
+        </div>
+      }
+
+      @if (studio.successMessage()) {
+        <div class="explanatory-glass-card rounded-2xl p-4 flex items-center justify-between gap-3 text-emerald-900 dark:text-emerald-200 text-xs sm:text-sm font-semibold">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-[20px]">check_circle</span>
+            <span>{{ studio.successMessage() }}</span>
+          </div>
+          <button
+            type="button"
+            (click)="studio.clearMessages()"
+            class="w-8 h-8 rounded-lg hover:bg-emerald-500/15 flex items-center justify-center cursor-pointer shrink-0"
+            [attr.aria-label]="t.modals.close"
+          >
+            <span class="material-symbols-outlined text-[18px]">close</span>
+          </button>
+        </div>
+      }
+
+      <!-- ================= TAB 1: DASHBOARD ================= -->
+      @if (activeTab() === 'dashboard') {
+        <div class="space-y-7">
+          <!-- 4 Real KPI Cards -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="liquid-glass-card rounded-2xl p-5 flex flex-col justify-between gap-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-on-surface-variant">{{ t.writerStudio.kpiWorks }}</span>
+                <span class="w-9 h-9 rounded-xl bg-primary/15 text-primary flex items-center justify-center">
+                  <span class="material-symbols-outlined text-[20px]">library_books</span>
+                </span>
+              </div>
+              <div class="text-3xl font-bold text-on-surface font-mono tabular-nums">
+                {{ i18n.formatNumber(studio.publishedWorksCount()) }}
+              </div>
+            </div>
+
+            <div class="liquid-glass-card rounded-2xl p-5 flex flex-col justify-between gap-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-on-surface-variant">{{ t.writerStudio.kpiChapters }}</span>
+                <span class="w-9 h-9 rounded-xl bg-secondary/15 text-secondary flex items-center justify-center">
+                  <span class="material-symbols-outlined text-[20px]">auto_stories</span>
+                </span>
+              </div>
+              <div class="text-3xl font-bold text-on-surface font-mono tabular-nums">
+                {{ i18n.formatNumber(studio.publishedChaptersCount()) }}
+              </div>
+            </div>
+
+            <div class="liquid-glass-card rounded-2xl p-5 flex flex-col justify-between gap-2.5">
+              <div class="flex items-center justify-between gap-2">
+                <span class="text-xs font-semibold text-on-surface-variant">{{ t.writerStudio.kpiWords }}</span>
+                <span class="w-9 h-9 rounded-xl bg-tertiary/15 text-tertiary flex items-center justify-center shrink-0">
+                  <span class="material-symbols-outlined text-[20px]">text_fields</span>
+                </span>
+              </div>
+              <div class="text-3xl font-bold text-on-surface font-mono tabular-nums">
+                {{ i18n.formatNumber(studio.publishedWordsCount()) }}
+              </div>
+              <div class="flex items-center gap-1 pt-1">
+                <button
+                  type="button"
+                  (click)="studio.wordFilter.set('all')"
+                  [class]="studio.wordFilter() === 'all' ? 'px-2 py-0.5 rounded-lg bg-primary text-on-primary text-[10px] font-bold cursor-pointer' : 'px-2 py-0.5 rounded-lg bg-surface-container text-on-surface-variant text-[10px] font-semibold cursor-pointer'"
+                >
+                  {{ t.writerStudio.wordsFilterAll }}
+                </button>
+                <button
+                  type="button"
+                  (click)="studio.wordFilter.set('ar')"
+                  [class]="studio.wordFilter() === 'ar' ? 'px-2 py-0.5 rounded-lg bg-primary text-on-primary text-[10px] font-bold cursor-pointer' : 'px-2 py-0.5 rounded-lg bg-surface-container text-on-surface-variant text-[10px] font-semibold cursor-pointer'"
+                >
+                  {{ t.writerStudio.wordsFilterAr }}
+                </button>
+                <button
+                  type="button"
+                  (click)="studio.wordFilter.set('en')"
+                  [class]="studio.wordFilter() === 'en' ? 'px-2 py-0.5 rounded-lg bg-primary text-on-primary text-[10px] font-bold cursor-pointer' : 'px-2 py-0.5 rounded-lg bg-surface-container text-on-surface-variant text-[10px] font-semibold cursor-pointer'"
+                >
+                  {{ t.writerStudio.wordsFilterEn }}
+                </button>
+              </div>
+            </div>
+
+            <div class="liquid-glass-card rounded-2xl p-5 flex flex-col justify-between gap-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-on-surface-variant">{{ t.writerStudio.kpiReads }}</span>
+                <span class="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 flex items-center justify-center">
+                  <span class="material-symbols-outlined text-[20px]">verified</span>
+                </span>
+              </div>
+              <div class="text-3xl font-bold text-on-surface font-mono tabular-nums">
+                {{ i18n.formatNumber(studio.verifiedReadsTotal()) }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Quick MTX Import Strip -->
+          <div class="liquid-glass-card rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+              <span class="w-10 h-10 rounded-xl bg-secondary/15 text-secondary flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined text-[22px]">upload_file</span>
+              </span>
+              <div>
+                <h2 class="text-sm sm:text-base font-bold text-on-surface">{{ t.writerStudio.importMtxBtn }}</h2>
+                <p class="text-xs text-on-surface-variant">
+                  {{ isEn ? 'Restore a complete novel archive (.mtx) including metadata, cover, sections, and bilingual chapters.' : 'استعد رواية كاملة من ملف أرشيف MTX موثّق بالبيانات والغلاف والأقسام والفصول.' }}
+                </p>
+              </div>
+            </div>
+            <label class="btn-tactile px-4 py-2.5 rounded-xl bg-secondary text-on-secondary text-xs font-bold flex items-center gap-2 cursor-pointer shrink-0 shadow-sm">
+              <span class="material-symbols-outlined text-[18px]">folder_open</span>
+              <span>{{ t.writerStudio.importMtxBtn }}</span>
+              <input
+                type="file"
+                accept=".mtx,application/octet-stream"
+                class="hidden"
+                (change)="onImportMtxFileSelected($event)"
+              />
+            </label>
+          </div>
+
+          <!-- Local Drafts Section -->
+          <section class="space-y-3">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+              <h2 class="text-base sm:text-lg font-bold text-on-surface flex items-center gap-2">
+                <span class="material-symbols-outlined text-[20px] text-secondary">draft</span>
+                <span>{{ t.writerStudio.localDraftsHeading }}</span>
+              </h2>
+              <span class="text-xs text-on-surface-variant">{{ t.writerStudio.localDraftsHint }}</span>
+            </div>
+
+            @if (studio.localDrafts().length === 0) {
+              <div class="liquid-glass-card rounded-2xl p-6 text-center text-xs sm:text-sm text-on-surface-variant">
+                {{ t.writerStudio.noLocalDrafts }}
+              </div>
+            } @else {
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                @for (draft of studio.localDrafts(); track draft.localId) {
+                  <article class="liquid-glass-card rounded-2xl p-4 sm:p-5 flex flex-col justify-between gap-4">
+                    <div class="flex items-start gap-4">
+                      <div class="w-16 aspect-[2/3] rounded-xl overflow-hidden bg-surface-container-high shrink-0 border border-surface-variant/40">
+                        <img
+                          [src]="draft.coverUrl || '/images/writers_sanctuary_bg.jpg'"
+                          [alt]="draft.title"
+                          class="w-full h-full object-cover"
+                          referrerpolicy="no-referrer"
+                        />
+                      </div>
+                      <div class="flex flex-col gap-1 min-w-0 flex-1">
+                        <div class="flex items-center gap-2 flex-wrap">
+                          <span class="px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-800 dark:text-amber-300 text-[10px] font-bold">
+                            {{ isEn ? 'Local Only' : 'مسودة محلية فقط' }}
+                          </span>
+                          <span class="text-[11px] text-on-surface-variant">{{ i18n.displayGenre(draft.genre) }}</span>
+                        </div>
+                        <h3 class="text-sm sm:text-base font-bold text-on-surface truncate">{{ draft.title }}</h3>
+                        <p class="text-xs text-on-surface-variant line-clamp-2">{{ draft.description }}</p>
+                      </div>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-surface-variant/30">
+                      <button
+                        type="button"
+                        (click)="resumeLocalDraft(draft)"
+                        class="btn-tactile px-3 py-1.5 rounded-xl bg-surface-container-high text-on-surface text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                      >
+                        <span class="material-symbols-outlined text-[15px]">edit</span>
+                        <span>{{ t.writerStudio.resumeDraftBtn }}</span>
+                      </button>
+                      <button
+                        type="button"
+                        (click)="publishLocalDraftDirectly(draft)"
+                        [disabled]="studio.isBusy()"
+                        class="btn-tactile px-3 py-1.5 rounded-xl bg-primary text-on-primary text-xs font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                      >
+                        <span class="material-symbols-outlined text-[15px]">cloud_upload</span>
+                        <span>{{ t.writerStudio.publishDraftBtn }}</span>
+                      </button>
+                      <button
+                        type="button"
+                        (click)="studio.deleteLocalNovelDraft(draft.localId)"
+                        class="btn-tactile px-3 py-1.5 rounded-xl text-rose-700 dark:text-rose-300 hover:bg-rose-500/10 text-xs font-semibold flex items-center gap-1 cursor-pointer ms-auto"
+                      >
+                        <span class="material-symbols-outlined text-[15px]">delete</span>
+                        <span>{{ t.writerStudio.deleteDraftBtn }}</span>
+                      </button>
+                    </div>
+                  </article>
+                }
+              </div>
+            }
+          </section>
+
+          <!-- Author's Cloud Novels Section -->
+          <section class="space-y-3">
+            <h2 class="text-base sm:text-lg font-bold text-on-surface flex items-center gap-2">
+              <span class="material-symbols-outlined text-[20px] text-primary">menu_book</span>
+              <span>{{ t.writerStudio.myNovelsHeading }}</span>
+            </h2>
+
+            @if (studio.isLoading()) {
+              <div class="liquid-glass-card rounded-2xl p-8 text-center text-xs text-on-surface-variant">
+                {{ t.auth.loading }}
+              </div>
+            } @else if (studio.ownNovels().length === 0) {
+              <div class="liquid-glass-card rounded-2xl p-8 text-center space-y-3">
+                <p class="text-xs sm:text-sm text-on-surface-variant">{{ t.writerStudio.noPublishedNovels }}</p>
+                <button
+                  type="button"
+                  (click)="openNewNovelTab()"
+                  class="btn-tactile px-5 py-2.5 rounded-xl bg-primary text-on-primary text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span class="material-symbols-outlined text-[18px]">add</span>
+                  <span>{{ t.writerStudio.createNovelBtn }}</span>
+                </button>
+              </div>
+            } @else {
+              <div class="grid grid-cols-1 gap-4">
+                @for (novel of studio.ownNovels(); track novel.id) {
+                  <article class="liquid-glass-card rounded-2xl p-4 sm:p-5 flex flex-col gap-4">
+                    @if (novel.moderationStatus === 'under_review') {
+                      <div class="px-3.5 py-2.5 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-900 dark:text-amber-200 text-xs font-semibold flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[18px]">visibility</span>
+                        <span>{{ t.writerStudio.moderationNoticeUnderReview }}</span>
+                      </div>
+                    } @else if (novel.moderationStatus === 'rejected_removed') {
+                      <div class="px-3.5 py-2.5 rounded-xl bg-rose-500/15 border border-rose-500/40 text-rose-900 dark:text-rose-200 text-xs font-semibold flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[18px]">block</span>
+                        <span>{{ t.writerStudio.moderationNoticeRemoved }}</span>
+                      </div>
+                    }
+
+                    <div class="flex flex-col sm:flex-row items-start gap-4">
+                      <div class="w-20 sm:w-24 aspect-[2/3] rounded-xl overflow-hidden bg-surface-container-high shrink-0 border border-surface-variant/40 shadow-sm">
+                        <img
+                          [src]="novel.coverUrl || '/images/writers_sanctuary_bg.jpg'"
+                          [alt]="novel.title"
+                          class="w-full h-full object-cover"
+                          referrerpolicy="no-referrer"
+                        />
+                      </div>
+
+                      <div class="flex-1 min-w-0 space-y-2">
+                        <div class="flex items-center gap-2 flex-wrap">
+                          <span class="px-2.5 py-0.5 rounded-lg bg-primary/12 text-primary text-[11px] font-bold">
+                            {{ i18n.displayGenre(novel.genre) }}
+                          </span>
+                          <span class="px-2.5 py-0.5 rounded-lg bg-surface-container-high text-on-surface-variant text-[11px] font-semibold">
+                            {{
+                              novel.workType === 'translated'
+                                ? t.details.workTypeTranslated
+                                : novel.workType === 'republish'
+                                  ? t.details.workTypeRepublish
+                                  : t.details.workTypeOriginal
+                            }}
+                          </span>
+                          <span class="px-2.5 py-0.5 rounded-lg bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 text-[11px] font-semibold">
+                            {{
+                              novel.novelStatus === 'completed'
+                                ? t.details.specCompleted
+                                : novel.novelStatus === 'paused'
+                                  ? t.details.statusPaused
+                                  : t.details.specOngoing
+                            }}
+                          </span>
+                        </div>
+
+                        <div>
+                          <h3 class="text-base sm:text-lg font-bold text-on-surface">{{ novel.title }}</h3>
+                          @if (novel.titleEn) {
+                            <p class="text-xs text-on-surface-variant font-medium" dir="ltr">{{ novel.titleEn }}</p>
+                          }
+                        </div>
+
+                        <p class="text-xs text-on-surface-variant line-clamp-2 leading-relaxed">
+                          {{ novel.description }}
+                        </p>
+
+                        <div class="flex flex-wrap items-center gap-4 text-xs text-on-surface-variant pt-1">
+                          <span class="font-mono tabular-nums flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[15px] text-secondary">menu_book</span>
+                            {{ i18n.formatNumber(novel.publishedChapterCount || 0) }} {{ t.details.specChapters }}
+                          </span>
+                          <span class="font-mono tabular-nums flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[15px] text-tertiary">text_fields</span>
+                            {{ i18n.formatNumber((novel.publishedWordsAr || 0) + (novel.publishedWordsEn || 0)) }} {{ t.reader.words }}
+                          </span>
+                          <span class="font-mono tabular-nums flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[15px] text-emerald-600 dark:text-emerald-400">verified</span>
+                            {{ i18n.formatNumber(novel.verifiedReadsCount || 0) }} {{ t.details.verifiedReadsLabel }}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2 pt-3 border-t border-surface-variant/30">
+                      <button
+                        type="button"
+                        (click)="openCloudNovelEdit(novel)"
+                        class="btn-tactile px-3.5 py-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <span class="material-symbols-outlined text-[16px]">edit</span>
+                        <span>{{ t.writerStudio.editNovelBtn }}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        (click)="openNovelChaptersTab(novel.id)"
+                        class="btn-tactile px-3.5 py-2 rounded-xl bg-primary text-on-primary text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm"
+                      >
+                        <span class="material-symbols-outlined text-[16px]">edit_document</span>
+                        <span>{{ t.writerStudio.manageChaptersBtn }}</span>
+                      </button>
+
+                      @if (novel.moderationStatus !== 'rejected_removed' && novel.isPublished) {
+                        <button
+                          type="button"
+                          (click)="lib.openPublishedNovel(novel)"
+                          class="btn-tactile px-3.5 py-2 rounded-xl liquid-glass-pill text-on-surface text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <span class="material-symbols-outlined text-[16px] text-secondary">open_in_new</span>
+                          <span>{{ t.explore.detailsBtn }}</span>
+                        </button>
+                      }
+
+                      <button
+                        type="button"
+                        (click)="studio.exportNovelMtxArchive(novel)"
+                        class="btn-tactile px-3.5 py-2 rounded-xl liquid-glass-pill text-on-surface text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <span class="material-symbols-outlined text-[16px] text-tertiary">download</span>
+                        <span>{{ t.writerStudio.exportMtxBtn }}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        (click)="openDeleteGate(novel)"
+                        class="btn-tactile px-3.5 py-2 rounded-xl text-rose-700 dark:text-rose-300 hover:bg-rose-500/12 text-xs font-semibold flex items-center gap-1.5 cursor-pointer ms-auto"
+                      >
+                        <span class="material-symbols-outlined text-[16px]">delete_forever</span>
+                        <span>{{ t.writerStudio.deleteNovelBtn }}</span>
+                      </button>
+                    </div>
+                  </article>
+                }
+              </div>
+            }
+          </section>
+        </div>
+      }
+
+      <!-- ================= TAB 2: CREATE / EDIT NOVEL ================= -->
+      @if (activeTab() === 'novel') {
+        <form [formGroup]="novelForm" (ngSubmit)="submitCloudNovel()" class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <!-- Left Cover Specimen Column -->
+          <div class="lg:col-span-4 liquid-glass-card rounded-3xl p-5 sm:p-6 space-y-4">
+            <div class="flex items-center justify-between">
+              <h2 class="text-sm sm:text-base font-bold text-on-surface">
+                {{ isEn ? 'Novel Cover (2:3 Ratio)' : 'غلاف الرواية (نسبة ٢:٣)' }}
+              </h2>
+              @if (coverProcessing()) {
+                <span class="text-xs text-secondary font-semibold">{{ t.auth.loading }}</span>
+              }
+            </div>
+
+            <div class="relative w-full max-w-[260px] mx-auto aspect-[2/3] rounded-2xl overflow-hidden bg-surface-container-high border border-surface-variant/40 shadow-lg">
+              <img
+                [src]="coverPreviewUrl()"
+                [alt]="novelForm.controls.title.value || t.site.brand"
+                class="w-full h-full object-cover"
+                referrerpolicy="no-referrer"
+              />
+            </div>
+
+            @if (coverError()) {
+              <p class="text-xs text-rose-600 dark:text-rose-300 text-center">{{ coverError() }}</p>
+            }
+
+            <label class="btn-tactile w-full py-2.5 px-4 rounded-xl bg-surface-container-high hover:bg-surface-container-highest border border-surface-variant/50 text-on-surface text-xs font-bold flex items-center justify-center gap-2 cursor-pointer">
+              <span class="material-symbols-outlined text-[18px] text-secondary">add_photo_alternate</span>
+              <span>{{ isEn ? 'Choose & Auto-Crop Cover (2:3)' : 'اختيار وقص غلاف (٢:٣) تلقائياً' }}</span>
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                class="hidden"
+                (change)="onCoverFileSelected($event)"
+              />
+            </label>
+
+            <p class="text-[11px] text-on-surface-variant leading-relaxed text-center">
+              {{
+                editingCloudNovelId()
+                  ? (isEn ? 'Editing live cloud novel record.' : 'تعديل رواية منشورة على الخادم.')
+                  : editingLocalDraftId()
+                    ? (isEn ? 'Editing local browser draft (never uploaded until Publish).' : 'تعديل مسودة محلية على جهازك فقط.')
+                    : (isEn ? 'Choose Save as Local Draft or Publish Novel Now.' : 'يمكنك الحفظ كمسودة محلية أو النشر المباشر على الخادم.')
+              }}
+            </p>
+          </div>
+
+          <!-- Right Metadata & Provenance Column -->
+          <div class="lg:col-span-8 liquid-glass-card rounded-3xl p-5 sm:p-7 space-y-5">
+            <div class="flex items-center justify-between border-b border-surface-variant/35 pb-4">
+              <h2 class="text-base sm:text-xl font-bold text-on-surface">
+                {{ editingCloudNovelId() ? (isEn ? 'Update Novel Details' : 'تحديث بيانات الرواية') : t.writerStudio.tabNovelEditor }}
+              </h2>
+              <button
+                type="button"
+                (click)="resetNovelForm()"
+                class="btn-tactile px-3 py-1.5 rounded-xl bg-surface-container-high text-xs font-semibold text-on-surface-variant hover:text-on-surface cursor-pointer"
+              >
+                {{ t.writerStudio.createNovelBtn }}
+              </button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <label class="flex flex-col gap-1.5 text-xs font-semibold text-on-surface">
+                <span>{{ isEn ? 'Primary Novel Title *' : 'عنوان الرواية الأساسي *' }}</span>
+                <input
+                  formControlName="title"
+                  type="text"
+                  class="liquid-glass-input rounded-xl px-3.5 py-2.5 text-sm"
+                  [placeholder]="isEn ? 'Exact novel title (never auto-translated)' : 'عنوان الرواية (لا يُترجم آلياً)'"
+                />
+              </label>
+
+              <label class="flex flex-col gap-1.5 text-xs font-semibold text-on-surface">
+                <span>{{ isEn ? 'English Title (Optional)' : 'العنوان بالإنجليزية (اختياري)' }}</span>
+                <input
+                  formControlName="titleEn"
+                  type="text"
+                  dir="ltr"
+                  class="liquid-glass-input rounded-xl px-3.5 py-2.5 text-sm"
+                  placeholder="Optional English Title"
+                />
+              </label>
+            </div>
+
+            <!-- Work Nature & Legal Attribution -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <label class="flex flex-col gap-1.5 text-xs font-semibold text-on-surface">
+                <span>{{ isEn ? 'Work Attribution Type' : 'طبيعة العمل والملكية' }}</span>
+                <select formControlName="workType" class="liquid-glass-input rounded-xl px-3.5 py-2.5 text-sm">
+                  <option value="original">{{ t.details.workTypeOriginal }}</option>
+                  <option value="translated">{{ t.details.workTypeTranslated }}</option>
+                  <option value="republish">{{ t.details.workTypeRepublish }}</option>
+                </select>
+              </label>
+
+              <label class="flex flex-col gap-1.5 text-xs font-semibold text-on-surface">
+                <span>{{ t.details.specStatus }}</span>
+                <select formControlName="novelStatus" class="liquid-glass-input rounded-xl px-3.5 py-2.5 text-sm">
+                  <option value="ongoing">{{ t.details.specOngoing }}</option>
+                  <option value="completed">{{ t.details.specCompleted }}</option>
+                  <option value="paused">{{ t.details.statusPaused }}</option>
+                </select>
+              </label>
+
+              <label class="flex flex-col gap-1.5 text-xs font-semibold text-on-surface">
+                <span>{{ t.modals.publishCorridor }}</span>
+                <select formControlName="categoryGroup" class="liquid-glass-input rounded-xl px-3.5 py-2.5 text-sm">
+                  <option value="novels">{{ t.corridors.novelsTitle }}</option>
+                  <option value="epics">{{ t.corridors.epicsTitle }}</option>
+                  <option value="wisdom">{{ t.corridors.wisdomTitle }}</option>
+                  <option value="heritage">{{ t.corridors.heritageTitle }}</option>
+                </select>
+              </label>
+            </div>
+
+            @if (novelForm.controls.workType.value === 'translated') {
+              <label class="flex flex-col gap-1.5 text-xs font-semibold text-amber-800 dark:text-amber-300">
+                <span>{{ t.details.originalAuthorLabel }} *</span>
+                <input
+                  formControlName="originalAuthor"
+                  type="text"
+                  class="liquid-glass-input rounded-xl px-3.5 py-2.5 text-sm border-amber-500/40"
+                  [placeholder]="isEn ? 'Required: Name of the original work author' : 'إلزامي: اسم الكاتب الأصلي للعمل المترجم'"
+                />
+              </label>
+            }
+
+            @if (novelForm.controls.workType.value === 'republish') {
+              <label class="flex flex-col gap-1.5 text-xs font-semibold text-amber-800 dark:text-amber-300">
+                <span>{{ t.details.firstAuthorLabel }} *</span>
+                <input
+                  formControlName="firstAuthor"
+                  type="text"
+                  class="liquid-glass-input rounded-xl px-3.5 py-2.5 text-sm border-amber-500/40"
+                  [placeholder]="isEn ? 'Required: First author / original publisher attribution' : 'إلزامي: اسم المؤلف الأول أو صاحب النسخة الأم'"
+                />
+              </label>
+            }
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <label class="flex flex-col gap-1.5 text-xs font-semibold text-on-surface">
+                <span>{{ t.modals.publishGenre }}</span>
+                <input
+                  formControlName="genre"
+                  type="text"
+                  class="liquid-glass-input rounded-xl px-3.5 py-2.5 text-sm"
+                />
+              </label>
+
+              <label class="flex flex-col gap-1.5 text-xs font-semibold text-on-surface">
+                <span>{{ t.explore.originLanguageLabel }}</span>
+                <select formControlName="originLanguage" class="liquid-glass-input rounded-xl px-3.5 py-2.5 text-sm">
+                  <option value="عربي أصيل">{{ i18n.displayOriginLanguage('عربي أصيل') }}</option>
+                  <option value="الإنجليزية">{{ i18n.displayOriginLanguage('الإنجليزية') }}</option>
+                  <option value="الفرنسية">{{ i18n.displayOriginLanguage('الفرنسية') }}</option>
+                  <option value="الروسية">{{ i18n.displayOriginLanguage('الروسية') }}</option>
+                  <option value="اليابانية">{{ i18n.displayOriginLanguage('اليابانية') }}</option>
+                  <option value="الإسبانية">{{ i18n.displayOriginLanguage('الإسبانية') }}</option>
+                  <option value="الألمانية">{{ i18n.displayOriginLanguage('الألمانية') }}</option>
+                </select>
+              </label>
+
+              <label class="flex flex-col gap-1.5 text-xs font-semibold text-on-surface">
+                <span>{{ isEn ? 'Primary Writing Language' : 'لغة الكتابة الأساسية' }}</span>
+                <select formControlName="languageCode" class="liquid-glass-input rounded-xl px-3.5 py-2.5 text-sm">
+                  <option value="ar">{{ t.details.languageBadgeAr }}</option>
+                  <option value="en">{{ t.details.languageBadgeEn }}</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <label class="flex flex-col gap-1.5 text-xs font-semibold text-on-surface">
+                <span>{{ t.details.supportLabel }} ({{ isEn ? 'Optional' : 'اختياري' }})</span>
+                <input
+                  formControlName="supportMethod"
+                  type="text"
+                  dir="ltr"
+                  class="liquid-glass-input rounded-xl px-3.5 py-2.5 text-sm"
+                  [placeholder]="isEn ? 'https://ko-fi.com/... or support handle' : 'رابط دعم أو حساب اختياري (https://...)'"
+                />
+              </label>
+
+              <label class="flex flex-col gap-1.5 text-xs font-semibold text-on-surface">
+                <span>{{ isEn ? 'Tags (Comma separated)' : 'الوسوم (مفصولة بفاصلة)' }}</span>
+                <input
+                  formControlName="tagsInput"
+                  type="text"
+                  class="liquid-glass-input rounded-xl px-3.5 py-2.5 text-sm"
+                  placeholder="#فانتازيا_وملاحم, #غموض_وتشويق"
+                />
+              </label>
+            </div>
+
+            <label class="flex flex-col gap-1.5 text-xs font-semibold text-on-surface">
+              <span>{{ t.modals.publishSynopsis }} *</span>
+              <textarea
+                formControlName="description"
+                rows="4"
+                class="liquid-glass-input rounded-xl px-3.5 py-2.5 text-sm leading-relaxed"
+                [placeholder]="isEn ? 'Enter the novel synopsis (min 10 chars)...' : 'اكتب نبذة أدبية واضحة عن العمل (١٠ أحرف على الأقل)...'"
+              ></textarea>
+            </label>
+
+            <div class="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-surface-variant/35">
+              <button
+                type="button"
+                (click)="saveAsLocalDraft()"
+                class="btn-tactile px-4 py-2.5 rounded-xl liquid-glass-pill text-on-surface text-xs sm:text-sm font-bold flex items-center gap-2 cursor-pointer"
+              >
+                <span class="material-symbols-outlined text-[18px] text-secondary">save</span>
+                <span>{{ t.writerStudio.saveLocalDraft }}</span>
+              </button>
+
+              <button
+                type="submit"
+                [disabled]="studio.isBusy()"
+                class="btn-tactile px-6 py-2.5 rounded-xl bg-primary hover:bg-primary-fixed-dim text-on-primary text-xs sm:text-sm font-bold flex items-center gap-2 shadow-lg cursor-pointer disabled:opacity-50"
+              >
+                <span class="material-symbols-outlined text-[18px]">publish</span>
+                <span>{{ editingCloudNovelId() ? t.writerStudio.saveNovelChanges : t.writerStudio.publishToServer }}</span>
+              </button>
+            </div>
+          </div>
+        </form>
+      }
+
+      <!-- ================= TAB 3: CHAPTERS & SECTIONS STUDIO ================= -->
+      @if (activeTab() === 'chapters') {
+        @if (studio.ownNovels().length === 0) {
+          <div class="liquid-glass-card rounded-3xl p-8 text-center space-y-4">
+            <span class="material-symbols-outlined text-[42px] text-secondary">menu_book</span>
+            <h2 class="text-base sm:text-lg font-bold text-on-surface">{{ t.writerStudio.noPublishedNovels }}</h2>
+            <button
+              type="button"
+              (click)="openNewNovelTab()"
+              class="btn-tactile px-5 py-2.5 rounded-xl bg-primary text-on-primary text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+            >
+              <span class="material-symbols-outlined text-[18px]">add</span>
+              <span>{{ t.writerStudio.createNovelBtn }}</span>
+            </button>
+          </div>
+        } @else {
+          <div class="space-y-5">
+            <!-- Novel Switcher Strip -->
+            <div class="liquid-glass-card rounded-2xl p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <div class="flex items-center gap-3 flex-1 min-w-0">
+                <span class="text-xs font-bold text-secondary shrink-0">{{ isEn ? 'Active Novel:' : 'الرواية النشطة:' }}</span>
+                <select
+                  [value]="studio.activeNovelId() || ''"
+                  (change)="onStudioNovelSwitch($event)"
+                  class="liquid-glass-input rounded-xl px-3.5 py-2 text-sm font-bold flex-1 max-w-md"
+                >
+                  @for (n of studio.ownNovels(); track n.id) {
+                    <option [value]="n.id">{{ n.title }}</option>
+                  }
+                </select>
+              </div>
+
+              <div class="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  (click)="resetChapterEditor()"
+                  class="btn-tactile px-4 py-2 rounded-xl bg-primary text-on-primary text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span class="material-symbols-outlined text-[16px]">add</span>
+                  <span>{{ isEn ? 'New Chapter' : 'فصل جديد' }}</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              <!-- Sidebar: Sections Manager & Chapters Index (4 cols) -->
+              <aside class="lg:col-span-4 space-y-5">
+                <!-- Sections Manager -->
+                <div class="liquid-glass-card rounded-2xl p-4 sm:p-5 space-y-3.5">
+                  <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-bold text-on-surface flex items-center gap-1.5">
+                      <span class="material-symbols-outlined text-[18px] text-secondary">folder_copy</span>
+                      <span>{{ isEn ? 'Volumes & Sections' : 'الأقسام والمجلدات' }}</span>
+                    </h3>
+                    <span class="text-[11px] font-mono text-on-surface-variant tabular-nums">
+                      {{ i18n.formatNumber(sortedStudioSections().length) }}
+                    </span>
+                  </div>
+
+                  <form [formGroup]="sectionForm" (ngSubmit)="submitSection()" class="space-y-2">
+                    <input
+                      formControlName="title"
+                      type="text"
+                      class="liquid-glass-input w-full rounded-xl px-3 py-2 text-xs"
+                      [placeholder]="isEn ? 'Section title (e.g. Part I)' : 'عنوان القسم (مثال: السفر الأول)'"
+                    />
+                    <input
+                      formControlName="titleEn"
+                      type="text"
+                      dir="ltr"
+                      class="liquid-glass-input w-full rounded-xl px-3 py-2 text-xs"
+                      placeholder="English Section Title (Optional)"
+                    />
+                    <div class="flex items-center gap-2">
+                      <button
+                        type="submit"
+                        [disabled]="sectionForm.invalid"
+                        class="btn-tactile flex-1 py-2 rounded-xl bg-secondary text-on-secondary text-xs font-bold cursor-pointer disabled:opacity-50"
+                      >
+                        {{ editingSectionId() ? (isEn ? 'Update Section' : 'تحديث القسم') : (isEn ? 'Add Section' : 'إضافة قسم') }}
+                      </button>
+                      @if (editingSectionId()) {
+                        <button
+                          type="button"
+                          (click)="cancelSectionEdit()"
+                          class="btn-tactile px-3 py-2 rounded-xl bg-surface-container text-xs font-semibold cursor-pointer"
+                        >
+                          {{ t.modals.publishCancel }}
+                        </button>
+                      }
+                    </div>
+                  </form>
+
+                  @if (sortedStudioSections().length > 0) {
+                    <div class="space-y-2 pt-2 border-t border-surface-variant/30 max-h-56 overflow-y-auto">
+                      @for (sec of sortedStudioSections(); track sec.id) {
+                        <div class="p-2.5 rounded-xl bg-surface-container/60 border border-surface-variant/35 flex items-center justify-between gap-2 text-xs">
+                          <div class="min-w-0">
+                            <div class="font-bold text-on-surface truncate">{{ sec.title }}</div>
+                            @if (sec.titleEn) {
+                              <div class="text-[10px] text-on-surface-variant truncate" dir="ltr">{{ sec.titleEn }}</div>
+                            }
+                          </div>
+                          <div class="flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              (click)="studio.moveSectionOrder(studio.activeNovelId()!, sec.id, 'up')"
+                              class="w-7 h-7 rounded-lg hover:bg-surface-container-high flex items-center justify-center cursor-pointer"
+                              [title]="isEn ? 'Move Up' : 'أعلى'"
+                            >
+                              <span class="material-symbols-outlined text-[15px]">arrow_upward</span>
+                            </button>
+                            <button
+                              type="button"
+                              (click)="studio.moveSectionOrder(studio.activeNovelId()!, sec.id, 'down')"
+                              class="w-7 h-7 rounded-lg hover:bg-surface-container-high flex items-center justify-center cursor-pointer"
+                              [title]="isEn ? 'Move Down' : 'أسفل'"
+                            >
+                              <span class="material-symbols-outlined text-[15px]">arrow_downward</span>
+                            </button>
+                            <button
+                              type="button"
+                              (click)="editSection(sec)"
+                              class="w-7 h-7 rounded-lg hover:bg-surface-container-high flex items-center justify-center cursor-pointer text-secondary"
+                              [title]="t.writerStudio.editNovelBtn"
+                            >
+                              <span class="material-symbols-outlined text-[15px]">edit</span>
+                            </button>
+                            <button
+                              type="button"
+                              (click)="studio.removeSection(studio.activeNovelId()!, sec.id)"
+                              class="w-7 h-7 rounded-lg hover:bg-rose-500/15 flex items-center justify-center cursor-pointer text-rose-600 dark:text-rose-300"
+                              [title]="t.writerStudio.deleteDraftBtn"
+                            >
+                              <span class="material-symbols-outlined text-[15px]">delete</span>
+                            </button>
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+
+                <!-- Chapters List -->
+                <div class="liquid-glass-card rounded-2xl p-4 sm:p-5 space-y-3">
+                  <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-bold text-on-surface flex items-center gap-1.5">
+                      <span class="material-symbols-outlined text-[18px] text-primary">format_list_numbered</span>
+                      <span>{{ t.details.chaptersHeading }}</span>
+                    </h3>
+                    <span class="text-[11px] font-mono text-on-surface-variant tabular-nums">
+                      {{ i18n.formatNumber(sortedStudioChapters().length) }}
+                    </span>
+                  </div>
+
+                  @if (sortedStudioChapters().length === 0) {
+                    <p class="text-xs text-on-surface-variant text-center py-4">
+                      {{ isEn ? 'No chapters created yet. Start authoring on the right.' : 'لا توجد فصول منشورة أو محفوظة بعد. ابدأ بتأليف الفصل الأول.' }}
+                    </p>
+                  } @else {
+                    <div class="space-y-2 max-h-[520px] overflow-y-auto pe-1">
+                      @for (chap of sortedStudioChapters(); track chap.id) {
+                        <div
+                          [class]="chap.chapterType === 'explanatory'
+                            ? 'explanatory-glass-card rounded-xl p-3 space-y-2'
+                            : (editingChapterId() === chap.id
+                              ? 'rounded-xl p-3 space-y-2 bg-primary/10 border border-primary/40'
+                              : 'rounded-xl p-3 space-y-2 bg-surface-container/60 border border-surface-variant/35 hover:border-secondary/40 transition-colors')"
+                        >
+                          <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0">
+                              <div class="flex items-center gap-1.5 flex-wrap mb-1">
+                                <span class="px-2 py-0.5 rounded-md bg-surface-container-highest text-on-surface font-mono text-[10px] font-bold tabular-nums">
+                                  #{{ chap.chapterNumber }}
+                                </span>
+                                @if (chap.chapterType === 'explanatory') {
+                                  <span class="px-2 py-0.5 rounded-md bg-emerald-600/20 text-emerald-800 dark:text-emerald-200 text-[10px] font-bold">
+                                    {{ isEn ? 'Explanatory' : 'توضيحي' }}
+                                  </span>
+                                }
+                                <span
+                                  [class]="chap.endStatus === 'ending'
+                                    ? 'px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-800 dark:text-amber-300 text-[10px] font-bold'
+                                    : 'px-2 py-0.5 rounded-md bg-surface-container text-on-surface-variant text-[10px]'"
+                                >
+                                  {{ chap.endStatus === 'ending' ? t.writerStudio.endStatusEnding : t.writerStudio.endStatusOngoing }}
+                                </span>
+                                @if (chap.editions.ar) {
+                                  <span class="px-1.5 py-0.5 rounded bg-primary/15 text-primary text-[9px] font-bold">AR</span>
+                                }
+                                @if (chap.editions.en) {
+                                  <span class="px-1.5 py-0.5 rounded bg-secondary/20 text-secondary text-[9px] font-bold">EN</span>
+                                }
+                              </div>
+                              <div class="text-xs font-bold text-on-surface truncate">{{ chap.title }}</div>
+                              <div class="text-[10px] text-on-surface-variant font-mono tabular-nums mt-0.5">
+                                AR: {{ i18n.formatNumber(chap.wordCountAr) }} · EN: {{ i18n.formatNumber(chap.wordCountEn) }}
+                              </div>
+                            </div>
+
+                            <div class="flex items-center gap-1 shrink-0">
+                              <button
+                                type="button"
+                                (click)="loadChapterIntoEditor(chap)"
+                                class="w-8 h-8 rounded-lg bg-surface-container-high hover:bg-primary hover:text-on-primary flex items-center justify-center cursor-pointer transition-colors"
+                                [title]="t.writerStudio.editNovelBtn"
+                              >
+                                <span class="material-symbols-outlined text-[16px]">edit</span>
+                              </button>
+                              <button
+                                type="button"
+                                (click)="confirmDeleteChapterId.set(confirmDeleteChapterId() === chap.id ? null : chap.id)"
+                                class="w-8 h-8 rounded-lg hover:bg-rose-500/15 text-rose-600 dark:text-rose-300 flex items-center justify-center cursor-pointer"
+                                [title]="t.writerStudio.deleteDraftBtn"
+                              >
+                                <span class="material-symbols-outlined text-[16px]">delete</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          @if (confirmDeleteChapterId() === chap.id) {
+                            <div class="pt-2 border-t border-rose-500/30 flex items-center justify-between gap-2 text-[11px]">
+                              <span class="text-rose-700 dark:text-rose-300 font-bold">
+                                {{ isEn ? 'Confirm chapter deletion?' : 'تأكيد حذف الفصل نهائياً؟' }}
+                              </span>
+                              <div class="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  (click)="deleteSelectedChapter(chap)"
+                                  class="px-2.5 py-1 rounded-lg bg-rose-600 text-white font-bold cursor-pointer"
+                                >
+                                  {{ isEn ? 'Delete' : 'حذف' }}
+                                </button>
+                                <button
+                                  type="button"
+                                  (click)="confirmDeleteChapterId.set(null)"
+                                  class="px-2.5 py-1 rounded-lg bg-surface-container font-semibold cursor-pointer"
+                                >
+                                  {{ t.modals.publishCancel }}
+                                </button>
+                              </div>
+                            </div>
+                          }
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              </aside>
+
+              <!-- Main Bilingual Chapter Authoring Area (8 cols) -->
+              <section class="lg:col-span-8 space-y-5">
+                @if (restorableAutosave(); as snap) {
+                  <div class="liquid-glass-card rounded-2xl p-4 border-amber-500/45 bg-amber-500/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                    <div class="flex items-center gap-2 text-amber-900 dark:text-amber-200 font-semibold">
+                      <span class="material-symbols-outlined text-[19px]">history</span>
+                      <span>
+                        {{ isEn ? 'Found a newer local autosave for this chapter slot.' : 'توجد مسودة محلية محفوظة تلقائياً لهذا الفصل لم تُنشر بعد.' }}
+                      </span>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        (click)="restoreLocalAutosaveSnapshot()"
+                        class="btn-tactile px-3 py-1.5 rounded-xl bg-amber-600 text-white font-bold cursor-pointer"
+                      >
+                        {{ isEn ? 'Restore Autosave' : 'استعادة المسودة' }}
+                      </button>
+                      <button
+                        type="button"
+                        (click)="dismissRestorableAutosave()"
+                        class="btn-tactile px-3 py-1.5 rounded-xl bg-surface-container font-semibold cursor-pointer"
+                      >
+                        {{ t.modals.close }}
+                      </button>
+                    </div>
+                  </div>
+                }
+
+                <form [formGroup]="chapterForm" (ngSubmit)="submitChapter()" class="liquid-glass-card rounded-3xl p-5 sm:p-7 space-y-5">
+                  <div class="flex flex-wrap items-center justify-between gap-3 border-b border-surface-variant/35 pb-4">
+                    <div>
+                      <h2 class="text-base sm:text-xl font-bold text-on-surface">
+                        {{ editingChapterId() ? (isEn ? 'Edit Chapter' : 'تحرير الفصل الحالي') : (isEn ? 'Author New Chapter' : 'تأليف فصل جديد') }}
+                      </h2>
+                      <span class="text-[11px] text-on-surface-variant">
+                        {{ isEn ? 'Strict bilingual independence: AR & EN editions never overwrite each other.' : 'استقلال لغوي تام: النسخة العربية والإنجليزية محميتان دون ترجمة آلية.' }}
+                      </span>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                      <button
+                        type="button"
+                        (click)="openChapterPreview()"
+                        class="btn-tactile px-3.5 py-2 rounded-xl liquid-glass-pill text-on-surface text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <span class="material-symbols-outlined text-[17px] text-secondary">visibility</span>
+                        <span>{{ isEn ? 'Preview Reader' : 'معاينة القراءة' }}</span>
+                      </button>
+                      <button
+                        type="button"
+                        (click)="persistCurrentChapterAutosave()"
+                        class="btn-tactile px-3.5 py-2 rounded-xl bg-surface-container-high text-on-surface text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <span class="material-symbols-outlined text-[16px]">save</span>
+                        <span>{{ isEn ? 'Save Local' : 'حفظ محلي' }}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <!-- Chapter Meta Grid -->
+                  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                    <label class="flex flex-col gap-1.5 text-xs font-semibold text-on-surface">
+                      <span>{{ isEn ? 'Chapter Number *' : 'رقم الفصل *' }}</span>
+                      <input
+                        formControlName="chapterNumber"
+                        type="number"
+                        min="1"
+                        class="liquid-glass-input rounded-xl px-3 py-2 text-sm font-mono tabular-nums"
+                      />
+                      @if (duplicateChapterError()) {
+                        <span class="text-[11px] font-bold text-rose-600 dark:text-rose-300">
+                          {{ t.writerStudio.duplicateChapterError }}
+                        </span>
+                      }
+                    </label>
+
+                    <label class="flex flex-col gap-1.5 text-xs font-semibold text-on-surface">
+                      <span>{{ isEn ? 'Section / Volume' : 'القسم / المجلد' }}</span>
+                      <select formControlName="sectionId" class="liquid-glass-input rounded-xl px-3 py-2 text-sm">
+                        <option value="">{{ isEn ? 'Without section' : 'بدون قسم محدد' }}</option>
+                        @for (sec of sortedStudioSections(); track sec.id) {
+                          <option [value]="sec.id">{{ sec.title }}</option>
+                        }
+                      </select>
+                    </label>
+
+                    <label class="flex flex-col gap-1.5 text-xs font-semibold text-on-surface">
+                      <span>{{ isEn ? 'Chapter Type' : 'نوع الفصل' }}</span>
+                      <select formControlName="chapterType" class="liquid-glass-input rounded-xl px-3 py-2 text-sm">
+                        <option value="narrative">{{ t.writerStudio.narrativeLabel }}</option>
+                        <option value="explanatory">{{ t.writerStudio.explanatoryLabel }}</option>
+                      </select>
+                    </label>
+
+                    <label class="flex flex-col gap-1.5 text-xs font-semibold text-on-surface">
+                      <span>{{ isEn ? 'End Status' : 'حالة النهاية' }}</span>
+                      <select formControlName="endStatus" class="liquid-glass-input rounded-xl px-3 py-2 text-sm">
+                        <option value="ongoing">{{ t.writerStudio.endStatusOngoing }}</option>
+                        <option value="ending">{{ t.writerStudio.endStatusEnding }}</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  @if (chapterForm.controls.chapterType.value === 'explanatory') {
+                    <div class="explanatory-glass-card rounded-2xl p-4 flex items-center gap-3 text-xs text-emerald-900 dark:text-emerald-200 font-semibold">
+                      <span class="material-symbols-outlined text-[20px]">eco</span>
+                      <div>
+                        <div>{{ t.explanatoryChapter.badge }}</div>
+                        <div class="text-[11px] opacity-85 font-normal">{{ t.explanatoryChapter.hint }}</div>
+                      </div>
+                    </div>
+                  }
+
+                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3.5 items-end">
+                    <label class="flex flex-col gap-1.5 text-xs font-semibold text-on-surface">
+                      <span>{{ isEn ? 'Language Editions' : 'لغات هذا الفصل' }}</span>
+                      <select formControlName="languageMode" class="liquid-glass-input rounded-xl px-3 py-2 text-sm">
+                        <option value="ar">{{ t.details.editionTagAr }} (AR)</option>
+                        <option value="en">{{ t.details.editionTagEn }} (EN)</option>
+                        <option value="both">{{ isEn ? 'Both Arabic & English' : 'العربية والإنجليزية معاً' }}</option>
+                      </select>
+                    </label>
+
+                    <label class="flex flex-col gap-1.5 text-xs font-semibold text-on-surface">
+                      <span>{{ isEn ? 'Primary Chapter Title' : 'العنوان العام للفصل' }}</span>
+                      <input
+                        formControlName="title"
+                        type="text"
+                        class="liquid-glass-input rounded-xl px-3 py-2 text-sm"
+                        [placeholder]="isEn ? 'Chapter title...' : 'عنوان الفصل...'"
+                      />
+                    </label>
+
+                    <label class="flex flex-col gap-1.5 text-xs font-semibold text-on-surface">
+                      <span>{{ isEn ? 'English Title (Optional)' : 'العنوان الإنجليزي (اختياري)' }}</span>
+                      <input
+                        formControlName="titleEn"
+                        type="text"
+                        dir="ltr"
+                        class="liquid-glass-input rounded-xl px-3 py-2 text-sm"
+                        placeholder="Optional English chapter title"
+                      />
+                    </label>
+                  </div>
+
+                  <!-- ARABIC EDITION BLOCK EDITOR -->
+                  @if (chapterForm.controls.languageMode.value === 'ar' || chapterForm.controls.languageMode.value === 'both') {
+                    <div class="rounded-2xl p-4 sm:p-5 bg-surface-container/50 border border-primary/25 space-y-4" dir="rtl">
+                      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-surface-variant/35 pb-3">
+                        <div class="flex items-center gap-2">
+                          <span class="px-2.5 py-0.5 rounded-lg bg-primary text-on-primary text-[11px] font-bold">AR</span>
+                          <h3 class="text-sm font-bold text-on-surface">النسخة العربية</h3>
+                          <span class="text-xs font-mono tabular-nums text-on-surface-variant">
+                            ({{ i18n.formatNumber(arLiveWordCount()) }} كلمة)
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          (click)="openPasteSplitModal('ar')"
+                          class="btn-tactile px-3 py-1.5 rounded-xl bg-surface-container-high text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                        >
+                          <span class="material-symbols-outlined text-[15px]">content_paste</span>
+                          <span>لصق وتقسيم نص طويل</span>
+                        </button>
+                      </div>
+
+                      <input
+                        formControlName="arTitle"
+                        type="text"
+                        class="liquid-glass-input w-full rounded-xl px-3.5 py-2.5 text-sm font-bold"
+                        placeholder="عنوان النسخة العربية..."
+                      />
+
+                      <div class="space-y-3">
+                        @for (blk of arBlocks(); track blk.id; let idx = $index) {
+                          <div class="rounded-xl p-3 bg-surface-container-low/80 border border-surface-variant/40 space-y-2">
+                            <div class="flex items-center justify-between gap-2">
+                              <select
+                                [value]="blk.type"
+                                (change)="updateBlockType('ar', idx, $event)"
+                                class="liquid-glass-input rounded-lg px-2.5 py-1 text-[11px] font-bold"
+                              >
+                                <option value="paragraph">فقرة سردية</option>
+                                <option value="heading">عنوان فرعي</option>
+                                <option value="quote">اقتباس مبرز</option>
+                                <option value="divider">فاصل مشهد (---)</option>
+                              </select>
+                              <div class="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  (click)="moveBlock('ar', idx, -1)"
+                                  class="w-7 h-7 rounded-lg hover:bg-surface-container-high flex items-center justify-center cursor-pointer"
+                                >
+                                  <span class="material-symbols-outlined text-[15px]">arrow_upward</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  (click)="moveBlock('ar', idx, 1)"
+                                  class="w-7 h-7 rounded-lg hover:bg-surface-container-high flex items-center justify-center cursor-pointer"
+                                >
+                                  <span class="material-symbols-outlined text-[15px]">arrow_downward</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  (click)="removeBlock('ar', idx)"
+                                  class="w-7 h-7 rounded-lg hover:bg-rose-500/15 text-rose-600 dark:text-rose-300 flex items-center justify-center cursor-pointer"
+                                >
+                                  <span class="material-symbols-outlined text-[15px]">delete</span>
+                                </button>
+                              </div>
+                            </div>
+                            @if (blk.type === 'divider') {
+                              <div class="py-2 text-center text-xs text-outline font-mono tracking-widest">• • •</div>
+                            } @else {
+                              <textarea
+                                [value]="blk.text"
+                                (input)="updateBlockText('ar', idx, $event)"
+                                [rows]="blk.type === 'heading' ? 1 : 4"
+                                class="liquid-glass-input w-full rounded-xl px-3.5 py-2.5 text-sm font-amiri leading-relaxed"
+                                placeholder="اكتب النص الأدبي هنا..."
+                              ></textarea>
+                            }
+                          </div>
+                        }
+                      </div>
+
+                      <div class="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          (click)="addBlock('ar', 'paragraph')"
+                          class="btn-tactile px-3 py-1.5 rounded-xl bg-surface-container-high text-xs font-bold flex items-center gap-1 cursor-pointer"
+                        >
+                          <span class="material-symbols-outlined text-[15px]">add</span>
+                          <span>إضافة فقرة</span>
+                        </button>
+                        <button
+                          type="button"
+                          (click)="addBlock('ar', 'heading')"
+                          class="btn-tactile px-3 py-1.5 rounded-xl bg-surface-container-high text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                        >
+                          <span class="material-symbols-outlined text-[15px]">title</span>
+                          <span>عنوان فرعي</span>
+                        </button>
+                        <button
+                          type="button"
+                          (click)="addBlock('ar', 'quote')"
+                          class="btn-tactile px-3 py-1.5 rounded-xl bg-surface-container-high text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                        >
+                          <span class="material-symbols-outlined text-[15px]">format_quote</span>
+                          <span>اقتباس</span>
+                        </button>
+                        <button
+                          type="button"
+                          (click)="addBlock('ar', 'divider')"
+                          class="btn-tactile px-3 py-1.5 rounded-xl bg-surface-container-high text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                        >
+                          <span class="material-symbols-outlined text-[15px]">horizontal_rule</span>
+                          <span>فاصل مشهد</span>
+                        </button>
+                      </div>
+                    </div>
+                  }
+
+                  <!-- ENGLISH EDITION BLOCK EDITOR -->
+                  @if (chapterForm.controls.languageMode.value === 'en' || chapterForm.controls.languageMode.value === 'both') {
+                    <div class="rounded-2xl p-4 sm:p-5 bg-surface-container/50 border border-secondary/30 space-y-4" dir="ltr">
+                      <div class="flex flex-wrap items-center justify-between gap-2 border-b border-surface-variant/35 pb-3">
+                        <div class="flex items-center gap-2">
+                          <span class="px-2.5 py-0.5 rounded-lg bg-secondary text-on-secondary text-[11px] font-bold">EN</span>
+                          <h3 class="text-sm font-bold text-on-surface">English Edition</h3>
+                          <span class="text-xs font-mono tabular-nums text-on-surface-variant">
+                            ({{ i18n.formatNumber(enLiveWordCount()) }} words)
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          (click)="openPasteSplitModal('en')"
+                          class="btn-tactile px-3 py-1.5 rounded-xl bg-surface-container-high text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                        >
+                          <span class="material-symbols-outlined text-[15px]">content_paste</span>
+                          <span>Paste & Split Paragraphs</span>
+                        </button>
+                      </div>
+
+                      <input
+                        formControlName="enTitle"
+                        type="text"
+                        class="liquid-glass-input w-full rounded-xl px-3.5 py-2.5 text-sm font-bold"
+                        placeholder="English chapter title..."
+                      />
+
+                      <div class="space-y-3">
+                        @for (blk of enBlocks(); track blk.id; let idx = $index) {
+                          <div class="rounded-xl p-3 bg-surface-container-low/80 border border-surface-variant/40 space-y-2">
+                            <div class="flex items-center justify-between gap-2">
+                              <select
+                                [value]="blk.type"
+                                (change)="updateBlockType('en', idx, $event)"
+                                class="liquid-glass-input rounded-lg px-2.5 py-1 text-[11px] font-bold"
+                              >
+                                <option value="paragraph">Paragraph</option>
+                                <option value="heading">Subheading</option>
+                                <option value="quote">Blockquote</option>
+                                <option value="divider">Scene Divider (---)</option>
+                              </select>
+                              <div class="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  (click)="moveBlock('en', idx, -1)"
+                                  class="w-7 h-7 rounded-lg hover:bg-surface-container-high flex items-center justify-center cursor-pointer"
+                                >
+                                  <span class="material-symbols-outlined text-[15px]">arrow_upward</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  (click)="moveBlock('en', idx, 1)"
+                                  class="w-7 h-7 rounded-lg hover:bg-surface-container-high flex items-center justify-center cursor-pointer"
+                                >
+                                  <span class="material-symbols-outlined text-[15px]">arrow_downward</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  (click)="removeBlock('en', idx)"
+                                  class="w-7 h-7 rounded-lg hover:bg-rose-500/15 text-rose-600 dark:text-rose-300 flex items-center justify-center cursor-pointer"
+                                >
+                                  <span class="material-symbols-outlined text-[15px]">delete</span>
+                                </button>
+                              </div>
+                            </div>
+                            @if (blk.type === 'divider') {
+                              <div class="py-2 text-center text-xs text-outline font-mono tracking-widest">• • •</div>
+                            } @else {
+                              <textarea
+                                [value]="blk.text"
+                                (input)="updateBlockText('en', idx, $event)"
+                                [rows]="blk.type === 'heading' ? 1 : 4"
+                                class="liquid-glass-input w-full rounded-xl px-3.5 py-2.5 text-sm font-literary-en leading-relaxed"
+                                placeholder="Write English prose here..."
+                              ></textarea>
+                            }
+                          </div>
+                        }
+                      </div>
+
+                      <div class="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          (click)="addBlock('en', 'paragraph')"
+                          class="btn-tactile px-3 py-1.5 rounded-xl bg-surface-container-high text-xs font-bold flex items-center gap-1 cursor-pointer"
+                        >
+                          <span class="material-symbols-outlined text-[15px]">add</span>
+                          <span>Add Paragraph</span>
+                        </button>
+                        <button
+                          type="button"
+                          (click)="addBlock('en', 'heading')"
+                          class="btn-tactile px-3 py-1.5 rounded-xl bg-surface-container-high text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                        >
+                          <span class="material-symbols-outlined text-[15px]">title</span>
+                          <span>Subheading</span>
+                        </button>
+                        <button
+                          type="button"
+                          (click)="addBlock('en', 'quote')"
+                          class="btn-tactile px-3 py-1.5 rounded-xl bg-surface-container-high text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                        >
+                          <span class="material-symbols-outlined text-[15px]">format_quote</span>
+                          <span>Blockquote</span>
+                        </button>
+                        <button
+                          type="button"
+                          (click)="addBlock('en', 'divider')"
+                          class="btn-tactile px-3 py-1.5 rounded-xl bg-surface-container-high text-xs font-semibold flex items-center gap-1 cursor-pointer"
+                        >
+                          <span class="material-symbols-outlined text-[15px]">horizontal_rule</span>
+                          <span>Divider</span>
+                        </button>
+                      </div>
+                    </div>
+                  }
+
+                  <!-- Chapter Submit Bar -->
+                  <div class="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-surface-variant/35">
+                    <label class="flex items-center gap-2 text-xs font-semibold text-on-surface cursor-pointer">
+                      <input type="checkbox" formControlName="isPublished" class="w-4 h-4 accent-primary" />
+                      <span>{{ isEn ? 'Publish visibly to readers immediately' : 'نشر الفصل للقرّاء مباشرة' }}</span>
+                    </label>
+
+                    <button
+                      type="submit"
+                      [disabled]="studio.isBusy() || (duplicateChapterError() && !editingChapterId())"
+                      class="btn-tactile px-6 py-2.5 rounded-xl bg-primary hover:bg-primary-fixed-dim text-on-primary text-xs sm:text-sm font-bold flex items-center gap-2 shadow-lg cursor-pointer disabled:opacity-50"
+                    >
+                      <span class="material-symbols-outlined text-[18px]">cloud_done</span>
+                      <span>{{ editingChapterId() ? (isEn ? 'Update Chapter' : 'حفظ تعديلات الفصل') : (isEn ? 'Save & Publish Chapter' : 'اعتماد وحفظ الفصل') }}</span>
+                    </button>
+                  </div>
+                </form>
+              </section>
+            </div>
+          </div>
+        }
+      }
+
+      <!-- ================= TAB 4: FULL MTX ARCHIVE ================= -->
+      @if (activeTab() === 'archive') {
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div class="liquid-glass-card rounded-3xl p-6 space-y-4">
+            <div class="flex items-center gap-3">
+              <span class="w-11 h-11 rounded-2xl bg-secondary/15 text-secondary flex items-center justify-center">
+                <span class="material-symbols-outlined text-[24px]">upload_file</span>
+              </span>
+              <div>
+                <h2 class="text-base sm:text-lg font-bold text-on-surface">{{ t.writerStudio.importMtxBtn }}</h2>
+                <p class="text-xs text-on-surface-variant">
+                  {{ isEn ? 'Imports full novel metadata, cover, sections, and bilingual chapters with SHA-256 verification.' : 'يستعيد كامل الرواية والغلاف والأقسام والفصول بلغتَيْها مع التحقق من بصمة SHA-256.' }}
+                </p>
+              </div>
+            </div>
+
+            <label class="flex flex-col items-center justify-center gap-3 p-8 rounded-2xl border-2 border-dashed border-secondary/45 bg-surface-container/40 hover:bg-surface-container/70 cursor-pointer transition-colors text-center">
+              <span class="material-symbols-outlined text-[36px] text-secondary">folder_zip</span>
+              <span class="text-xs sm:text-sm font-bold text-on-surface">
+                {{ isEn ? 'Select a .mtx archive file from your device' : 'اضغط لاختيار ملف أرشيف (.mtx) من جهازك' }}
+              </span>
+              <input
+                type="file"
+                accept=".mtx,application/octet-stream"
+                class="hidden"
+                (change)="onImportMtxFileSelected($event)"
+              />
+            </label>
+          </div>
+
+          <div class="liquid-glass-card rounded-3xl p-6 space-y-4">
+            <div class="flex items-center gap-3">
+              <span class="w-11 h-11 rounded-2xl bg-tertiary/15 text-tertiary flex items-center justify-center">
+                <span class="material-symbols-outlined text-[24px]">download_for_offline</span>
+              </span>
+              <div>
+                <h2 class="text-base sm:text-lg font-bold text-on-surface">{{ t.writerStudio.exportMtxBtn }}</h2>
+                <p class="text-xs text-on-surface-variant">
+                  {{ isEn ? 'Export any novel into a self-contained portable MTX file.' : 'صدّر أي رواية كملف MTX متكامل قابل للنقل والحفظ والنسخ الاحتياطي.' }}
+                </p>
+              </div>
+            </div>
+
+            @if (studio.ownNovels().length === 0) {
+              <p class="text-xs text-on-surface-variant py-6 text-center">{{ t.writerStudio.noPublishedNovels }}</p>
+            } @else {
+              <div class="space-y-2.5">
+                @for (novel of studio.ownNovels(); track novel.id) {
+                  <div class="p-3.5 rounded-2xl bg-surface-container/60 border border-surface-variant/35 flex items-center justify-between gap-3">
+                    <div class="min-w-0">
+                      <div class="text-xs sm:text-sm font-bold text-on-surface truncate">{{ novel.title }}</div>
+                      <div class="text-[11px] text-on-surface-variant font-mono tabular-nums">
+                        {{ i18n.formatNumber(novel.publishedChapterCount || 0) }} {{ t.details.specChapters }}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      (click)="studio.exportNovelMtxArchive(novel)"
+                      class="btn-tactile px-3.5 py-2 rounded-xl bg-tertiary text-on-tertiary text-xs font-bold flex items-center gap-1.5 cursor-pointer shrink-0"
+                    >
+                      <span class="material-symbols-outlined text-[16px]">download</span>
+                      <span>.mtx</span>
+                    </button>
+                  </div>
+                }
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      <!-- ================= TAB 5: ZID MODERATION & REPORTS ================= -->
+      @if (activeTab() === 'moderation' && writerStatus.isAdmin) {
+        <div class="space-y-5">
+          <div class="founder-seal-card rounded-3xl p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div class="space-y-1">
+              <h2 class="text-base sm:text-lg font-bold text-on-surface flex items-center gap-2">
+                <span class="material-symbols-outlined text-[22px] text-amber-600 dark:text-amber-300">gavel</span>
+                <span>{{ t.writerStudio.tabModeration }}</span>
+              </h2>
+              <p class="text-xs text-on-surface-variant">
+                {{ isEn ? 'Review reader reports and moderated works. Removing a violating work preserves the writer account and badge.' : 'راجع البلاغات والأعمال المعلّقة. إزالة عمل مخالف تُسقط ظهوره العام فقط دون المساس بحساب الكاتب أو شارته.' }}
+              </p>
+            </div>
+            <button
+              type="button"
+              (click)="studio.loadAdminModerationQueue()"
+              [disabled]="studio.adminLoading()"
+              class="btn-tactile px-4 py-2 rounded-xl bg-amber-600 text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+            >
+              <span class="material-symbols-outlined text-[16px]">refresh</span>
+              <span>{{ isEn ? 'Refresh Queue' : 'تحديث السجل' }}</span>
+            </button>
+          </div>
+
+          <div class="liquid-glass-card rounded-2xl p-4">
+            <label class="flex flex-col gap-1.5 text-xs font-semibold text-on-surface">
+              <span>{{ isEn ? 'Administrative Review Note (Optional)' : 'ملاحظة القرار الإداري (اختياري)' }}</span>
+              <input
+                [formControl]="adminDecisionNoteControl"
+                type="text"
+                class="liquid-glass-input rounded-xl px-3.5 py-2 text-sm"
+                [placeholder]="isEn ? 'Optional reason shown in studio status...' : 'سبب أو توضيح اختياري يظهر للكاتب...'"
+              />
+            </label>
+          </div>
+
+          @if (studio.adminLoading()) {
+            <div class="liquid-glass-card rounded-2xl p-8 text-center text-xs text-on-surface-variant">
+              {{ t.auth.loading }}
+            </div>
+          } @else if (studio.workReports().length === 0 && studio.moderatedNovels().length === 0) {
+            <div class="liquid-glass-card rounded-2xl p-8 text-center text-xs sm:text-sm text-on-surface-variant">
+              {{ t.writerStudio.reportsEmpty }}
+            </div>
+          } @else {
+            <div class="space-y-4">
+              @for (rep of studio.workReports(); track rep.id) {
+                <article class="liquid-glass-card rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div class="space-y-1 min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <span class="px-2.5 py-0.5 rounded-md bg-rose-500/15 text-rose-700 dark:text-rose-300 text-[11px] font-bold">
+                        {{ rep.reason }}
+                      </span>
+                      <span class="text-xs font-mono text-outline">{{ rep.novelId }}</span>
+                    </div>
+                    <h3 class="text-sm sm:text-base font-bold text-on-surface">{{ rep.novelTitle }}</h3>
+                    @if (rep.details) {
+                      <p class="text-xs text-on-surface-variant">{{ rep.details }}</p>
+                    }
+                  </div>
+                  <div class="flex flex-wrap items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      (click)="keepNovelAdmin(rep.novelId)"
+                      [disabled]="studio.isBusy()"
+                      class="btn-tactile px-3.5 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold cursor-pointer disabled:opacity-50"
+                    >
+                      {{ t.writerStudio.keepWorkKeepClear }}
+                    </button>
+                    <button
+                      type="button"
+                      (click)="removeNovelAdmin(rep.novelId)"
+                      [disabled]="studio.isBusy()"
+                      class="btn-tactile px-3.5 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold cursor-pointer disabled:opacity-50"
+                    >
+                      {{ t.writerStudio.removeWorkAdmin }}
+                    </button>
+                  </div>
+                </article>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </div>
+</div>
+
+<!-- ================= MODAL: PASTE & SPLIT PARAGRAPHS ================= -->
+@if (pasteSplitLang(); as targetLang) {
+  <div class="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/65 backdrop-blur-md animate-fadeIn">
+    <button
+      type="button"
+      class="fixed inset-0 w-full h-full border-none bg-transparent cursor-default"
+      [attr.aria-label]="t.modals.close"
+      (click)="pasteSplitLang.set(null)"
+    ></button>
+    <div class="relative z-10 w-full max-w-2xl liquid-glass-drawer rounded-3xl p-6 space-y-4">
+      <h3 class="text-base sm:text-lg font-bold text-on-surface">
+        {{ targetLang === 'en' ? 'Paste Full Text to Split into Blocks' : 'لصق النص وتقسيمه إلى فقرات منظمة' }}
+      </h3>
+      <textarea
+        [formControl]="pasteSplitControl"
+        [dir]="targetLang === 'en' ? 'ltr' : 'rtl'"
+        rows="8"
+        class="liquid-glass-input w-full rounded-2xl p-4 text-sm leading-relaxed"
+        [placeholder]="targetLang === 'en' ? 'Separate paragraphs with a blank line...' : 'افصل بين الفقرات بسطر فارغ، واستخدم ## للعناوين الفرعية و > للاقتباس...'"
+      ></textarea>
+      <div class="flex items-center justify-end gap-2">
+        <button
+          type="button"
+          (click)="pasteSplitLang.set(null)"
+          class="btn-tactile px-4 py-2 rounded-xl bg-surface-container text-xs font-semibold cursor-pointer"
+        >
+          {{ t.modals.publishCancel }}
+        </button>
+        <button
+          type="button"
+          (click)="applyPasteSplitBlocks()"
+          class="btn-tactile px-5 py-2 rounded-xl bg-primary text-on-primary text-xs font-bold cursor-pointer"
+        >
+          {{ targetLang === 'en' ? 'Insert Blocks' : 'إدراج الفقرات' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ================= MODAL: IN-STUDIO CHAPTER READER PREVIEW ================= -->
+@if (isChapterPreviewOpen()) {
+  <div class="fixed inset-0 z-[75] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fadeIn">
+    <button
+      type="button"
+      class="fixed inset-0 w-full h-full border-none bg-transparent cursor-default"
+      [attr.aria-label]="t.modals.close"
+      (click)="isChapterPreviewOpen.set(false)"
+    ></button>
+    <div class="relative z-10 w-full max-w-3xl max-h-[88vh] liquid-glass-drawer rounded-3xl flex flex-col overflow-hidden">
+      <div class="px-6 py-4 border-b border-surface-variant/40 flex items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-[20px] text-secondary">auto_stories</span>
+          <h3 class="text-sm sm:text-base font-bold text-on-surface">
+            {{ isEn ? 'Live Reader Preview' : 'معاينة القراءة المباشرة' }}
+          </h3>
+        </div>
+        <div class="flex items-center gap-2">
+          @if (chapterForm.controls.languageMode.value === 'both') {
+            <button
+              type="button"
+              (click)="previewLanguage.set(previewLanguage() === 'ar' ? 'en' : 'ar')"
+              class="btn-tactile px-3 py-1.5 rounded-xl bg-surface-container-high text-xs font-bold cursor-pointer"
+            >
+              {{ previewLanguage() === 'ar' ? 'English Preview' : 'المعاينة العربية' }}
+            </button>
+          }
+          <button
+            type="button"
+            (click)="isChapterPreviewOpen.set(false)"
+            class="w-9 h-9 rounded-xl bg-surface-container flex items-center justify-center cursor-pointer"
+          >
+            <span class="material-symbols-outlined text-[19px]">close</span>
+          </button>
+        </div>
+      </div>
+
+      <div
+        class="flex-1 overflow-y-auto p-6 sm:p-10 space-y-6"
+        [attr.dir]="previewLanguage() === 'en' ? 'ltr' : 'rtl'"
+      >
+        @if (chapterForm.controls.chapterType.value === 'explanatory') {
+          <div class="explanatory-glass-card rounded-2xl p-4 text-xs font-semibold text-emerald-900 dark:text-emerald-200 flex items-center gap-2">
+            <span class="material-symbols-outlined text-[18px]">eco</span>
+            <span>{{ t.explanatoryChapter.badge }}</span>
+          </div>
+        }
+
+        <h1 class="text-2xl sm:text-3xl font-bold text-on-surface text-center">
+          {{
+            previewLanguage() === 'en'
+              ? (chapterForm.controls.enTitle.value || chapterForm.controls.titleEn.value || chapterForm.controls.title.value)
+              : (chapterForm.controls.arTitle.value || chapterForm.controls.title.value)
+          }}
+        </h1>
+
+        <div [class]="(previewLanguage() === 'en' ? 'font-literary-en ' : 'font-amiri ') + 'space-y-5 text-base sm:text-lg leading-loose text-on-surface'">
+          @for (blk of (previewLanguage() === 'en' ? enBlocks() : arBlocks()); track blk.id) {
+            @if (blk.type === 'divider') {
+              <div class="py-3 text-center text-outline tracking-widest">• • •</div>
+            } @else if (blk.type === 'heading') {
+              <h2 class="text-xl font-bold text-primary pt-2">{{ blk.text }}</h2>
+            } @else if (blk.type === 'quote') {
+              <blockquote class="px-5 py-3 rounded-2xl bg-surface-container/70 border-s-4 border-secondary italic">
+                {{ blk.text }}
+              </blockquote>
+            } @else if (blk.text.trim()) {
+              <p>{{ blk.text }}</p>
+            }
+          }
+        </div>
+
+        <div class="pt-4 border-t border-surface-variant/35 flex justify-center">
+          <span class="px-3.5 py-1 rounded-full bg-surface-container-high text-xs font-bold text-secondary">
+            {{ chapterForm.controls.endStatus.value === 'ending' ? t.reader.chapterEndedNotice : t.reader.chapterOngoingNotice }}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ================= MODAL: OPTIMISTIC CHAPTER CONFLICT RESOLUTION ================= -->
+@if (studio.conflictState(); as conflict) {
+  <div class="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fadeIn">
+    <div class="relative z-10 w-full max-w-xl liquid-glass-drawer border border-amber-500/45 rounded-3xl p-6 space-y-5">
+      <div class="flex items-center gap-3 text-amber-700 dark:text-amber-300">
+        <span class="material-symbols-outlined text-[28px]">merge</span>
+        <h3 class="text-base sm:text-lg font-bold">{{ t.writerStudio.conflictTitle }}</h3>
+      </div>
+      <p class="text-xs sm:text-sm text-on-surface-variant leading-relaxed">
+        {{ t.writerStudio.conflictDesc }}
+      </p>
+      <div class="text-xs text-on-surface bg-surface-container/70 rounded-xl p-3 font-mono">
+        Server Rev: #{{ conflict.serverChapter.revision }} · Local Base: #{{ conflict.localSnapshot.baseRevision }}
+      </div>
+      <div class="flex flex-col gap-2.5">
+        <button
+          type="button"
+          (click)="resolveConflict('server')"
+          class="btn-tactile w-full py-2.5 rounded-xl bg-surface-container-high text-on-surface text-xs font-bold cursor-pointer"
+        >
+          {{ t.writerStudio.conflictReloadServer }}
+        </button>
+        <button
+          type="button"
+          (click)="resolveConflict('merge')"
+          class="btn-tactile w-full py-2.5 rounded-xl bg-secondary text-on-secondary text-xs font-bold cursor-pointer"
+        >
+          {{ isEn ? 'Merge Both Versions Safely' : 'دمج النسختين معاً دون فقدان' }}
+        </button>
+        <button
+          type="button"
+          (click)="resolveConflict('overwrite')"
+          class="btn-tactile w-full py-2.5 rounded-xl bg-primary text-on-primary text-xs font-bold cursor-pointer"
+        >
+          {{ t.writerStudio.conflictSaveOverwrite }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
+
+<!-- ================= MODAL: VERIFIED .MTX PERMANENT DELETE GATE ================= -->
+@if (studio.deleteGateNovel(); as gateNovel) {
+  <div class="fixed inset-0 z-[85] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fadeIn">
+    <button
+      type="button"
+      class="fixed inset-0 w-full h-full border-none bg-transparent cursor-default"
+      [attr.aria-label]="t.modals.close"
+      (click)="studio.closeDeleteGate()"
+    ></button>
+    <div class="relative z-10 w-full max-w-lg liquid-glass-drawer border border-rose-500/45 rounded-3xl p-6 space-y-5">
+      <div class="flex items-start justify-between gap-3">
+        <div class="flex items-center gap-3 text-rose-700 dark:text-rose-300">
+          <span class="material-symbols-outlined text-[28px]">shield_lock</span>
+          <div>
+            <h3 class="text-base sm:text-lg font-bold">{{ t.writerStudio.deleteGateTitle }}</h3>
+            <span class="text-xs text-on-surface-variant">{{ gateNovel.title }}</span>
+          </div>
+        </div>
+        <button
+          type="button"
+          (click)="studio.closeDeleteGate()"
+          class="w-9 h-9 rounded-xl bg-surface-container flex items-center justify-center cursor-pointer"
+        >
+          <span class="material-symbols-outlined text-[18px]">close</span>
+        </button>
+      </div>
+
+      <p class="text-xs sm:text-sm text-on-surface-variant leading-relaxed">
+        {{ t.writerStudio.deleteGateDesc }}
+      </p>
+
+      @if (studio.deleteGateError()) {
+        <div class="p-3 rounded-xl bg-rose-500/15 border border-rose-500/40 text-xs text-rose-700 dark:text-rose-200 font-semibold">
+          {{ studio.deleteGateError() }}
+        </div>
+      }
+
+      <!-- Step 1: Mandatory MTX Archive Export & SHA-256 Verification -->
+      <div class="p-4 rounded-2xl bg-surface-container/70 border border-surface-variant/40 space-y-3">
+        <div class="text-xs font-bold text-on-surface">{{ t.writerStudio.deleteGateStep1 }}</div>
+        <button
+          type="button"
+          (click)="studio.downloadAndVerifyMtxForDeleteGate()"
+          [disabled]="studio.deleteGateStatus() === 'exporting' || studio.deleteGateStatus() === 'verifying' || studio.deleteGateStatus() === 'deleting'"
+          class="btn-tactile w-full py-2.5 px-4 rounded-xl bg-tertiary text-on-tertiary text-xs font-bold flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+        >
+          <span class="material-symbols-outlined text-[18px]">download_done</span>
+          <span>{{ t.writerStudio.exportMtxBtn }}</span>
+        </button>
+
+        @if (studio.deleteGateArchiveInfo(); as info) {
+          <div class="explanatory-glass-card rounded-xl p-3 text-[11px] space-y-1 text-emerald-900 dark:text-emerald-200">
+            <div class="font-bold">{{ t.writerStudio.deleteGateVerified }}</div>
+            <div class="font-mono truncate">{{ info.filename }}</div>
+            <div class="font-mono truncate">SHA-256: {{ info.sha256.slice(0, 18) }}... ({{ info.chapterCount }} ch)</div>
+          </div>
+        }
+      </div>
+
+      <!-- Step 2: Unlocked ONLY After Verified MTX Export -->
+      @if (studio.deleteGateStatus() === 'ready') {
+        <div class="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/40 space-y-3">
+          <div class="text-xs font-bold text-rose-800 dark:text-rose-200">{{ t.writerStudio.deleteGateStep2 }}</div>
+          <label class="flex flex-col gap-1.5 text-xs text-on-surface">
+            <span>{{ isEn ? 'Type "Confirm Delete" to permanently erase from server:' : 'اكتب «حذف نهائي» لتأكيد المسح النهائي من الخادم:' }}</span>
+            <input
+              [formControl]="deleteGateConfirmControl"
+              type="text"
+              class="liquid-glass-input rounded-xl px-3.5 py-2 text-sm"
+              [placeholder]="t.writerStudio.deleteGateConfirmText"
+            />
+          </label>
+          <button
+            type="button"
+            [disabled]="!canExecutePermanentDelete()"
+            (click)="studio.confirmPermanentDeleteAfterMtx()"
+            class="btn-tactile w-full py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold cursor-pointer disabled:opacity-45"
+          >
+            {{ t.writerStudio.deleteNovelBtn }}
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+}

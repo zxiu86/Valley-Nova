@@ -294,11 +294,11 @@
               @if (canShowPublishedWorksSection()) {
                 <button
                   type="button"
-                  (click)="lib.openPublishModal()"
+                  (click)="lib.openWriterStudio()"
                   class="btn-tactile px-4 py-2 rounded-xl bg-primary hover:bg-primary-fixed-dim text-on-primary text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-sm"
                 >
                   <span class="material-symbols-outlined text-[16px]">history_edu</span>
-                  <span>{{ t.profile.publishBtn }}</span>
+                  <span>{{ t.writerStudio.openStudioBtn }}</span>
                 </button>
               } @else if (account.ownApplicationStatus() === 'none' || account.ownApplicationStatus() === 'rejected') {
                 <button
@@ -368,11 +368,11 @@
           @if (account.viewedIsOwner()) {
             <button
               type="button"
-              (click)="lib.openPublishModal()"
+              (click)="lib.openWriterStudio()"
               class="btn-tactile px-3.5 py-2 rounded-xl bg-primary text-on-primary text-xs font-bold flex items-center gap-1.5 cursor-pointer shadow-xs"
             >
-              <span class="material-symbols-outlined text-[16px]">add</span>
-              <span>{{ t.profile.publishBtn }}</span>
+              <span class="material-symbols-outlined text-[16px]">history_edu</span>
+              <span>{{ t.writerStudio.openStudioBtn }}</span>
             </button>
           }
         </div>
@@ -1184,11 +1184,11 @@
                     </p>
                     <button
                       type="button"
-                      (click)="closeSettingsDrawer(); lib.openPublishModal()"
+                      (click)="closeSettingsDrawer(); lib.openWriterStudio()"
                       class="btn-tactile px-4 py-2 rounded-xl bg-primary text-on-primary text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
                     >
-                      <span class="material-symbols-outlined text-[16px]">publish</span>
-                      <span>{{ t.profile.publishBtn }}</span>
+                      <span class="material-symbols-outlined text-[16px]">history_edu</span>
+                      <span>{{ t.writerStudio.openStudioBtn }}</span>
                     </button>
                   </div>
                 } @else if (account.ownApplicationStatus() === 'pending') {

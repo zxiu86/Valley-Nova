@@ -1,6 +1,6 @@
 import { Injectable, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { FormControl, FormGroup } from '@angular/forms';
+import { FormControl, FormGroup, Validators } from '@angular/forms';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router } from '@angular/router';
 import { Subscription, filter } from 'rxjs';
@@ -11,7 +11,9 @@ import {
   CorridorId,
   ExploreLanguageScope,
   LiterarySalon,
+  LogicalChapter,
   NovelCard,
+  NovelSection,
   ProfileQuote,
   ProfileWork,
   PublishedNovelRecord,
@@ -31,19 +33,25 @@ import {
   getDefaultChapterLanguageForNovel,
 } from '../mtx-reader-chapters';
 import {
+  commitVerifiedReadTransaction,
   fetchAllPublishedNovels,
   fetchCloudVaultBooks,
+  getPublicAuthorAppearance,
+  hasUserReportedNovel,
   publishNovelToFirestore,
   recordChapterReadInFirestore,
   removeBookmarkFromFirestore,
   saveBookmarkToFirestore,
   saveToCloudVault,
+  startReadSessionWithServerTime,
+  submitWorkReportToFirestore,
   syncSavedNovelsCountToFirestore,
 } from '../mtx-firebase';
 import { AuthSessionService } from './auth-session.service';
 import { AccountService } from './account.service';
 import { ThemeService } from './theme.service';
 import { I18nService } from './i18n.service';
+import { WriterStudioService } from './writer-studio.service';
 
 const NAV_STORAGE_KEY = 'mtx_nav_state_v1';
 
@@ -55,8 +63,9 @@ export class LibraryStateService {
   readonly accountService = inject(AccountService);
   readonly themeService = inject(ThemeService);
   readonly i18n = inject(I18nService);
+  readonly writerStudio = inject(WriterStudioService);
 
-  // Navigation & View State ('novels' | 'details' | 'explore' | 'auth' | 'profile' | 'reader')
+  // Navigation & View State ('novels' | 'details' | 'explore' | 'auth' | 'profile' | 'reader' | 'writer')
   readonly currentView = signal<AppView>('novels');
   readonly previousView = signal<Exclude<AppView, 'reader'>>('novels');
   readonly selectedNovel = signal<NovelCard | null>(null);
@@ -114,6 +123,10 @@ export class LibraryStateService {
   private routerEventsSub: Subscription | null = null;
   private soundscapeStopTimer: ReturnType<typeof setTimeout> | null = null;
   private initialized = false;
+  private readTrackerTimer: ReturnType<typeof setInterval> | null = null;
+  private activeReadSessionId: string | null = null;
+  private activeReadSessionNovelId: string | null = null;
+  private readVisibleMs = 0;
 
   // Search Control & Forms
   readonly searchControl = new FormControl('', { nonNullable: true });
@@ -133,6 +146,20 @@ export class LibraryStateService {
   readonly readingProgressPercent = signal<number>(17);
   readonly selectedChapterLang = signal<ChapterLanguage>('ar');
   readonly selectedChapterLangProgressPercent = signal<number>(0);
+
+  // Server-Verified 60-Second Read State
+  readonly verifiedReadSessionAwarded = signal<boolean>(false);
+
+  // Work Reporting Modal & Reactive Form
+  readonly isReportModalOpen = signal<boolean>(false);
+  readonly reportSubmitting = signal<boolean>(false);
+  readonly alreadyReportedNovel = signal<boolean>(false);
+  readonly reportSuccess = signal<boolean>(false);
+  readonly reportError = signal<string | null>(null);
+  readonly reportForm = new FormGroup({
+    reason: new FormControl('rights', { nonNullable: true, validators: [Validators.required] }),
+    details: new FormControl('', { nonNullable: true }),
+  });
 
   // Explore View State
   readonly exploreSearchControl = new FormControl('', { nonNullable: true });
@@ -799,10 +826,25 @@ export class LibraryStateService {
     }
   });
 
+  // Active Firestore-backed Sections & Chapters for Selected Novel
+  readonly activeNovelSections = computed<NovelSection[]>(() => {
+    const id = this.selectedNovel()?.id;
+    if (!id) return [];
+    return this.writerStudio.publicNovelDetailsCache()[id]?.sections || [];
+  });
+
+  readonly activeNovelFirestoreChapters = computed<LogicalChapter[]>(() => {
+    const id = this.selectedNovel()?.id;
+    if (!id) return [];
+    return this.writerStudio.publicNovelDetailsCache()[id]?.chapters || [];
+  });
+
   // Bilingual Novel Chapters Computed Signals
   readonly availableChaptersForNovel = computed<ChapterItem[]>(() => {
     const novel = this.selectedNovel() || this.defaultEchoesSamarkand;
-    return getChaptersForNovel(novel.id, this.selectedChapterLang(), novel);
+    const dbChapters = this.selectedNovel()?.id === novel.id ? this.activeNovelFirestoreChapters() : undefined;
+    const dbSections = this.selectedNovel()?.id === novel.id ? this.activeNovelSections() : undefined;
+    return getChaptersForNovel(novel.id, this.selectedChapterLang(), novel, dbChapters, dbSections);
   });
 
   readonly oppositeChapterLang = computed<ChapterLanguage>(() =>
@@ -811,7 +853,9 @@ export class LibraryStateService {
 
   readonly oppositeChaptersCount = computed<number>(() => {
     const novel = this.selectedNovel() || this.defaultEchoesSamarkand;
-    return getChaptersForNovel(novel.id, this.oppositeChapterLang(), novel).length;
+    const dbChapters = this.selectedNovel()?.id === novel.id ? this.activeNovelFirestoreChapters() : undefined;
+    const dbSections = this.selectedNovel()?.id === novel.id ? this.activeNovelSections() : undefined;
+    return getChaptersForNovel(novel.id, this.oppositeChapterLang(), novel, dbChapters, dbSections).length;
   });
 
   readonly hasOppositeChapterLang = computed<boolean>(() => this.oppositeChaptersCount() > 0);
@@ -1116,6 +1160,31 @@ export class LibraryStateService {
     this.filteredChaptersList().filter((c) => c.partition === 3)
   );
 
+  readonly groupedDetailsSections = computed<
+    { section: NovelSection | null; chapters: ChapterItem[] }[]
+  >(() => {
+    const sections = this.activeNovelSections();
+    const chapters = this.filteredChaptersList();
+    if (sections.length === 0) return [];
+
+    const groups: { section: NovelSection | null; chapters: ChapterItem[] }[] = [];
+    const assignedIds = new Set<string>();
+
+    for (const sec of sections) {
+      const secChapters = chapters.filter((ch) => ch.sectionId === sec.id);
+      if (secChapters.length > 0) {
+        secChapters.forEach((c) => assignedIds.add(`${c.id}`));
+        groups.push({ section: sec, chapters: secChapters });
+      }
+    }
+
+    const unsectioned = chapters.filter((ch) => !ch.sectionId || !assignedIds.has(`${ch.id}`));
+    if (unsectioned.length > 0) {
+      groups.push({ section: null, chapters: unsectioned });
+    }
+    return groups;
+  });
+
   async init(): Promise<void> {
     if (this.initialized) return;
     this.initialized = true;
@@ -1179,22 +1248,7 @@ export class LibraryStateService {
         this.bookmarkedIds.set(nextSet);
       }
       if (publishedNovels && publishedNovels.length > 0) {
-        const mapped: NovelCard[] = publishedNovels.map((n) => ({
-          id: n.id,
-          title: n.title,
-          author: n.authorName,
-          authorId: n.authorId,
-          genre: n.genre,
-          categoryGroup: n.categoryGroup,
-          originLanguage: n.originLanguage || 'عربي أصيل',
-          languageCode: n.languageCode || (n.originLanguage === 'الإنجليزية' ? 'en' : 'ar'),
-          coverUrl: n.coverUrl || '/images/writers_sanctuary_bg.jpg',
-          coverAlt: n.title,
-          description: n.description,
-          readingHours: n.readingHours,
-          isCompleted: false,
-          isOriginal: true,
-        }));
+        const mapped: NovelCard[] = publishedNovels.map((n) => this.mapPublishedRecordToNovelCard(n));
         this.exploreBooksList.update((existing) => {
           const existingIds = new Set(existing.map((item) => item.id));
           const fresh = mapped.filter((m) => !existingIds.has(m.id));
@@ -1209,6 +1263,7 @@ export class LibraryStateService {
   destroy(): void {
     this.routerEventsSub?.unsubscribe();
     this.routerEventsSub = null;
+    this.stopVerifiedReadTracking();
     if (this.soundscapeStopTimer) {
       clearTimeout(this.soundscapeStopTimer);
       this.soundscapeStopTimer = null;
@@ -1225,6 +1280,41 @@ export class LibraryStateService {
       this.toastTimeout = null;
     }
     this.initialized = false;
+  }
+
+  private mapPublishedRecordToNovelCard(n: PublishedNovelRecord): NovelCard {
+    return {
+      id: n.id,
+      title: n.title,
+      ...(n.titleEn ? { titleEn: n.titleEn } : {}),
+      author: n.authorName,
+      authorId: n.authorId,
+      genre: n.genre,
+      categoryGroup: n.categoryGroup,
+      originLanguage: n.originLanguage || 'عربي أصيل',
+      languageCode: n.languageCode || (n.originLanguage === 'الإنجليزية' ? 'en' : 'ar'),
+      coverUrl: n.coverUrl || '/images/writers_sanctuary_bg.jpg',
+      coverAlt: n.title,
+      description: n.description,
+      readingHours: n.readingHours,
+      isCompleted: n.novelStatus === 'completed',
+      novelStatus: n.novelStatus || 'ongoing',
+      workType: n.workType || 'original',
+      ...(n.originalAuthor ? { originalAuthor: n.originalAuthor } : {}),
+      ...(n.firstAuthor ? { firstAuthor: n.firstAuthor } : {}),
+      ...(n.supportMethod ? { supportMethod: n.supportMethod } : {}),
+      moderationStatus: n.moderationStatus || 'active',
+      ...(n.moderationNote ? { moderationNote: n.moderationNote } : {}),
+      reportCount: n.reportCount || 0,
+      verifiedReadsCount: n.verifiedReadsCount || 0,
+      publishedChapterCount: n.publishedChapterCount || 0,
+      publishedWordsAr: n.publishedWordsAr || 0,
+      publishedWordsEn: n.publishedWordsEn || 0,
+      ...(n.tags?.length ? { tags: n.tags } : {}),
+      isOriginal: (n.workType || 'original') === 'original',
+      isTranslated: n.workType === 'translated',
+      isFirestoreBacked: true,
+    };
   }
 
   toArabicNumber(n: number): string {
@@ -1249,6 +1339,55 @@ export class LibraryStateService {
     }
   }
 
+  openWriterStudio(
+    novelId?: string,
+    tab?: 'dashboard' | 'novel' | 'chapters' | 'archive' | 'moderation'
+  ): void {
+    this.closeAllModals();
+    this.currentView.set('writer');
+    this.persistNavigationState();
+    this.i18n.syncDocumentMeta('writer');
+    const queryParams: Record<string, string> = {};
+    if (novelId) queryParams['novelId'] = novelId;
+    if (tab) queryParams['tab'] = tab;
+    this.router.navigate(['/writer'], { queryParams }).catch(() => false);
+    if (isPlatformBrowser(this.platformId)) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
+  async navigateToAuthorProfile(authorId?: string, authorUsername?: string): Promise<void> {
+    if (!authorId) return;
+    const own = this.accountService.ownProfile();
+    if (own && own.uid === authorId) {
+      this.navigateToOwnProfile();
+      return;
+    }
+
+    let username = authorUsername || this.accountService.getAuthorAppearance(authorId)?.username;
+    if (!username) {
+      const appearance = await getPublicAuthorAppearance(authorId).catch(() => null);
+      username = appearance?.username;
+    }
+
+    if (username) {
+      this.closeAllModals();
+      this.currentView.set('profile');
+      this.i18n.syncDocumentMeta('profile');
+      this.router.navigate(['/profile', username]).catch(() => false);
+      if (isPlatformBrowser(this.platformId)) {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      return;
+    }
+
+    this.showToast(
+      this.isEn()
+        ? 'This author has not enabled a public profile link yet.'
+        : 'لم يفعل هذا الكاتب رابط ملفه الشخصي العام بعد.'
+    );
+  }
+
   navigateToView(view: AppView, smoothScroll = true): void {
     if (view === 'profile') {
       this.navigateToOwnProfile(smoothScroll);
@@ -1268,6 +1407,7 @@ export class LibraryStateService {
       reader: '/reading',
       auth: '/auth',
       profile: '/profile',
+      writer: '/writer',
     } as unknown as Record<AppView, string>;
 
     const targetPath = routeMap[view] || '/';
@@ -1287,6 +1427,7 @@ export class LibraryStateService {
     if (clean.startsWith('/reading')) return 'reader';
     if (clean.startsWith('/auth')) return 'auth';
     if (clean.startsWith('/profile')) return 'profile';
+    if (clean.startsWith('/writer')) return 'writer';
     return 'novels';
   }
 
@@ -1628,13 +1769,30 @@ export class LibraryStateService {
     const scope = this.exploreLanguageScope();
     const preferred: ChapterLanguage | undefined =
       scope === 'non-ar' ? 'en' : scope === 'ar' ? 'ar' : this.i18n.lang();
-    const initialChapLang = getDefaultChapterLanguageForNovel(resolved, preferred);
+    const cached = this.writerStudio.publicNovelDetailsCache()[resolved.id];
+    const initialChapLang = getDefaultChapterLanguageForNovel(resolved, preferred, cached?.chapters);
     this.selectedChapterLang.set(initialChapLang);
     this.chapterSearchControl.setValue('');
     this.syncNovelChapterProgress(resolved, initialChapLang);
     this.closeAllModals();
     this.navigateToView('details');
-    this.prepareSilentDecompression(resolved);
+
+    if (resolved.isFirestoreBacked || resolved.id.startsWith('novel_') || resolved.id.startsWith('usr-')) {
+      void this.writerStudio.loadPublicNovelContent(resolved.id, true).then(({ chapters }) => {
+        if (this.selectedNovel()?.id !== resolved.id) return;
+        const currentPool = getChaptersForNovel(resolved.id, this.selectedChapterLang(), resolved, chapters);
+        const nextLang =
+          currentPool.length > 0
+            ? this.selectedChapterLang()
+            : getDefaultChapterLanguageForNovel(resolved, preferred, chapters);
+        if (nextLang !== this.selectedChapterLang()) {
+          this.selectedChapterLang.set(nextLang);
+        }
+        this.syncNovelChapterProgress(resolved, nextLang);
+      });
+    } else {
+      this.prepareSilentDecompression(resolved);
+    }
   }
 
   setNovelChapterLanguage(lang: ChapterLanguage): void {
@@ -1692,7 +1850,9 @@ export class LibraryStateService {
       this.selectedChapterLangProgressPercent.set(0);
       return;
     }
-    const chapters = getChaptersForNovel(novel.id, lang, novel);
+    const dbChapters = this.selectedNovel()?.id === novel.id ? this.activeNovelFirestoreChapters() : undefined;
+    const dbSections = this.selectedNovel()?.id === novel.id ? this.activeNovelSections() : undefined;
+    const chapters = getChaptersForNovel(novel.id, lang, novel, dbChapters, dbSections);
     if (chapters.length === 0) {
       this.selectedChapterLangProgressPercent.set(0);
       return;
@@ -2035,6 +2195,7 @@ export class LibraryStateService {
     this.isProfileOpen.set(false);
     this.isMobileNavOpen.set(false);
     this.isSiteSettingsOpen.set(false);
+    this.isReportModalOpen.set(false);
   }
 
   switchCorridor(corridor: CorridorId): void {
@@ -2143,7 +2304,9 @@ export class LibraryStateService {
     }
     this.activeReadingChapter.set(chapter);
     const novel = this.selectedNovel() || this.defaultEchoesSamarkand;
-    const content = getChapterProse(novel.title, chapter, novel);
+    const dbChapters = this.selectedNovel()?.id === novel.id ? this.activeNovelFirestoreChapters() : undefined;
+    const dbSections = this.selectedNovel()?.id === novel.id ? this.activeNovelSections() : undefined;
+    const content = getChapterProse(novel.title, chapter, novel, dbChapters, dbSections);
     this.readerActiveChapterContent.set(content);
     this.activeChapterText.set(content.paragraphs.join('\n\n'));
 
@@ -2157,6 +2320,99 @@ export class LibraryStateService {
       this.readerProgressPercent.set(0);
     }
     this.syncNovelChapterProgress(novel, chapLang);
+  }
+
+  private getAnonReaderKey(): string {
+    if (!isPlatformBrowser(this.platformId)) return 'guest_ssr';
+    try {
+      const existing = localStorage.getItem('mtx_anon_reader_id');
+      if (existing && /^[a-zA-Z0-9_-]+$/.test(existing)) {
+        return existing;
+      }
+      const created = `guest_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+      localStorage.setItem('mtx_anon_reader_id', created);
+      return created;
+    } catch {
+      return `guest_${Date.now().toString(36)}`;
+    }
+  }
+
+  private stopVerifiedReadTracking(): void {
+    if (this.readTrackerTimer) {
+      clearInterval(this.readTrackerTimer);
+      this.readTrackerTimer = null;
+    }
+    this.activeReadSessionId = null;
+    this.activeReadSessionNovelId = null;
+    this.readVisibleMs = 0;
+  }
+
+  private startVerifiedReadTracking(novel: NovelCard, chapter: ChapterItem): void {
+    this.stopVerifiedReadTracking();
+    this.verifiedReadSessionAwarded.set(false);
+    if (!isPlatformBrowser(this.platformId) || !novel.isFirestoreBacked || !chapter.firestoreChapterId) {
+      return;
+    }
+
+    const user = this.authSession.currentUser();
+    const readerKey = user ? user.uid : this.getAnonReaderKey();
+    const firestoreChapId = chapter.firestoreChapterId;
+    const novelId = novel.id;
+
+    void startReadSessionWithServerTime(novelId, firestoreChapId, readerKey, user?.uid)
+      .then((res) => {
+        if (this.activeReadingChapter()?.firestoreChapterId !== firestoreChapId) return;
+        if (res.alreadyVerified) {
+          this.verifiedReadSessionAwarded.set(true);
+          return;
+        }
+        if (!res.sessionId) return;
+
+        this.activeReadSessionId = res.sessionId;
+        this.activeReadSessionNovelId = novelId;
+        this.readVisibleMs = 0;
+
+        this.readTrackerTimer = setInterval(() => {
+          if (typeof document === 'undefined') return;
+          if (
+            document.visibilityState !== 'visible' ||
+            this.currentView() !== 'reader' ||
+            !this.isReadingChapterOpen()
+          ) {
+            return;
+          }
+          this.readVisibleMs += 1000;
+          // 61s ensures Firestore server timestamp delta >= 60s strictly passes
+          if (this.readVisibleMs >= 61_000 && this.activeReadSessionId && this.activeReadSessionNovelId === novelId) {
+            const committedSessionId = this.activeReadSessionId;
+            if (this.readTrackerTimer) {
+              clearInterval(this.readTrackerTimer);
+              this.readTrackerTimer = null;
+            }
+            void commitVerifiedReadTransaction(
+              novelId,
+              committedSessionId,
+              readerKey,
+              firestoreChapId,
+              user?.uid
+            ).then((commitRes) => {
+              if (commitRes.counted) {
+                this.verifiedReadSessionAwarded.set(true);
+                const nextReads = commitRes.newCount;
+                if (typeof nextReads === 'number') {
+                  this.selectedNovel.update((curr) =>
+                    curr && curr.id === novelId ? { ...curr, verifiedReadsCount: nextReads } : curr
+                  );
+                  this.exploreBooksList.update((list) =>
+                    list.map((b) => (b.id === novelId ? { ...b, verifiedReadsCount: nextReads } : b))
+                  );
+                }
+              }
+            });
+          }
+        }, 1000);
+      })
+      .catch(() => undefined);
   }
 
   openChapter(chapter: ChapterItem): void {
@@ -2180,6 +2436,8 @@ export class LibraryStateService {
     }
 
     const novel = this.selectedNovel() || this.defaultEchoesSamarkand;
+    this.startVerifiedReadTracking(novel, chapter);
+
     const user = this.authSession.currentUser();
     if (user) {
       void recordChapterReadInFirestore(
@@ -2213,6 +2471,7 @@ export class LibraryStateService {
   }
 
   exitReader(): void {
+    this.stopVerifiedReadTracking();
     this.stopAutoScroll();
     this.readerSettingsDrawerOpen.set(false);
     this.readerChapterDrawerOpen.set(false);
@@ -2628,15 +2887,23 @@ export class LibraryStateService {
     }
   }
 
-  startReadingNovel(novel: NovelCard): void {
+  async startReadingNovel(novel: NovelCard): Promise<void> {
     const resolved = this.resolveCanonicalNovel(novel);
     this.selectedNovel.set(resolved);
+    let dbChapters: LogicalChapter[] | undefined;
+    if (resolved.isFirestoreBacked || resolved.id.startsWith('novel_') || resolved.id.startsWith('usr-')) {
+      const loaded = await this.writerStudio.loadPublicNovelContent(resolved.id, false).catch(() => ({
+        sections: [],
+        chapters: [],
+      }));
+      dbChapters = loaded.chapters;
+    }
     const scope = this.exploreLanguageScope();
     const preferred: ChapterLanguage | undefined =
       scope === 'non-ar' ? 'en' : scope === 'ar' ? 'ar' : this.i18n.lang();
-    const chapLang = getDefaultChapterLanguageForNovel(resolved, preferred);
+    const chapLang = getDefaultChapterLanguageForNovel(resolved, preferred, dbChapters);
     this.selectedChapterLang.set(chapLang);
-    const pool = getChaptersForNovel(resolved.id, chapLang, resolved);
+    const pool = getChaptersForNovel(resolved.id, chapLang, resolved, dbChapters);
     const targetChap = pool.find((c) => c.status === 'current') || pool[0];
     if (!targetChap) {
       this.openNovelDetails(resolved);
@@ -2649,16 +2916,59 @@ export class LibraryStateService {
   }
 
   openNovelAndRead(novel: NovelCard): void {
-    this.startReadingNovel(novel);
+    void this.startReadingNovel(novel);
   }
 
   resumeReadingNovel(novel: NovelCard): void {
-    this.startReadingNovel(novel);
+    void this.startReadingNovel(novel);
   }
 
   async downloadBookOffline(): Promise<void> {
     const novel = this.selectedNovel() || this.defaultEchoesSamarkand;
     if (!novel) return;
+
+    if (novel.isFirestoreBacked || this.activeNovelFirestoreChapters().length > 0) {
+      try {
+        const rec: PublishedNovelRecord = {
+          id: novel.id,
+          title: novel.title,
+          ...(novel.titleEn ? { titleEn: novel.titleEn } : {}),
+          authorId: novel.authorId || '',
+          authorName: novel.author || this.i18n.copy().site.brand,
+          workType: novel.workType || 'original',
+          ...(novel.originalAuthor ? { originalAuthor: novel.originalAuthor } : {}),
+          ...(novel.firstAuthor ? { firstAuthor: novel.firstAuthor } : {}),
+          ...(novel.supportMethod ? { supportMethod: novel.supportMethod } : {}),
+          novelStatus: novel.novelStatus || (novel.isCompleted ? 'completed' : 'ongoing'),
+          genre: novel.genre,
+          categoryGroup: novel.categoryGroup || 'novels',
+          coverUrl: novel.coverUrl,
+          description: novel.description || '',
+          readingHours: novel.readingHours || 1,
+          originLanguage: novel.originLanguage,
+          languageCode: novel.languageCode,
+          ...(novel.tags?.length ? { tags: novel.tags } : {}),
+          isPublished: true,
+          createdAt: '',
+          updatedAt: new Date().toISOString(),
+        };
+        const exported = await this.writerStudio.exportNovelMtxArchive(
+          rec,
+          this.activeNovelSections(),
+          this.activeNovelFirestoreChapters()
+        );
+        if (exported) {
+          this.showToast(
+            this.isEn()
+              ? `Downloaded complete .mtx package (${exported.chapterCount} chapter(s))`
+              : `تم تنزيل حزمة الرواية الكاملة بصيغة MTX (${exported.chapterCount} فصول)`
+          );
+          return;
+        }
+      } catch {
+        // Fallback cleanly to single-text archival export below
+      }
+    }
 
     try {
       const rawText = this.activeChapterText() || novel.description || novel.quote || novel.title;
@@ -2983,23 +3293,84 @@ export class LibraryStateService {
   }
 
   openPublishedNovel(rec: PublishedNovelRecord): void {
-    const card: NovelCard = {
-      id: rec.id,
-      title: rec.title,
-      author: rec.authorName,
-      authorId: rec.authorId,
-      genre: rec.genre,
-      categoryGroup: rec.categoryGroup,
-      originLanguage: rec.originLanguage,
-      languageCode: rec.languageCode,
-      coverUrl: rec.coverUrl || '/images/writers_sanctuary_bg.jpg',
-      coverAlt: rec.title,
-      description: rec.description,
-      readingHours: rec.readingHours,
-      isCompleted: false,
-      isOriginal: true,
-    };
+    const card = this.mapPublishedRecordToNovelCard(rec);
     this.openNovelDetails(card);
+  }
+
+  async openReportModal(): Promise<void> {
+    const novel = this.selectedNovel();
+    if (!novel) return;
+    const user = this.authSession.currentUser();
+    if (!user) {
+      this.showToast(
+        this.isEn()
+          ? 'Please sign in first to submit a report.'
+          : 'يرجى تسجيل الدخول أولاً لتقديم بلاغ للإدارة.'
+      );
+      this.navigateToView('auth');
+      return;
+    }
+
+    this.reportSuccess.set(false);
+    this.reportError.set(null);
+    this.reportForm.reset({ reason: 'rights', details: '' });
+    const reported = await hasUserReportedNovel(novel.id, user.uid).catch(() => false);
+    this.alreadyReportedNovel.set(reported);
+    this.isReportModalOpen.set(true);
+  }
+
+  closeReportModal(): void {
+    this.isReportModalOpen.set(false);
+    this.reportError.set(null);
+  }
+
+  async submitWorkReport(): Promise<void> {
+    const novel = this.selectedNovel();
+    const user = this.authSession.currentUser();
+    if (!novel || !user) return;
+    if (this.reportForm.invalid) return;
+
+    const val = this.reportForm.getRawValue();
+    this.reportSubmitting.set(true);
+    this.reportError.set(null);
+    try {
+      const res = await submitWorkReportToFirestore(
+        novel.id,
+        novel.title,
+        novel.authorId || '',
+        val.reason,
+        val.details
+      );
+      this.alreadyReportedNovel.set(true);
+      this.reportSuccess.set(true);
+
+      const nextStatus = res.underReview ? 'under_review' : (novel.moderationStatus || 'active');
+      this.selectedNovel.update((curr) =>
+        curr && curr.id === novel.id
+          ? { ...curr, reportCount: res.reportCount, moderationStatus: nextStatus }
+          : curr
+      );
+      this.exploreBooksList.update((list) =>
+        list.map((b) =>
+          b.id === novel.id
+            ? { ...b, reportCount: res.reportCount, moderationStatus: nextStatus }
+            : b
+        )
+      );
+      this.showToast(this.i18n.copy().reports.successMsg);
+    } catch (err) {
+      const code = err instanceof Error ? err.message : '';
+      if (code === 'ALREADY_REPORTED') {
+        this.alreadyReportedNovel.set(true);
+        this.reportError.set(this.i18n.copy().reports.alreadyReported);
+      } else {
+        this.reportError.set(
+          this.isEn() ? 'Could not submit your report. Please try again.' : 'تعذر إرسال البلاغ حالياً. يرجى المحاولة مجدداً.'
+        );
+      }
+    } finally {
+      this.reportSubmitting.set(false);
+    }
   }
 
   async submitPublish(): Promise<void> {

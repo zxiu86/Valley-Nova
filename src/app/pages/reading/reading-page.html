@@ -215,7 +215,7 @@
           </p>
 
           <!-- Chapter Metadata Strip -->
-          <div class="flex flex-wrap items-center justify-center gap-3 sm:gap-6 text-xs opacity-75">
+          <div class="flex flex-wrap items-center justify-center gap-3 sm:gap-6 text-xs opacity-80">
             <span class="flex items-center gap-1">
               <span class="material-symbols-outlined text-[16px]">schedule</span>
               <span>{{ lib.activeReadingChapter()?.duration }}</span>
@@ -230,7 +230,48 @@
               <span class="material-symbols-outlined text-[16px]">translate</span>
               <span>{{ chapterContent.language === 'en' ? t.details.editionTagEn : t.details.editionTagAr }}</span>
             </span>
+            @if (lib.verifiedReadSessionAwarded()) {
+              <span class="opacity-40">•</span>
+              <span
+                [class]="'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/35 font-semibold ' + (lib.readerTheme() === 'andalusian' ? 'text-emerald-300' : 'text-emerald-800')"
+              >
+                <span class="material-symbols-outlined text-[15px]">verified</span>
+                <span>{{ t.reader.verifiedReadBadge }}</span>
+              </span>
+            }
           </div>
+
+          <!-- Explanatory Chapter Liquid Glass Notice -->
+          @if (chapterContent.chapterType === 'explanatory') {
+            <div
+              class="mt-6 w-full max-w-2xl mx-auto rounded-2xl px-5 py-4 text-start bg-emerald-500/12 border border-emerald-500/35 backdrop-blur-md shadow-xs relative overflow-hidden"
+            >
+              <div class="flex items-start gap-3">
+                <span
+                  [class]="'w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border border-amber-400/40 bg-emerald-500/20 ' + (lib.readerTheme() === 'andalusian' ? 'text-emerald-300' : 'text-emerald-700')"
+                >
+                  <span class="material-symbols-outlined text-[20px]">lightbulb</span>
+                </span>
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-2 flex-wrap">
+                    <span
+                      [class]="'text-xs sm:text-sm font-bold ' + (lib.readerTheme() === 'andalusian' ? 'text-emerald-300' : 'text-emerald-800')"
+                    >
+                      {{ t.reader.explanatoryTitle }}
+                    </span>
+                    <span
+                      [class]="'text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-500/40 bg-amber-500/15 ' + (lib.readerTheme() === 'andalusian' ? 'text-amber-300' : 'text-amber-800')"
+                    >
+                      {{ t.explanatoryChapter.badge }}
+                    </span>
+                  </div>
+                  <p class="text-xs opacity-85 mt-1 leading-relaxed">
+                    {{ t.reader.explanatorySubtitle }}
+                  </p>
+                </div>
+              </div>
+            </div>
+          }
 
           <!-- The Epigraph -->
           @if (chapterContent.epigraph) {
@@ -249,10 +290,36 @@
 
         <!-- The Literary Prose Body -->
         <div [class]="lib.readerParagraphSpacingClass() + ' reading-prose mtx-copy-protected'">
-          @for (paragraph of chapterContent.paragraphs; track $index) {
-            <p class="leading-[inherit] relative transition-colors" [class.font-semibold]="$index === 0 && paragraph.length < 80">
-              {{ paragraph }}
-            </p>
+          @if (chapterContent.blocks && chapterContent.blocks.length > 0) {
+            @for (block of chapterContent.blocks; track block.id) {
+              @if (block.type === 'divider') {
+                <div class="flex items-center justify-center gap-4 py-4 opacity-50" aria-hidden="true">
+                  <span class="w-12 h-px bg-current opacity-40"></span>
+                  <span class="material-symbols-outlined text-[16px]">stat_0</span>
+                  <span class="w-12 h-px bg-current opacity-40"></span>
+                </div>
+              } @else if (block.type === 'heading') {
+                <h2 class="text-xl sm:text-2xl font-bold pt-4 pb-1 leading-snug tracking-tight">
+                  {{ block.text }}
+                </h2>
+              } @else if (block.type === 'quote') {
+                <blockquote
+                  [class]="'my-4 px-5 py-3.5 rounded-2xl border-s-4 italic opacity-95 ' + lib.readerThemeConfig().cardBg + ' ' + lib.readerThemeConfig().quoteBorder"
+                >
+                  <p class="leading-[inherit]">{{ block.text }}</p>
+                </blockquote>
+              } @else {
+                <p class="leading-[inherit] relative transition-colors" [class.font-semibold]="$index === 0 && block.text.length < 80">
+                  {{ block.text }}
+                </p>
+              }
+            }
+          } @else {
+            @for (paragraph of chapterContent.paragraphs; track $index) {
+              <p class="leading-[inherit] relative transition-colors" [class.font-semibold]="$index === 0 && paragraph.length < 80">
+                {{ paragraph }}
+              </p>
+            }
           }
         </div>
 
@@ -281,6 +348,20 @@
             <span class="w-16 h-px bg-current opacity-30"></span>
           </div>
           <span class="text-xs opacity-75 font-mono">{{ t.reader.endOfChapter }} — {{ chapterContent.title }}</span>
+          @if (chapterContent.endStatus) {
+            <span
+              [class]="chapterContent.endStatus === 'ending'
+                ? 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/15 border border-amber-500/35 ' + (lib.readerTheme() === 'andalusian' ? 'text-amber-300' : 'text-amber-800')
+                : 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ' + lib.readerThemeConfig().pillBg + ' ' + lib.readerThemeConfig().cardBorder"
+            >
+              <span class="material-symbols-outlined text-[15px]">
+                {{ chapterContent.endStatus === 'ending' ? 'flag' : 'trending_flat' }}
+              </span>
+              <span>
+                {{ chapterContent.endStatus === 'ending' ? t.reader.chapterEndedNotice : t.reader.chapterOngoingNotice }}
+              </span>
+            </span>
+          }
 
           <div class="w-full flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4" [attr.dir]="lib.i18n.dir()">
             <button
@@ -806,6 +887,13 @@
                 </div>
 
                 <div class="shrink-0 flex items-center gap-1.5 text-[10px]">
+                  @if (chap.chapterType === 'explanatory') {
+                    <span
+                      [class]="'px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/35 font-bold ' + (lib.readerTheme() === 'andalusian' ? 'text-emerald-300' : 'text-emerald-800')"
+                    >
+                      {{ lib.i18n.lang() === 'en' ? 'Note' : 'توضيحي' }}
+                    </span>
+                  }
                   @if (lib.activeReadingChapter()?.id === chap.id) {
                     <span [class]="'px-2.5 py-1 rounded-full font-bold ' + lib.readerThemeConfig().accentBg">
                       {{ t.details.chapterCurrentBadge }}
