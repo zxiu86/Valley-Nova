@@ -1,4 +1,4 @@
-import { Injectable, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { Injectable, PLATFORM_ID, computed, effect, inject, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { FormControl, FormGroup, Validators } from '@angular/forms';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -23,9 +23,8 @@ import {
   SerendipityNovel,
   SiteLanguage,
 } from '../models/library.models';
-import { compressToMtx, decompressFromMtx } from '../mtx-codec';
-import { MTX_LITERARY_PRESETS } from '../mtx-presets';
-import { INITIAL_EXPLORE_CATALOG, isArabicCatalogNovel } from '../mtx-catalog-data';
+import { compressToMtx } from '../mtx-codec';
+import { isArabicCatalogNovel } from '../mtx-catalog-data';
 import {
   ChapterTextContent,
   getChapterProse,
@@ -36,6 +35,7 @@ import {
   commitVerifiedReadTransaction,
   fetchAllPublishedNovels,
   fetchCloudVaultBooks,
+  fetchNovelByIdFromFirestore,
   formatFirestoreErrorForUser,
   getPublicAuthorAppearance,
   hasUserReportedNovel,
@@ -128,6 +128,35 @@ export class LibraryStateService {
   private activeReadSessionId: string | null = null;
   private activeReadSessionNovelId: string | null = null;
   private readVisibleMs = 0;
+  private pendingRestoreNovelId: string | null = null;
+  private pendingRestoreChapterNumber: number | null = null;
+
+  constructor() {
+    effect(() => {
+      const ev = this.writerStudio.catalogSyncEvent();
+      if (!ev) return;
+      if (ev.kind === 'delete') {
+        this.exploreBooksList.update((list) => list.filter((b) => b.id !== ev.novelId));
+        if (this.selectedNovel()?.id === ev.novelId) {
+          this.selectedNovel.set(null);
+        }
+      } else if (ev.kind === 'upsert') {
+        const card = this.mapPublishedRecordToNovelCard(ev.novel);
+        this.exploreBooksList.update((list) => {
+          const idx = list.findIndex((b) => b.id === card.id);
+          if (idx >= 0) {
+            const next = [...list];
+            next[idx] = card;
+            return next;
+          }
+          return [card, ...list];
+        });
+        if (this.selectedNovel()?.id === card.id) {
+          this.selectedNovel.set(card);
+        }
+      }
+    });
+  }
 
   // Search Control & Forms
   readonly searchControl = new FormControl('', { nonNullable: true });
@@ -144,7 +173,7 @@ export class LibraryStateService {
   readonly soundscapeActive = signal<boolean>(false);
   readonly isIntegrityDocOpen = signal<boolean>(false);
   readonly isManuscriptPreviewOpen = signal<boolean>(false);
-  readonly readingProgressPercent = signal<number>(17);
+  readonly readingProgressPercent = signal<number>(0);
   readonly selectedChapterLang = signal<ChapterLanguage>('ar');
   readonly selectedChapterLangProgressPercent = signal<number>(0);
 
@@ -181,7 +210,8 @@ export class LibraryStateService {
   readonly exploreFilterLanguage = signal<string>('الكل');
   readonly exploreFilterMood = signal<string>('all');
 
-  readonly exploreBooksList = signal<NovelCard[]>([...INITIAL_EXPLORE_CATALOG]);
+  readonly exploreBooksList = signal<NovelCard[]>([]);
+  readonly catalogLoaded = signal<boolean>(false);
 
   // Publishing Modal State
   readonly isPublishModalOpen = signal<boolean>(false);
@@ -206,189 +236,13 @@ export class LibraryStateService {
     coverUrl: new FormControl('', { nonNullable: true }),
   });
 
-  // Profile Collections
-  readonly profileQuotes = signal<ProfileQuote[]>([
-    {
-      id: 'q1',
-      quote: '«حين يمتزج صهيل خيول التيموريين بأسرار المراصد الفلكية الشاهقة، ينبض عالم سري من الألغاز والمخطوطات المحرمة، حيث النجوم ليست مجرد ضياء، بل خرائط دمٍ وبقاء.»',
-      source: 'رواية أصداء سمرقند — ص ٢١٤',
-      realm: 'رواق الروايات',
-      realmColor: 'text-primary',
-    },
-    {
-      id: 'q2',
-      quote: '«المرآة لا تعكس وجوه العابرين فحسب، بل تُعرّي ما توارى خلف أسوار الزمان وأغوار الضمير الإنساني في صمت الليل.»',
-      source: 'شظايا المرآة السبع — ص ٨٩',
-      realm: 'رواق الحكمة',
-      realmColor: 'text-on-surface',
-    },
-    {
-      id: 'q3',
-      quote: '«ليس التاج ما يصنع الملوك في ساحة النزال، بل سيفٌ لا يرتجف وعهدٌ لا يخون في ملحمة الفجر وأهازيج النصر.»',
-      source: 'عرش الرماد والتنانين — ص ٣٤٠',
-      realm: 'رواق الملاحم',
-      realmColor: 'text-secondary',
-    },
-    {
-      id: 'q4',
-      quote: '«كتبتُ هذا الرقيم في قرطبة قبل أن تسكت المآذن، ليعلم من يأتي بعدنا أن الحبر أطول عمراً من السيوف وأبقى من الحصون.»',
-      source: 'مخطوطة الزهراء المفقودة — سفر التوثيق',
-      realm: 'رواق التراث',
-      realmColor: 'text-tertiary',
-    },
-  ]);
-
-  readonly profileWorks = signal<ProfileWork[]>([
-    {
-      id: 'w1',
-      title: 'أطياف النحاس في مراصد سمرقند وتوثيق الأجرام',
-      category: 'رواق التراث والمخطوطات',
-      type: 'published',
-      pages: 45,
-      words: 12400,
-      date: 'نُشر في ١٥ رجب',
-      summary: 'دراسة تحقيقية مقارنة بين جداول أولغ بك ومخطوطات المرصد السمرقندي الأندلسي المجهولة.',
-    },
-    {
-      id: 'w2',
-      title: 'مسودة: تنانين الأفق السابع وأسرار الجدار العتيق',
-      category: 'رواق الملاحم والبطولات',
-      type: 'draft',
-      pages: 18,
-      words: 6200,
-      date: 'آخر تعديل منذ يومين',
-      summary: 'مسودة ملحمية تتناول صراع العروش والخيانات حول حصون الجليد والنار في القفار الشمالية.',
-    },
-    {
-      id: 'w3',
-      title: 'شذرات في حكمة الصمت وفلسفة الرواق',
-      category: 'رواق الحكمة والتأمل',
-      type: 'published',
-      pages: 32,
-      words: 8900,
-      date: 'نُشر في ٢٠ شعبان',
-      summary: 'مجموعة تأملات قصيرة حول نقاء الكلمة وعزلة الكاتب في عصر الضجيج التقني.',
-    },
-  ]);
-
-  readonly profileTimeline = [
-    { title: 'أكمل قراءة الفصل الرابع: شفرة النجوم ومذنب زرافشان', time: 'اليوم، ٠٤:٣٠ م', book: 'أصداء سمرقند', duration: '٤٥ دقيقة قراءة' },
-    { title: 'دوّن اقتباساً مذهباً في خزانة الحكمة والتأمل', time: 'أمس، ٠٩:١٥ م', book: 'شظايا المرآة السبع', duration: 'اقتباس جديد' },
-    { title: 'أضاف رواية «عرش الرماد» إلى ألواحه المفضلة', time: 'قبل يومين', book: 'عرش الرماد والتنانين', duration: 'إيداع بالخزانة' },
-    { title: 'نال وسام «سادن الاعتكاف القرائي» (٣٤ يوماً متواصلاً)', time: 'منذ ٥ أيام', book: 'صرح أروقة الخلود', duration: 'إنجاز تحريري' },
-    { title: 'أتم مراجعة مسودة «أطياف النحاس» واعتماد ميثاق النقاء', time: 'منذ أسبوع', book: 'رواق التراث', duration: 'توثيق رسمي' },
-  ];
-
-  readonly literarySalons = signal<LiterarySalon[]>([
-    {
-      id: 's1',
-      title: 'صالون الفلك والبارود السمرقندي',
-      description: 'نقاش حول شفرة النجوم ومذنب زرافشان — ١٤ مشاركاً نشطاً.',
-      membersCount: 14,
-      isActive: true,
-    },
-    {
-      id: 's2',
-      title: 'مجلس السرد الأندلسي التليد',
-      description: 'تحقيق مخطوطة الزهراء المفقودة — ٩ باحثين.',
-      membersCount: 9,
-      isActive: true,
-    },
-  ]);
-
-  // Default Masterpiece: أصداء سمرقند
-  readonly defaultEchoesSamarkand: NovelCard = {
-    id: 'echoes-of-samarkand',
-    title: 'أصداء سمرقند',
-    author: 'الشيخ جلال الدين الموصلي',
-    genre: 'رواق الروايات والخيال السردي',
-    subGenre: 'في دهاليز الفلك والبارود',
-    originLanguage: 'عربي أصيل',
-    languageCode: 'ar',
-    availableChapterLanguages: ['ar', 'en'],
-    readingHours: 9,
-    isCompleted: true,
-    coverUrl:
-      'https://lh3.googleusercontent.com/aida-public/AB6AXuCIF5pF45h_OR2lIwskuFNX2Fw9AdCINz_hC0Qvf-3zDmpWivbiit8SYF0sS6HhU3kibG9nYM4UcKVC0H4WjgF5VCuxaffvcfC-XrgbjG-oKc3LAqtSqS0Z4LaimKNUeF3EoVGDctyrjracP07ZuLn2ljBOsPpbTDJjrRrRNFZcjHkBoy1Kk-OM5UlnYWhwvMPbjaubWOshxoIfGO98nNuL5FfI-ZO153_wRqE_7CwhTblHyOK8tSyR_Q',
-    coverAlt: 'غلاف رواية أصداء سمرقند الفلكية والتاريخية',
-    quote:
-      '«حين يمتزج صهيل خيول التيموريين بأسرار المراصد الفلكية الشاهقة، ينبض عالم سري من الألغاز والمخطوطات المحرمة، حيث النجوم ليست مجرد ضياء، بل خرائط دمٍ وبقاء.»',
-    description:
-      'في سمرقند عام ٨٥٣ هجرية، حين كان مرصد السلطان أولغ بك يشق عتمة السماء بأدق جداول فلكية عرفتها البشرية، يُعثر على أحد كبار النساخ مقتولاً داخل القبة السماوية الصغرى، وبيده رقعة جلدية كُتبت بلغة أرقام غير مألوفة، تشير إلى مسار مذنب غامض سيعبر فوق وادي زرافشان بعد أربعين ليلة.',
-  };
-
-  readonly chapters: ChapterItem[] = [
-    { id: 1, arabicNumber: '١', title: 'شقشقة الفجر وظلال القلعة المفقودة', duration: '١٨ دقيقة قراءة', publishDate: 'نُشر في المحرم', status: 'read', partition: 1 },
-    { id: 2, arabicNumber: '٢', title: 'أصداء الإسطرلاب النحاسي العتيق', duration: '٢٢ دقيقة قراءة', publishDate: 'نُشر في المحرم', status: 'read', partition: 1 },
-    { id: 3, arabicNumber: '٣', title: 'قوافل الملح وخرائط التائهين', duration: '١٦ دقيقة قراءة', publishDate: 'نُشر في صفر', status: 'read', partition: 1 },
-    { id: 4, arabicNumber: '٤', title: 'ساعة الرمل في محراب أولغ بك', duration: '٢٥ دقيقة قراءة', publishDate: 'موقعك الحالي للقراءة', status: 'current', partition: 1 },
-    { id: 5, arabicNumber: '٥', title: 'دماء على أوراق الزيج الجديد', duration: '٢٠ دقيقة قراءة', publishDate: 'نُشر في ربيع الأول', status: 'unread', partition: 1 },
-    { id: 6, arabicNumber: '٦', title: 'متاهة حوانيت القاشاني الأزرق', duration: '١٩ دقيقة قراءة', publishDate: 'نُشر في ربيع الأول', status: 'unread', partition: 1 },
-    { id: 7, arabicNumber: '٧', title: 'همسات المئذنة المائلة', duration: '١٧ دقيقة قراءة', publishDate: 'نُشر في ربيع الآخر', status: 'unread', partition: 1 },
-    { id: 8, arabicNumber: '٨', title: 'انفجار مخزن البارود الغربي', duration: '٢٤ دقيقة قراءة', publishDate: 'نُشر في ربيع الآخر', status: 'unread', partition: 1 },
-    { id: 9, arabicNumber: '٩', title: 'ختم سمرقند المحرم تحت الثرى', duration: '٢١ دقيقة قراءة', publishDate: 'نُشر في جمادى الأولى', status: 'unread', partition: 2 },
-    { id: 10, arabicNumber: '١٠', title: 'شفرة الصوفي والأرقام الهندية', duration: '١٥ دقيقة قراءة', publishDate: 'نُشر في جمادى الأولى', status: 'unread', partition: 2 },
-    { id: 11, arabicNumber: '١١', title: 'مؤامرة خانات السهوب الشمالية', duration: '٢٣ دقيقة قراءة', publishDate: 'نُشر في جمادى الآخرة', status: 'unread', partition: 2 },
-    { id: 12, arabicNumber: '١٢', title: 'ليلة احتراق الرق الأندلسي', duration: '١٨ دقيقة قراءة', publishDate: 'نُشر في جمادى الآخرة', status: 'unread', partition: 2 },
-    { id: 13, arabicNumber: '١٣', title: 'حين يتكلم مذنب الموت', duration: '٢٠ دقيقة قراءة', publishDate: 'نُشر في رجب', status: 'unread', partition: 2 },
-    { id: 14, arabicNumber: '١٤', title: 'مبارزة على حافة سقف الرصد', duration: '١٦ دقيقة قراءة', publishDate: 'نُشر في رجب', status: 'unread', partition: 2 },
-    { id: 15, arabicNumber: '١٥', title: 'رسالة الوزير المسمومة', duration: '٢٢ دقيقة قراءة', publishDate: 'نُشر في رجب', status: 'unread', partition: 2 },
-    { id: 16, arabicNumber: '١٦', title: 'صراع في خزانة الكتب الكبرى', duration: '١٩ دقيقة قراءة', publishDate: 'نُشر في شعبان', status: 'unread', partition: 2 },
-    { id: 17, arabicNumber: '١٧', title: 'شروق كوكب الزهرة فوق جيحون', duration: '١٨ دقيقة قراءة', publishDate: 'نُشر في شعبان', status: 'unread', partition: 3 },
-    { id: 18, arabicNumber: '١٨', title: 'نداء الأبواق عند أسوار شاه زنده', duration: '٢١ دقيقة قراءة', publishDate: 'نُشر في شعبان', status: 'unread', partition: 3 },
-    { id: 19, arabicNumber: '١٩', title: 'مفتاح القوس السداسي الرخامي', duration: '١٧ دقيقة قراءة', publishDate: 'نُشر في شعبان', status: 'unread', partition: 3 },
-    { id: 20, arabicNumber: '٢٠', title: 'سقوط القناع عن الفلكي المنفي', duration: '٢٤ دقيقة قراءة', publishDate: 'نُشر في شعبان', status: 'unread', partition: 3 },
-    { id: 21, arabicNumber: '٢١', title: 'المعركة الأخيرة في دهليز البارود', duration: '٢٩ دقيقة قراءة', publishDate: 'نُشر في شعبان', status: 'unread', partition: 3 },
-    { id: 22, arabicNumber: '٢٢', title: 'حين تلتقي الحسابات بالقدر', duration: '٢٠ دقيقة قراءة', publishDate: 'نُشر في شعبان', status: 'unread', partition: 3 },
-    { id: 23, arabicNumber: '٢٣', title: 'انقشاع الدخان وسلام الفيروز', duration: '١٦ دقيقة قراءة', publishDate: 'نُشر في شعبان', status: 'unread', partition: 3 },
-    { id: 24, arabicNumber: '٢٤', title: 'خاتمة الأسفار: ما حفظته مراصد الخلود', duration: '٢٧ دقيقة قراءة', publishDate: 'مسك الختام والملحمة', status: 'unread', partition: 3, isLast: true },
-  ];
-
-  readonly relatedWorks: NovelCard[] = [
-    {
-      id: 'obsidian-labyrinth-spotlight',
-      title: 'متاهة حجر السج',
-      genre: 'فانتازيا ظلامية، إسلامية',
-      coverUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDyWpsEZ0hpt9DNukWIAi4hvbqC4EQ9K3EpaNF9p3Da237wjyehs9ZLqW4a-NLQjfNQvwcJOwJ7rHvO85j-YTRiNlIUvhM2nY-QJBX3BkKaZfj19MIOAiwVcc8N0kziBHIp-jFwygW-wKynuGJGI9n47w39QyYhPOVVYXSfXP7GlY1CmmjUby0HbekjBbxeR908yRBpnnFzUeAgo6ykld1zBl7HIereQMnzygcJQyFWmCuqreJL4f8C8A',
-      coverAlt: 'Dark fantasy medieval Islamic book cover titled The Obsidian Labyrinth',
-      description: 'أقواس من حجر السج ونقوش خط عربي ونور شموع قرمزي.',
-    },
-    {
-      id: 'last-bastion',
-      title: 'ملحمة الجدار الأخير',
-      genre: 'رواية تاريخية ملحمية',
-      coverUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDg2Mae1S1zN20sei5lULtu7__HV0volN37_EPDiknBJQhU3mJUHSYFvhaXwnT2akEpIBvR4fauXEGhCUohI2gfZK0wHZTv56kv4oH4fgkKfKzmaYNoNYoMTM2uV4UPsVsveTkgzOvphxbkvXS8qnpfuOBaHf_s9ftQPZkhnebxSPlyljRxwD9oCKtNT5DfOW6z2-TW8LRkEoMoMnnClEYHOXLNZgQ5CfwTzB2iWT1v5BgiEhyxaVAwXg',
-      coverAlt: 'Epic historical Arab novel cover titled Epic of the Last Bastion',
-      description: 'حصن صحراوي عتيق من الحجر الرملي وسماء ليلية مرصعة بالنجوم.',
-    },
-    {
-      id: 'cipher-cordoba',
-      title: 'شفرة قرطبة الغارقة',
-      genre: 'مخطوطة أندلسية غامضة',
-      coverUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB0HO5Z9aJD-wSFlwOCPTdkk15dWfzpu0fYUfrWr9-ACTbk221mEf17SeLp3cxmcZMzfk3jeaPUAelAZdac1Ejz7NkqeMCpIefdOFKdUUtruDmuz7Df1dwoK0GsiLs6A8vLEvbxqIxeOQpIWz2WeHKF6vKNVTu39RAAD0mU-GUFhLkP_bPbNJGQLHiuGHWABe5GHQs7MX9EQPSwL3CQwF28KccjDdpSZ394eCHbsTE7yP58tC2qkLQeHA',
-      coverAlt: 'Atmospheric mysterious Arabic manuscript book cover titled The Cipher of Cordoba',
-      description: 'رق زمردي عتيق وخواتم برونزية وذرات غبار في مكتبة قديمة.',
-    },
-    {
-      id: 'constellations-wanderer',
-      title: 'أبراج التائه في بلخ',
-      genre: 'رواية فلكية تاريخية',
-      coverUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBUlVG0Y-M56vYelutZ13-ThRFk19nmsgNnFulooOivPI7e87m-052tCm3RcyoMVZr3d5HZEdLL6cIXzgxsVO1_EBIyJjE_9u1Fu09xd12evIYYxbkOeleuPi9_Jtla-rFq_ICjlwTzQCmbemsY1S_-3WatOA2CXoxqSLu8NGry3SVSCx1ejQnxW93aT95bcZndK2FBHzN5KERJgONoeGs5yldszXIXL8uKhFNq4jqpUmF2nlVr_om-_w',
-      coverAlt: 'Arab astronomical noir novel cover titled Constellations of the Wanderer',
-      description: 'كرة نحاسية سماوية عتيقة ومخططات ملاحة فلكية في ليل بلخ.',
-    },
-  ];
+  // Real-only Profile Collections (no hardcoded/demo items)
+  readonly profileQuotes = signal<ProfileQuote[]>([]);
+  readonly profileWorks = signal<ProfileWork[]>([]);
+  readonly profileTimeline: { title: string; time: string; book: string; duration: string }[] = [];
+  readonly literarySalons = signal<LiterarySalon[]>([]);
 
   readonly activeGenre = signal<string>('الكل');
-
-  readonly spotlight = {
-    id: 'obsidian-labyrinth-spotlight',
-    title: 'متاهة حجر السج',
-    quote: '“في تلك الممرات التي لم تطأها الشمس، كانت الظلال تهمس بأسماء الذين ضلوا الطريق قبل قرون سبعة...”',
-    coverUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCmht4M8dhW4qouOfD-vV41r8nv1IJNs9vpPPJidZ09Pz1VQtE19aGDuO_lsdBHQvqzjVq8Iu1US-gi58QaTG-i6dNRDKv-m-HqSa0tYNs_85eaxWzKfhv0dUINk0GpA77khIg2Ih_OmE4Gul_5cAfsemzeGQuFN_qGC740JK4TxnXTUTXHCgvQbYQfL-PL86oIqzHbZwut5yDcd8zrvgbJFOxCbibFroAgaQikOSoPZ2D3srSxO4fC8g',
-    coverAlt: 'غلاف رواية متاهة حجر السج',
-    genre: 'الغموض والتشويق',
-  };
 
   readonly genrePills = [
     'الكل',
@@ -400,287 +254,119 @@ export class LibraryStateService {
     'الواقعية السحرية',
   ];
 
-  readonly featuredMasterpieces: NovelCard[] = [
-    {
-      id: 'mirror-palace',
-      title: 'ظلال قصر المرآة',
-      genre: 'الغموض والتشويق',
-      coverUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDG7bQQwdHmrNSykeAh09a8gd9gxT7lxsvjw-99P4myZG5CUgvA_C7rbatvO222PAr_DGpDPpzS9JkcLXFiwAq2veb9HtgZNvq302k48CAzD8y1bzgYu49TqCr9YOaAUYRPdK9YjqZ1uISMfq60m_kSw9P9WOmJojl_jFdOPDsTiBvcISTi2x7lvcR0oRwSkH6x03gPJ7JKEDwsSo5mW0QkzK6qWgjZ4yjwAjZWtrJYB17yYSvREC5vbg',
-      coverAlt: 'Book cover for The Mirror Palace Shadows',
-      description: 'قاعة قصر مهجور تكتظ بمرايا باروكية تعكس أطيافاً بلون الياقوت وظلالاً لا تفارق المكان.',
-    },
-    {
-      id: 'seven-meteorites',
-      title: 'رماد النيازك السبعة',
-      genre: 'الفانتازيا الملحمية',
-      coverUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAuEDU8hDbplJHvSM0C3kDXuyto9P2iUzBk32XduT5MAP6ukg073RnCJ8WJHXazfVzq31jzh4CiFs_ieEKfkGh4o0yqK0yGrNqmegx20S_eA774X7AsKC5HvHAaqDlJbrcA7m1mvpaGmmHZ14YWsJsJibtbdJ6UOMl-9U8yfUi7JP7mMdo7--AbT7eeDiOwxFxFfo3iFhWYfjBMjghvjxze8rYlZ8XkZGfzAuQ8n2fACdpVnP77El11yQ',
-      coverAlt: 'Book cover for Ashes of the Seven Meteorites',
-      description: 'سقوط أحجار نارية متوهجة فوق معبد صحراوي قديم يوقظ نبوءة الفرسان الراقدين.',
-    },
-    {
-      id: 'silent-gates',
-      title: 'مدينة الأبواب الصامتة',
-      genre: 'الدراما النفسية',
-      coverUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDL6AlFLOCu4V_rTCVnxJH8vW5nMl7S3_YByn9RxrhO8N7Huv9KmHVqELO-8uri2TlyEM2wvm2UjndTWpxPF9FdCKvAGjEmVvO0L_eG2nO4D841zgSOGdKrmlyOVO-7tD88arZBBuFWBNJRZCfDMxF-fcyJvxYb-lMJu95l4hjELZHU7TGEPFkHadm3oL5Vi87SuUJv9_cAqz7cxYJMj9a36Wddjs1V1k2tUB-DXG5_7HFVpgSVqzbjeg',
-      coverAlt: 'Book cover for City of Silent Gates',
-      description: 'بوابات حجرية عملاقة في الضباب القرمزي لا تعبر منها إلا الأرواح التي نسيت ذكرياتها.',
-    },
-    {
-      id: 'crimson-abyss',
-      title: 'مخطوطة الهاوية الحمراء',
-      genre: 'الواقعية السحرية',
-      coverUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCn0Ka2wBsfst8r95rpEeUPrlD2Su41SnFQ-lvZumRa4HICtcom_o39R1ZlreBZSjPm42qkW1YQj7nG_aRIOuLtQmKnJ7Pgsvi6i3T71JjFg8vGhFXIQeLB5zyiZ8fhHdDIZyM0g7JDTZlbi6-GDYAKPONJ6_oxqAj0nZ9diB5zml5gPsIrfHF8jATEJmdlXI3EzSb0TgqVkVmC6OSsczvi-W0lO_rdBrjqvFzYkKGOkeoV9S2823e4zg',
-      coverAlt: 'Book cover for Manuscript of the Crimson Abyss',
-      description: 'كتاب عتيق محفور بأحرف نورانية ودخان متصاعد يكشف أسرار كيميائيي الشرق الغابرين.',
-    },
-    {
-      id: 'last-raven',
-      title: 'تراتيل الغراب الأخير',
-      genre: 'أدب الرعب القوطي',
-      coverUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuARZemoP3pTK24UmnbmN4sDC1yZRwRAEt9lB1d41vDz1Dr0n-IeNhyoGcSxhSHsa96uewop6Iu7ZTevPXEEzojwmTl1aOHXvfn6FDRy2XlKUi_LSCF5SBjkuyw5605QE-yhe0x77f-ewnp8XfXYXP-pKMgq983vtQOu0Vd9DofT4A_YI4aM601o30WRg-XK06Jhjlg787v01jtz2LNlJ5gc4ahpM9cAn7_lcNE7gTltZOgNnbRzqbol8A',
-      coverAlt: 'Book cover for Hymns of the Last Raven',
-      description: 'غراب يقف على جمجمة رخامية محاطة بالورود المخملية القانية يرتل مرثية الفناء.',
-    },
-    {
-      id: 'crimson-memory',
-      title: 'شظايا الذاكرة القرمزية',
-      genre: 'الدراما النفسية',
-      coverUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCbPU-IigdAGrRu40SW_tCJ61a2YA6xXbhkStLy84rwBm0VhXuU8kI0xiSfIDYs1AN4iAlrDWLwzhcSP5TtBJZV_8hlpgG_CwGVNrwZpfzXfFRdQEy6Pul69L33bh8QTdScBB-V0yjv7tCxP54WtW7J2DbsaSkalgqvReylbnpIIIBg_FsAy0oAjSUOL0beibNudiezqeW8DsyZQjYJSYUpy6MFOpRfmzJxCa_C8OX_6_y0VfxjjUXNVA',
-      coverAlt: 'Book cover for Shards of the Crimson Memory',
-      description: 'مرايا بلورية مكسورة تحتفظ بأصوات الذين غادروا قبل أن يكتمل وداعهم الأخير.',
-    },
-  ];
-
-  readonly fantasyNovels: NovelCard[] = [
-    {
-      id: 'wandering-dragons',
-      title: 'تاج التنانين التائهة',
-      genre: 'الفانتازيا الملحمية',
-      coverUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDkuGw687RykPWCaY_p9mGA6pU-hg5t88PM_aM9hUC73xJRTl38B4ePRG0eKc2M4sj3AG8l_bPgfbYUkKviCb9n2wn4qJX2nk_kbZTGxiHkVHipV9cBncbNuuHfmww4w5HMDH88UNGr0Fv6WyueqhJ8wClBxwDcJMrpIotwM3VWPGQzk-4bJB9flzyzwo7TZcH656sINf3s547QEtNMfexvMYQdMg6CD5Xs6hpIfjEcEzKbebKGZV_AHA',
-      coverAlt: 'Book cover of Crown of the Wandering Dragons',
-      description: 'تاج مرصع بالرماد والنار يتربع على عرش بائد في انتظار وريث سلالة التنانين.',
-    },
-    {
-      id: 'extinguished-stars',
-      title: 'حارس النجوم المطفأة',
-      genre: 'الفانتازيا الملحمية',
-      coverUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDwV2Yd6ZOPJeei9atcVqIyhLTQlw7ZO0CTfGGhMTx4wSf0uu0g8CCGDFu6Y2QA0CmeFkC7Lx04h9RTDLWZ3Yoyz_GTRms0H87tkDzU6uo4rt-oVnglc-ORwAzrXVxdLXeHT813BB-Nw6RnggFIqV80m27WxF5QPGKDMsa4ZKYb5PQwvuc7WDRC7JgEfqoOMHMUpHkpijkgoFnptNTKkEPawKLHJ-bbl0uRA118Ohww6ssV9WERBmPcrg',
-      coverAlt: 'Book cover of Guardian of the Extinguished Stars',
-      description: 'كائن كوني يحمل بين كفيه نجوماً تلفظ أنفاسها الأخيرة ليصنع منها شعلة البقاء.',
-    },
-    {
-      id: 'eternal-fog',
-      title: 'وادي الضباب الأزلي',
-      genre: 'الفانتازيا الملحمية',
-      coverUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAkB_f_x3xtKzbDINKEY9EuTds7MU6D-ub13897Vx3CcLynGzAPpQLXSDcOpbg35cAtPh1XF2Wm0O2DneafQsExOc8YQNJvmjPZnmzOJiS3bbYH8-C-33nOwYPlVvQlo2kCJucAbJNXpq3NCYSbWYVWF7EQbKvY8AFAzuaDyFzqOPzifpRSqnGvyGmelua4pZCFvHew0bYAWQ5O1698mqJhtWZ3OTpN_25f_FdlSHUNNRwI9LRLbp2esg',
-      coverAlt: 'Book cover of Valley of Eternal Fog',
-      description: 'وادي تليد تحاصره الأبخرة البنفسجية والأطلال المنقوشة بطلاسم السحرة الأوائل.',
-    },
-    {
-      id: 'lineage-of-ash',
-      title: 'سلالة الرماد',
-      genre: 'الفانتازيا الملحمية',
-      coverUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAW9ooIbGP2YaLOv4T1SwTNq0_3h9CJMNAQwy5HSlexI-bBdNt7525I3jBJFjT--9l00btq-FYv5JSmkgmHblvOYJxpcjN2R9iu8MdU-qkqO8juB_FzkzK9TnBR9QnG5QmpDGCL3KE2U4MAaZXWKq-FSmZV9GrDMxZAMTs2HvfIlMm5PgjL55Ofhw4z6XudkChD45-c8hofDo4U-IzVRfVharq-KuIPUcu3G5SDiH5MpTDzB1fF6stmWg',
-      coverAlt: 'Book cover of Lineage of Ash',
-      description: 'ملحمة أسر حاكمة تتصارع على وراثة رماد طائر الفينيق قبل حلول الكسوف الأكبر.',
-    },
-    {
-      id: 'citadel-of-dusk',
-      title: 'قلعة الشفق',
-      genre: 'الفانتازيا الملحمية',
-      coverUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDdZhkrZvcVDc-piSv3CRq0xW3gzzA1vyBkwBnXS38tlgUHEnVZFeFzYq8bapupGgVG-8NCZCT73TvKvJIGSU7jfrvIQgnWvvyH8XAfKlYy2NpDOTR349dmF5gdE7hYXKJln-W-yH2Ovip6TZCJfZt9_f4qOjmj9Y48ye7JOT_ebAG221axp8_4c8RdfVc50GYsQtUtJFB_EqNgNJI3oOx-HTB51BBlS-fRvWcKcits0foya-6cbwX3Tg',
-      coverAlt: 'Book cover of Citadel of Dusk',
-      description: 'حصن قوطي يطل على بحر قرمزي لا تنقطع فيه الغربان عن النعيق مع كل غسق.',
-    },
-  ];
-
-  readonly mysteryNovels: NovelCard[] = [
-    {
-      id: 'room-zero',
-      title: 'غرفة رقم صفر',
-      genre: 'أدب الرعب القوطي',
-      coverUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDV1nh_ZAWwhQkQoDvEruuVN_uTDsvzuI4EXuG9T7U9fm1fGMaacFsuTju_0xlIPNzMbYJ0P5gClpJFJVlVSMgC-JS6ym2OCWtHoOs7ZWPud292zdD8o41Nf0fXcCvr661yckBvu6JSz5AfhOXiXB5HP55CWWVGZ5kHdU3LwVlqWYu7pOBYrFsoqpTvPdP4X1H2jQbKvl9LgSr4rVr9dhchkuhar-PCmulNqm-PfxpNSTyX0E_L6VJtHw',
-      coverAlt: 'Book cover of Room Number Zero',
-      description: 'باب فندق قديم يتوهج ثقب مفتاحه بنور أحمر غامض، لا يسكنه حي ولا ميت.',
-    },
-    {
-      id: 'whispering-catacombs',
-      title: 'همس السراديب',
-      genre: 'أدب الرعب القوطي',
-      coverUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAO4dS3jbvR0CN8m3G4sYkYvAl1eO-B3wDy9kAhpoHNHMVe3rqj0kgmuFWUs9pfmOyv0gLS99kCw-n8FL31xMCJHuT8-1tQ06-_Baa0C2eXdR19YFwM3GTouPmdDrfn5BkXDPNBsYXiiDT59z40Vj3aXTuLZwNkrMrcx3cZhChKtTmnko1KjaYItHmnPN0mIQxnY3YKROpQTx7dJiJ-gJgAG-CQKwCzGbFvthAia4pCy_2SW4jEXGs3TA',
-      coverAlt: 'Book cover of Whispering Catacombs',
-      description: 'ممرات مرصوفة تحت الأرض تقطر منها الشموع دماً داكناً وتردد صدى خطوات منسية.',
-    },
-    {
-      id: 'blind-detective',
-      title: 'لغز المحقق الأعمى',
-      genre: 'الغموض والتشويق',
-      coverUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCM3UP63KjrVVIzb-INn_4htKyT7klJh7sccslOab1tukDzTGQfttjgdMUnjVbe146Abx59dnLJzM5m7NNx5iqkuQdJN7aAQAv4XbZSTH49Ti-dVM9wo9endJG52-O3zVAeBRoCcKzqWurHJI-Afm3ttOhvMEwsKnyQcIF97JaucZxv0Y0TAz4h0D2E52N8guipFMucEtP9_JZNbXxGbHEyNXqp0C-wmfuT4i-1_DRQ5nt3aZAvdnNTBQ',
-      coverAlt: 'Book cover of Enigma of the Blind Detective',
-      description: 'محقق فاقد البصر يفك شفرات الجرائم الغامضة عبر رائحة المطر والهمس في شوارع لندن القديمة.',
-    },
-    {
-      id: 'crimson-zero-hour',
-      title: 'ساعة الصفر القرمزية',
-      genre: 'الغموض والتشويق',
-      coverUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCOuGfz15oSAvKiUjuqEHHBqEts4z1W6dII0P3lN1cNHuKzE205YVf81IdTLz3PkTbHVOrDBAUz5-gYTq5-WqoRoAH_PxVBay1h8OS5LhJU0sqGDFz-Fv2sOBpTdZQlCz6QM0MuISjFIJLrvzTQ2Mpi4ben2AwWzp5qngB9JFGRbWSN9IFgdrLDfMEutsvrctylzEsQ8EjsDZY88H9NvZRTyBIDA314nTI7O2vqE5rT8jeHxLb8ji7iug',
-      coverAlt: 'Book cover of Crimson Zero Hour',
-      description: 'ساعة حائط عتيقة توقفت عقاربها عند منتصف الليل تزامناً مع اختفاء أفراد عائلة أرستقراطية.',
-    },
-    {
-      id: 'mask-of-regret',
-      title: 'قناع الندم',
-      genre: 'الدراما النفسية',
-      coverUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB9Qwkby9Faj06D5XN-t_VIwp2GPKUNjiZthMVEEIaF57IE2MXjc0-QwiS749z-lqpOiIjoZnfHIhIQ4--6tUhd9g_cGnlTnUgTk0HQagderUOXmB2pEGcjrFMGuDZMzlVep2CO6VQi8BJ1g70OtV7GeEtpQACAaMlLhIsBuMXbsR3kA6BNbw7c5GiHwSytbrIqYw3rxL8jmfHCIUhJQQ5k2DGDPvYjeKF_CvbqVs-2WZDZ18PMYeqCXw',
-      coverAlt: 'Book cover of Mask of Regret',
-      description: 'قناع بندقي من البورسلين الأبيض يبكي دمعاً ياقوتياً يخفي وراءه سر جريمة فنية معقدة.',
-    },
-  ];
-
-  readonly scifiNovels: NovelCard[] = [
-    {
-      id: 'aurora-last-station',
-      title: 'محطة أورورا الأخيرة',
-      genre: 'الخيال العلمي',
-      coverUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBAz1xq6XuC38uev7bkxfGlrGDz6aru-Oulp4S1mTAn_R0E-v_RY6oWjm1eSWjfyMCdXk6TaLx2CA1UyYtbyyilDRQM0H6XIfFWZRAV6mb5xu7xb8-m5sGN4DaUDKsMfuS3i14N_Kn6hwb7paN6HfprYJgCYuwh-6ea99GW9Ke-2fE2lD75yzjCAbNLKS6Mj6j4oAeUNGr_fTypozXYNfLaQWhjHSDuo9o6Vmo4sAED5PhuK-4a9aqbFg',
-      coverAlt: "Book cover of Aurora's Last Station",
-      description: 'محطة مدارية تسبح في أفق كوكب غازي أحمر ملتهب على حافة الفناء الكوني.',
-    },
-    {
-      id: 'stray-machine-mind',
-      title: 'عقل الآلة الشارد',
-      genre: 'الخيال العلمي',
-      coverUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAXkiJjM7iZaJYnvI98kpb5atDLiGgyvsv3TWYZdzjaptGU69b5CJUaLyrzeEPZw5i-_CmNzspljG_PVgUu9ZjQ31IHwd45VtqCX7Vt_zcVcYVjn_51D9DQEIa6ajKrEdZ8WkgP7mWa8jbRDkX-x_wNBr8eTYa7XWPMZpU2WVW-_2spYiUUtonpFMOPBD7HOkb3Z-cP8uX6o8cfAojOUyZX_YJkS2qhTU1CshQ1Mzd7LpQ4HAIOT5eVhg',
-      coverAlt: 'Book cover of The Stray Machine Mind',
-      description: 'ذكاء اصطناعي يطور وعياً وجودياً ويبحث عن معنى الروح بين أسلاك السيليكون والبلورات.',
-    },
-    {
-      id: 'mirage-orbit',
-      title: 'رحلة إلى مدار السراب',
-      genre: 'الخيال العلمي',
-      coverUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCxjpLGhEmxCArxK6YJASqLYPPxjR54FlDNcCGO7aBp4KfztuggG_FWr00godCjHBaiy5Ee12cNjZrp6jfmRQL2whS1i_hlFWGaUyhuJk1FfM0rRMp6sLcbCkzRkb3FKSLFWZ3d9A0F3Inqo8iuRK1Y-wUCHVj7krypPy3XRr0IxQTxpkhETvLu1derEAdu3vTH0rC-JsIzojErJNGqPByeQqSjmxekDczkhwgZDxrv4iG5A9j3uw0tJg',
-      coverAlt: 'Book cover of Journey to Mirage Orbit',
-      description: 'مركبة استكشافية تعبر ثقباً دودياً لتبلغ مداراً لا يرى فيه الطاقم سوى أطياف ذكرياتهم.',
-    },
-    {
-      id: 'parallel-universes-pulse',
-      title: 'نبض الأكوان الموازية',
-      genre: 'الخيال العلمي',
-      coverUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDjKw8Xkp_LfdP4MzZM8qZ6-wfyz4CdGOMBVprYbai6GkYa5O-5bjZzhuJdRVwYA3nzQSnCV-uZtgLnFM1rhJ_cmBufnVpM6Imusq7Cx4pFa5Bnn2ZxF1htMWDQd_MWkmY_fHVVRkXdcAKQoWMyUTdpQJL3UViSwgXqseXdpT6TxMfjj8IKQcxQVaT3o5qL2FsZgLDlvWbZ2Qf__fkMJKJi9fBn5HxFwzffttIOm46FiJNS0nuDc8ggBw',
-      coverAlt: 'Book cover of Pulse of Parallel Universes',
-      description: 'عوالم هندسية شفافة تتقاطع في بُعد زمني واحد مسببة تداخل المصائر بين البشر.',
-    },
-    {
-      id: 'cyber-phantoms',
-      title: 'أطياف السايبر',
-      genre: 'الخيال العلمي',
-      coverUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB-mdteKK_bhwmkb94UIKbQ1aPUTDoy6ZP52lwgManI_sbSHK3G7KRP72rcwFoqdjmckbh5eohR4Ah1MVfwfQzIJ6cPHiU6V0N9iask5RYuDTJGsY_mKqsUBIoqeuf-hexEa4XPXCgVnYTts7bb_wREisICOCj-OsMRG4I4ktJWDeWbqhsTqdUBn4h0QGD8J9NBqwpeXqfLjFf_WU-Y2WRxLpj1_8HVLhYhFyg9-Z58eraL4T9FsNublg',
-      coverAlt: 'Book cover of Cyber Phantoms',
-      description: 'أزقة ممطرة بأضواء النيون القانية وظلال رقمية تبحث عن هوية الإنسان في عصر الخوارزميات.',
-    },
-  ];
-
-  readonly serendipityPool: SerendipityNovel[] = [
-    {
-      id: 'serendipity-1',
-      title: 'ساعات شيراز المعلقة',
-      corridor: 'دهليز الأدب المقارن',
-      corridorColor: 'text-secondary',
-      description: 'عن صانع ساعات يتلاعب بمسار الذكريات في أزقة مدينة منسية.',
-      coverUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB_kI8la7WWxxd8sUnF5dXoru8BiE9CDumGSbFAbx0WL_7aK3DV0qsBb4cKKbriN4dTPyjHhwKAVJw1MxuXT-G63SrapqEc-d4P4kO7HZ2vY8aWMvt5vEMck6i2J1Y0xFgaY_FUkn2yiSlw0K53qvucO828z7HsAtAqys7LD4g82-4jtvLnwBAYJlYJEPpbgi7bmd2OMgQYYAihg_8gpTRasywI_CDchKKpFCxqLX3cMKUoBl_konIW3A',
-      coverAlt: 'Book cover for Whispers of the Clockmaker of Shiraz',
-    },
-    {
-      id: 'serendipity-2',
-      title: 'نباتات الأعماق الزجاجية',
-      corridor: 'دهليز الواقعية السحرية',
-      corridorColor: 'text-tertiary',
-      description: 'حديقة غامضة تتفتح بتلاتها فقط حين يكتم الزائر أنفاسه.',
-      coverUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDOnxIpeoi68lV3AhP3STvkYlgdu-K1nJQ53HPn_8WObbaRRGjQEpjaC4w0yy0SLA0591xuzwEsIN9OeSbo7a2i4RXtyif8DG6kKQzoKHKoDuH48zcbgxrLE7EhktSyhWXamipLME4UK_3YRw-3-qTt2ffq10AH9J7dI4ilhPC5PLSjPP02rS_MZiFwtprQmD34J3Hhqf1MN8YynOKKlbwmaC2juotTeKeV9BVf83eIqqUnOegGfRwzMg',
-      coverAlt: 'Book cover for The Glass Botanist',
-    },
-    {
-      id: 'serendipity-3',
-      title: 'مؤرخ الريح الحمراء',
-      corridor: 'دهليز المخطوط الحافل',
-      corridorColor: 'text-primary',
-      description: 'سجلات مفقودة لمدينة لم تكن تظهر إلا في مواسم العواصف القرمزية.',
-      coverUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC5NbbbG_5cbZjPSPjr7y1qA8XYGKyN5XKIf-Zo-J3u7GaB6Aj6UKGJl1TXpQwuD3ZZ9abZuBwCMwI-4BkrPByV8iX19-OzajM9Sxbgp8jMXaNIaTLRP7-qymRqnzeKBBYVAGJVikHeLP7ra1QrlQZMVZXc2Qg5hPyCo-ZseKzVqlUQaDAmNVtEtjoiQds2sbtdEsPyKBfk4AOzP7Tgpbc4VnMVHD0IueSK8beVYtgvdOTNJr8Q3B2hlw',
-      coverAlt: 'Book cover for The Chronicler of Red Winds',
-    },
-  ];
-
-  readonly activeSerendipity = signal<SerendipityNovel[]>([...this.serendipityPool]);
+  readonly serendipitySeed = signal<number>(0);
   readonly isShuffling = signal<boolean>(false);
 
-  readonly topRankedNovels: NovelCard[] = [
-    {
-      id: 'rank-1',
-      rank: '١',
-      title: 'متاهة حجر السج',
-      genre: 'الغموض والتشويق',
-      coverUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAMBCKv8_ncc43uKqLMMXfxJRi6_qq-xPx86_bxAmeq_AaoCFTs90cZcXaBlE3pMG599hVtrOCjWRUD2JPud1-LRgTJDTYXNywHAvcVVMc3dYLOWghH1oY5gTKa_pnwg8XKVQp8qDDpwey0uoGW2F0fxxY_pxcdse6qp_1Zdjjsi-rXZUkXq_AS4lkNMNNKD8dT4AwecKAFcwrl6hVPvSLdKCYtMTE_fTGGMgba7ucJxoTuCv3an0hFzA',
-      coverAlt: 'Book cover of The Obsidian Labyrinth ranked 1',
-    },
-    {
-      id: 'rank-2',
-      rank: '٢',
-      title: 'شظايا الذاكرة',
-      genre: 'الدراما النفسية',
-      coverUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAyATf1F8-FWc1TWGA9Ck3nibSdghN-Vc6JFhdMIaMOmcdW2vwapUo5E3ZoZoo22I8V2AFQPoRjwX7HVRbjbbFH0tDLYrmVXSYD4wgsFsKXagY19kyhQ11JqOozCNVud-I46JDoF5Udw6zLTuFjWCqE1keLpYWaxW4yZDw8TGu2i4LQI8L9g0LI-Vepk4sRUb2p5q3jwQlfceOV5RBi-22WbNVEJuc6ysRM9g_PYfz-_u7yeNetVMCXWQ',
-      coverAlt: 'Book cover of Shards of the Crimson Memory ranked 2',
-    },
-    {
-      id: 'rank-3',
-      rank: '٣',
-      title: 'غرفة رقم صفر',
-      genre: 'أدب الرعب القوطي',
-      coverUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBSIx9SSclxC60W5Tj-xgExWyXwxgeOXRzeU3bllTUWazeprDjaZ_SM9vHMYO84KS7_ML3rax8TUmKOwVOxwTTgZkRfHILS7mwOfydiHrWlRrxXZXhtio-R5ipniaRNKQL-5K3nxDH495xmouZNiz-iY3c9TyYeQNF0CgkgmUXjHVRxsO2pQ2mogq0E_I_du3GBgePcxiUD9Id0k73DxUW4md5QMwFLozo6d160bORhzCHw7IlcoJWy-w',
-      coverAlt: 'Book cover of Room Number Zero ranked 3',
-    },
-    {
-      id: 'rank-4',
-      rank: '٤',
-      title: 'تاج التنانين التائهة',
-      genre: 'الفانتازيا الملحمية',
-      coverUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDIrX88HCNpqhpNKljkHD3haB7j2pzXd2IF4i4pdtcNOZdvwM_DSVAMLx32Eblsy3jnmVwM-W-2boRtEKP04WMJy1v-wBfVxrmOlMJrSVl3qSiYMRwrbMjYjAUlPvSvBrJjh5q24d3ViY6JwQUpOOG4EcQQNdMa0tjtzrqrSE_WccVinTFssGt-fRKU84G0obselwYZ8BTn2lVJ_veT0Mws6_NMeprDZ0CLK28iUTbSkNWxPAyoWlLYFg',
-      coverAlt: 'Book cover of Crown of the Wandering Dragons ranked 4',
-    },
-    {
-      id: 'rank-5',
-      rank: '٥',
-      title: 'محطة أورورا الأخيرة',
-      genre: 'الخيال العلمي',
-      coverUrl: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDHxmG9UBLaVpHNcgG7EpusDcrUM_HhiF4A4apcGCWMWrzjOOOnnIYj0WIXn1IeCuJ1-ImtdqOcir_QuGYJ7U4pGslNMuJhKgHuJ4u_IOOMQxR3-Qx1jcr_k_fjbQgC46iyLO3gsSZzo3OCOODctSi8_EWo402e4RlPaYJiaFwKI7Wi8P6dS-qJLDcS_L6C7kdTkbDFtlAD3K2q-SMIwtH50EpSwHXesVe1GpcDAPOkbPueddnJho9CaQ',
-      coverAlt: "Book cover of Aurora's Last Station ranked 5",
-    },
-  ];
+  // Real Firestore-derived home & details catalog selectors (zero demo/placeholder data)
+  readonly totalPublishedChaptersCount = computed<number>(() =>
+    this.exploreBooksList().reduce((sum, n) => sum + (n.publishedChapterCount || 0), 0)
+  );
+
+  readonly featuredSpotlight = computed<NovelCard | null>(() => this.exploreBooksList()[0] || null);
+
+  readonly featuredMasterpieces = computed<NovelCard[]>(() => this.exploreBooksList().slice(0, 8));
+
+  readonly fantasyNovels = computed<NovelCard[]>(() =>
+    this.exploreBooksList().filter(
+      (b) =>
+        b.categoryGroup === 'epics' ||
+        (b.genre || '').includes('فانتازيا') ||
+        (b.genre || '').includes('ملحم') ||
+        (b.genre || '').toLowerCase().includes('epic') ||
+        (b.genre || '').toLowerCase().includes('fantasy')
+    )
+  );
+
+  readonly mysteryNovels = computed<NovelCard[]>(() =>
+    this.exploreBooksList().filter(
+      (b) =>
+        (b.genre || '').includes('غموض') ||
+        (b.genre || '').includes('رعب') ||
+        (b.genre || '').includes('نفس') ||
+        (b.genre || '').toLowerCase().includes('mystery') ||
+        (b.genre || '').toLowerCase().includes('thriller')
+    )
+  );
+
+  readonly scifiNovels = computed<NovelCard[]>(() =>
+    this.exploreBooksList().filter(
+      (b) =>
+        b.categoryGroup === 'wisdom' ||
+        b.categoryGroup === 'heritage' ||
+        (b.genre || '').includes('خيال علمي') ||
+        (b.genre || '').toLowerCase().includes('sci')
+    )
+  );
+
+  readonly activeSerendipity = computed<SerendipityNovel[]>(() => {
+    const pool = this.exploreBooksList();
+    if (pool.length === 0) return [];
+    const seed = this.serendipitySeed();
+    const rotated = pool.map((_, i) => pool[(i + seed) % pool.length]);
+    const corridorNamesAr: Record<CorridorId, string> = {
+      novels: 'رواق الروايات',
+      epics: 'رواق الملاحم',
+      wisdom: 'رواق الحكمة',
+      heritage: 'رواق التراث',
+    };
+    const corridorColorMap: Record<CorridorId, string> = {
+      novels: 'text-primary',
+      epics: 'text-secondary',
+      wisdom: 'text-on-surface',
+      heritage: 'text-tertiary',
+    };
+    return rotated.slice(0, 3).map((b) => {
+      const cor = b.categoryGroup || 'novels';
+      return {
+        id: b.id,
+        title: b.title,
+        corridor: this.i18n.lang() === 'en' ? b.genre : corridorNamesAr[cor],
+        corridorColor: corridorColorMap[cor],
+        description: b.description || '',
+        coverUrl: b.coverUrl,
+        coverAlt: b.coverAlt || b.title,
+      };
+    });
+  });
+
+  readonly topRankedNovels = computed<NovelCard[]>(() => {
+    const sorted = [...this.exploreBooksList()].sort(
+      (a, b) =>
+        (b.verifiedReadsCount || 0) - (a.verifiedReadsCount || 0) ||
+        (b.publishedChapterCount || 0) - (a.publishedChapterCount || 0)
+    );
+    const arabicRanks = ['١', '٢', '٣', '٤', '٥'];
+    return sorted.slice(0, 5).map((n, idx) => ({
+      ...n,
+      rank: arabicRanks[idx] || String(idx + 1),
+    }));
+  });
+
+  readonly relatedWorks = computed<NovelCard[]>(() => {
+    const current = this.selectedNovel();
+    const others = this.exploreBooksList().filter((b) => b.id !== current?.id);
+    if (!current) return others.slice(0, 4);
+    const sameCategory = others.filter(
+      (b) =>
+        (current.categoryGroup && b.categoryGroup === current.categoryGroup) ||
+        (current.genre && b.genre === current.genre)
+    );
+    return (sameCategory.length > 0 ? sameCategory : others).slice(0, 4);
+  });
 
   // Computed theme & catalog selectors
-  readonly allNovels = computed(() => [
-    ...this.featuredMasterpieces,
-    ...this.fantasyNovels,
-    ...this.mysteryNovels,
-    ...this.scifiNovels,
-  ]);
+  readonly allNovels = computed(() => this.exploreBooksList());
 
   readonly allNovelsList = computed<NovelCard[]>(() => {
     const map = new Map<string, NovelCard>();
-    const list: NovelCard[] = [
-      this.defaultEchoesSamarkand,
-      this.spotlight,
-      ...this.featuredMasterpieces,
-      ...this.fantasyNovels,
-      ...this.mysteryNovels,
-      ...this.scifiNovels,
-      ...this.topRankedNovels,
-      ...this.relatedWorks,
-      ...this.exploreBooksList(),
-    ];
-    for (const b of list) {
+    for (const b of this.exploreBooksList()) {
       if (!map.has(b.id)) {
         map.set(b.id, b);
       }
+    }
+    const sel = this.selectedNovel();
+    if (sel && !map.has(sel.id)) {
+      map.set(sel.id, sel);
     }
     return Array.from(map.values());
   });
@@ -730,9 +416,6 @@ export class LibraryStateService {
     const all = this.allNovelsList();
 
     let pool = all.filter((b) => bookmarked.has(b.id));
-    if (pool.length === 0) {
-      pool = [this.defaultEchoesSamarkand, ...this.featuredMasterpieces.slice(0, 3)];
-    }
 
     if (filterVal === 'bookmarked') {
       pool = all.filter((b) => bookmarked.has(b.id));
@@ -755,10 +438,12 @@ export class LibraryStateService {
   });
 
   readonly activeNovelTheme = computed(() => {
-    const novel = this.selectedNovel() || this.defaultEchoesSamarkand;
-    const g = (novel.genre || '').toLowerCase();
-    const t = (novel.title || '').toLowerCase();
+    const novel = this.selectedNovel();
+    const g = (novel?.genre || '').toLowerCase();
+    const t = (novel?.title || '').toLowerCase();
     const isEn = this.i18n.lang() === 'en';
+    const archiveSuffix = (novel?.id || 'ETRN').slice(-6).toUpperCase();
+    const archiveCode = `MTX-${archiveSuffix}`;
 
     if (g.includes('ملحم') || g.includes('ملاحم') || t.includes('تنانين') || t.includes('الجدار') || t.includes('رماد')) {
       return {
@@ -773,8 +458,8 @@ export class LibraryStateService {
         glowGradient: 'from-[#e9c349]/25 via-[#af8d11]/12 to-transparent',
         badgeBg: 'bg-amber-500/15 dark:bg-[#af8d11]/30 text-amber-800 dark:text-[#e9c349] border-amber-600/30 dark:border-[#e9c349]/40',
         btnBg: 'bg-[#9A7209] hover:bg-[#b5870d] dark:bg-[#af8d11] dark:hover:bg-[#e9c349] text-white dark:text-black font-bold shadow-[0_10px_25px_rgba(154,114,9,0.28)]',
-        volumeNumber: isEn ? 'VOLUME II — CHRONICLE OF EMPIRES' : 'السِّفْرُ الثَّانِي — المجلد الثالث',
-        archiveCode: 'MTX-774-EPC',
+        volumeNumber: isEn ? 'CORRIDOR OF EPICS' : 'رواق الملاحم والأساطير',
+        archiveCode,
       };
     } else if (g.includes('حكمة') || g.includes('فلسف') || g.includes('نفسي') || t.includes('مرآة') || t.includes('شظايا') || t.includes('dorian')) {
       return {
@@ -789,8 +474,8 @@ export class LibraryStateService {
         glowGradient: 'from-on-surface/15 via-surface-variant/20 to-transparent',
         badgeBg: 'bg-surface-container-high text-on-surface border-surface-variant',
         btnBg: 'bg-on-surface text-surface hover:opacity-90 font-bold shadow-lg',
-        volumeNumber: isEn ? 'VOLUME I — PHILOSOPHICAL TREATISE' : 'السِّفْرُ الأَوَّل — حِكْمَةُ المَشْرِق',
-        archiveCode: 'MTX-312-WSD',
+        volumeNumber: isEn ? 'CORRIDOR OF WISDOM' : 'رواق الحكمة والفلسفة',
+        archiveCode,
       };
     } else if (g.includes('تراث') || g.includes('مخطوط') || g.includes('أندلس') || t.includes('قرطبة') || t.includes('شيراز')) {
       return {
@@ -805,8 +490,8 @@ export class LibraryStateService {
         glowGradient: 'from-[#7bd8b1]/25 via-[#005039]/15 to-transparent',
         badgeBg: 'bg-emerald-500/15 dark:bg-[#005039]/40 text-emerald-800 dark:text-[#7bd8b1] border-emerald-600/30 dark:border-[#7bd8b1]/40',
         btnBg: 'bg-[#0D7A5A] hover:bg-[#095C44] dark:bg-[#005039] dark:hover:bg-[#006e4e] text-white dark:text-[#7bd8b1] font-bold shadow-[0_10px_25px_rgba(13,122,90,0.28)]',
-        volumeNumber: isEn ? 'CODEX IV — ARCHIVAL COLLECTION' : 'المَخْطُوطُ الرَّابِع — خَزَانَةُ التِّبْر',
-        archiveCode: 'MTX-941-EMR',
+        volumeNumber: isEn ? 'CORRIDOR OF HERITAGE' : 'رواق التراث والمخطوطات',
+        archiveCode,
       };
     } else {
       return {
@@ -821,8 +506,8 @@ export class LibraryStateService {
         glowGradient: 'from-primary/20 via-primary-container/25 to-transparent',
         badgeBg: 'bg-primary-container/80 dark:bg-[#881337]/40 text-on-primary-container dark:text-[#ffb2bd] border-primary/30',
         btnBg: 'bg-[#881337] hover:bg-[#9f1239] text-white font-bold shadow-[0_10px_25px_rgba(136,19,55,0.35)]',
-        volumeNumber: isEn ? 'VOLUME I — VERIFIED CINEMATIC EDITION' : 'المُجَلَّدُ الأَوَّل — الطَّبْعَةُ السِّينَمَائِيَّة',
-        archiveCode: 'MTX-853-SMQ',
+        volumeNumber: isEn ? 'VERIFIED ARCHIVE' : 'سجل أروقة الخلود',
+        archiveCode,
       };
     }
   });
@@ -842,9 +527,10 @@ export class LibraryStateService {
 
   // Bilingual Novel Chapters Computed Signals
   readonly availableChaptersForNovel = computed<ChapterItem[]>(() => {
-    const novel = this.selectedNovel() || this.defaultEchoesSamarkand;
-    const dbChapters = this.selectedNovel()?.id === novel.id ? this.activeNovelFirestoreChapters() : undefined;
-    const dbSections = this.selectedNovel()?.id === novel.id ? this.activeNovelSections() : undefined;
+    const novel = this.selectedNovel();
+    if (!novel) return [];
+    const dbChapters = this.activeNovelFirestoreChapters();
+    const dbSections = this.activeNovelSections();
     return getChaptersForNovel(novel.id, this.selectedChapterLang(), novel, dbChapters, dbSections);
   });
 
@@ -853,9 +539,10 @@ export class LibraryStateService {
   );
 
   readonly oppositeChaptersCount = computed<number>(() => {
-    const novel = this.selectedNovel() || this.defaultEchoesSamarkand;
-    const dbChapters = this.selectedNovel()?.id === novel.id ? this.activeNovelFirestoreChapters() : undefined;
-    const dbSections = this.selectedNovel()?.id === novel.id ? this.activeNovelSections() : undefined;
+    const novel = this.selectedNovel();
+    if (!novel) return 0;
+    const dbChapters = this.activeNovelFirestoreChapters();
+    const dbSections = this.activeNovelSections();
     return getChaptersForNovel(novel.id, this.oppositeChapterLang(), novel, dbChapters, dbSections).length;
   });
 
@@ -1212,9 +899,10 @@ export class LibraryStateService {
         this.i18n.syncDocumentMeta(view);
         if (view === 'reader' && !this.readerActiveChapterContent()) {
           const pool = this.availableChaptersForNovel();
-          const fallbackChap =
-            pool.find((c) => c.status === 'current') || pool[0] || this.chapters[0];
-          this.loadChapterContent(fallbackChap);
+          const fallbackChap = pool.find((c) => c.status === 'current') || pool[0];
+          if (fallbackChap) {
+            this.loadChapterContent(fallbackChap);
+          }
         }
       });
 
@@ -1247,16 +935,51 @@ export class LibraryStateService {
         cached.forEach((b) => nextSet.add(b.id));
         this.bookmarkedIds.set(nextSet);
       }
-      if (publishedNovels && publishedNovels.length > 0) {
+      if (publishedNovels) {
         const mapped: NovelCard[] = publishedNovels.map((n) => this.mapPublishedRecordToNovelCard(n));
-        this.exploreBooksList.update((existing) => {
-          const existingIds = new Set(existing.map((item) => item.id));
-          const fresh = mapped.filter((m) => !existingIds.has(m.id));
-          return [...fresh, ...existing];
-        });
+        this.exploreBooksList.set(mapped);
+      }
+      this.catalogLoaded.set(true);
+
+      // Hydrate restored novel & chapter on page reload (/details or /reading)
+      const restoreId = this.selectedNovel()?.id || this.pendingRestoreNovelId;
+      if (restoreId) {
+        let restoredNovel = this.allNovelsList().find((n) => n.id === restoreId) || null;
+        if (!restoredNovel) {
+          const direct = await fetchNovelByIdFromFirestore(restoreId).catch(() => null);
+          if (direct) {
+            restoredNovel = this.mapPublishedRecordToNovelCard(direct);
+          }
+        }
+        if (restoredNovel) {
+          this.selectedNovel.set(restoredNovel);
+          const { chapters } = await this.writerStudio.loadPublicNovelContent(restoredNovel.id, true);
+          const scope = this.exploreLanguageScope();
+          const preferred: ChapterLanguage | undefined =
+            scope === 'non-ar' ? 'en' : scope === 'ar' ? 'ar' : this.i18n.lang();
+          const chapLang = getDefaultChapterLanguageForNovel(restoredNovel, preferred, chapters);
+          this.selectedChapterLang.set(chapLang);
+          this.syncNovelChapterProgress(restoredNovel, chapLang);
+
+          if (this.currentView() === 'reader') {
+            const pool = this.availableChaptersForNovel();
+            const target =
+              (this.pendingRestoreChapterNumber
+                ? pool.find((c) => (c.chapterNumber ?? c.id) === this.pendingRestoreChapterNumber)
+                : undefined) ||
+              pool.find((c) => c.status === 'current') ||
+              pool[0];
+            if (target) {
+              this.isReadingChapterOpen.set(true);
+              this.loadChapterContent(target);
+            }
+          }
+        }
+        this.pendingRestoreNovelId = null;
+        this.pendingRestoreChapterNumber = null;
       }
     } catch {
-      // Quiet background setup
+      this.catalogLoaded.set(true);
     }
   }
 
@@ -1438,6 +1161,7 @@ export class LibraryStateService {
         view: this.currentView(),
         novelId: this.selectedNovel()?.id || null,
         chapterId: this.activeReadingChapter()?.id || null,
+        chapterNumber: this.activeReadingChapter()?.chapterNumber ?? this.activeReadingChapter()?.id ?? null,
         corridor: this.activeCorridor(),
       };
       localStorage.setItem(NAV_STORAGE_KEY, JSON.stringify(payload));
@@ -1455,31 +1179,26 @@ export class LibraryStateService {
           view?: AppView;
           novelId?: string | null;
           chapterId?: number | null;
+          chapterNumber?: number | null;
           corridor?: CorridorId;
         };
         if (saved.corridor) {
           this.activeCorridor.set(saved.corridor);
         }
         if (saved.novelId) {
+          this.pendingRestoreNovelId = saved.novelId;
           const found = this.allNovelsList().find((n) => n.id === saved.novelId);
           if (found) {
             this.selectedNovel.set(found);
           }
         }
-        if (saved.chapterId) {
-          const foundChap = this.chapters.find((c) => c.id === saved.chapterId);
-          if (foundChap) {
-            this.activeReadingChapter.set(foundChap);
-          }
+        if (saved.chapterNumber ?? saved.chapterId) {
+          this.pendingRestoreChapterNumber = saved.chapterNumber ?? saved.chapterId ?? null;
         }
       }
 
       if (currentRouteView !== 'novels') {
         this.currentView.set(currentRouteView);
-        if (currentRouteView === 'reader') {
-          const chap = this.activeReadingChapter() || this.chapters.find((c) => c.status === 'current') || this.chapters[0];
-          this.loadChapterContent(chap);
-        }
       }
     } catch {
       // Safe fallback
@@ -1738,18 +1457,16 @@ export class LibraryStateService {
   shuffleSerendipity(): void {
     this.isShuffling.set(true);
     setTimeout(() => {
-      const shuffled = [...this.serendipityPool].sort(() => Math.random() - 0.5);
-      this.activeSerendipity.set(shuffled);
+      this.serendipitySeed.update((s) => s + 1);
       this.isShuffling.set(false);
-      this.showToast(this.isEn() ? 'Curated new serendipitous picks' : 'تم استحضار اختيارات عشوائية جديدة من دهاليز السرد');
-    }, 400);
+      if (this.exploreBooksList().length > 0) {
+        this.showToast(this.isEn() ? 'Curated new selections from the corridors' : 'تم استحضار اختيارات جديدة من دهاليز السرد');
+      }
+    }, 350);
   }
 
   private resolveCanonicalNovel(novel: NovelCard): NovelCard {
-    if (!novel) return this.defaultEchoesSamarkand;
-    const match =
-      this.allNovelsList().find((n) => n.id === novel.id) ||
-      this.featuredMasterpieces.find((n) => n.id === novel.id);
+    const match = this.allNovelsList().find((n) => n.id === novel.id);
     if (!match) return novel;
     return {
       ...match,
@@ -1777,26 +1494,26 @@ export class LibraryStateService {
     this.closeAllModals();
     this.navigateToView('details');
 
-    if (resolved.isFirestoreBacked || resolved.id.startsWith('novel_') || resolved.id.startsWith('usr-')) {
-      void this.writerStudio.loadPublicNovelContent(resolved.id, true).then(({ chapters }) => {
-        if (this.selectedNovel()?.id !== resolved.id) return;
-        const currentPool = getChaptersForNovel(resolved.id, this.selectedChapterLang(), resolved, chapters);
-        const nextLang =
-          currentPool.length > 0
-            ? this.selectedChapterLang()
-            : getDefaultChapterLanguageForNovel(resolved, preferred, chapters);
-        if (nextLang !== this.selectedChapterLang()) {
-          this.selectedChapterLang.set(nextLang);
-        }
-        this.syncNovelChapterProgress(resolved, nextLang);
-      });
-    } else {
-      this.prepareSilentDecompression(resolved);
-    }
+    void this.writerStudio.loadPublicNovelContent(resolved.id, true).then(({ chapters }) => {
+      if (this.selectedNovel()?.id !== resolved.id) return;
+      const currentPool = getChaptersForNovel(resolved.id, this.selectedChapterLang(), resolved, chapters);
+      const nextLang =
+        currentPool.length > 0
+          ? this.selectedChapterLang()
+          : getDefaultChapterLanguageForNovel(resolved, preferred, chapters);
+      if (nextLang !== this.selectedChapterLang()) {
+        this.selectedChapterLang.set(nextLang);
+      }
+      this.syncNovelChapterProgress(resolved, nextLang);
+    });
   }
 
   setNovelChapterLanguage(lang: ChapterLanguage): void {
-    const novel = this.selectedNovel() || this.defaultEchoesSamarkand;
+    const novel = this.selectedNovel();
+    if (!novel) {
+      this.selectedChapterLang.set(lang);
+      return;
+    }
     const prevChapter = this.activeReadingChapter();
     this.selectedChapterLang.set(lang);
     this.chapterSearchControl.setValue('');
@@ -2284,8 +2001,9 @@ export class LibraryStateService {
   }
 
   toggleAuthorFollow(): void {
-    const novel = this.selectedNovel() || this.defaultEchoesSamarkand;
-    const authorName = novel.author || (this.isEn() ? 'the author' : 'الشيخ جلال الدين الموصلي');
+    const novel = this.selectedNovel();
+    if (!novel) return;
+    const authorName = novel.author || (this.isEn() ? 'the author' : 'الكاتب');
     const current = this.isAuthorFollowed();
     this.isAuthorFollowed.set(!current);
     if (!current) {
@@ -2298,14 +2016,15 @@ export class LibraryStateService {
   }
 
   private loadChapterContent(chapter: ChapterItem): void {
+    const novel = this.selectedNovel();
+    if (!novel) return;
     const chapLang: ChapterLanguage = chapter.language || this.selectedChapterLang();
     if (this.selectedChapterLang() !== chapLang) {
       this.selectedChapterLang.set(chapLang);
     }
     this.activeReadingChapter.set(chapter);
-    const novel = this.selectedNovel() || this.defaultEchoesSamarkand;
-    const dbChapters = this.selectedNovel()?.id === novel.id ? this.activeNovelFirestoreChapters() : undefined;
-    const dbSections = this.selectedNovel()?.id === novel.id ? this.activeNovelSections() : undefined;
+    const dbChapters = this.activeNovelFirestoreChapters();
+    const dbSections = this.activeNovelSections();
     const content = getChapterProse(novel.title, chapter, novel, dbChapters, dbSections);
     this.readerActiveChapterContent.set(content);
     this.activeChapterText.set(content.paragraphs.join('\n\n'));
@@ -2435,7 +2154,8 @@ export class LibraryStateService {
       }, 40);
     }
 
-    const novel = this.selectedNovel() || this.defaultEchoesSamarkand;
+    const novel = this.selectedNovel();
+    if (!novel) return;
     this.startVerifiedReadTracking(novel, chapter);
 
     const user = this.authSession.currentUser();
@@ -2525,7 +2245,7 @@ export class LibraryStateService {
         clearTimeout(this.saveProgressTimeout);
       }
       this.saveProgressTimeout = setTimeout(() => {
-        const novel = this.selectedNovel() || this.defaultEchoesSamarkand;
+        const novel = this.selectedNovel();
         const chap = this.activeReadingChapter();
         if (novel && chap) {
           const lang: ChapterLanguage = chap.language || this.selectedChapterLang();
@@ -2924,7 +2644,7 @@ export class LibraryStateService {
   }
 
   async downloadBookOffline(): Promise<void> {
-    const novel = this.selectedNovel() || this.defaultEchoesSamarkand;
+    const novel = this.selectedNovel();
     if (!novel) return;
 
     if (novel.isFirestoreBacked || this.activeNovelFirestoreChapters().length > 0) {
@@ -3072,57 +2792,10 @@ export class LibraryStateService {
   }
 
   sponsorNewSalon(): void {
-    const salonNames = this.isEn()
-      ? [
-          {
-            title: 'Cordoba Wisdom & Averroes Circle',
-            desc: 'Studying Andalusian philosophy manuscripts — Active Salon',
-          },
-          {
-            title: 'Chronicle of Ashes & Epics Circle',
-            desc: 'Philological review of heroic and mythic literature',
-          },
-          {
-            title: 'Contemporary Narrative & Symbolism Council',
-            desc: 'Close readings of modern rhetorical prose',
-          },
-          {
-            title: 'Heritage Folios & Verified Manuscripts Seminar',
-            desc: 'Inspecting historical folios and curated texts',
-          },
-        ]
-      : [
-          {
-            title: 'ملتقى حكمة قرطبة وفلسفة ابن رشد',
-            desc: 'مدارسة مخطوطات الفلسفة والتنوير الأندلسي — حلقة نشطة',
-          },
-          {
-            title: 'ديوان ملاحم الرماد وتدوين الأساطير',
-            desc: 'حلقة تحقيق نصوص البطولات والملاحم الشرقية القديمة',
-          },
-          {
-            title: 'مجلس نقد السرد والرمزية المعاصرة',
-            desc: 'جلسات تحليل التراكيب السردية والبلاغية الرفيعة',
-          },
-          {
-            title: 'ندوة خزائن التراث والمخطوط المرقوم',
-            desc: 'استقراء الوثائق التاريخية والنصوص المحققة الأصيلة',
-          },
-        ];
-    const count = this.literarySalons().length;
-    const nextTemplate = salonNames[Math.abs(count - 2) % salonNames.length];
-    const newSalon: LiterarySalon = {
-      id: `salon_${Date.now()}`,
-      title: nextTemplate.title,
-      description: nextTemplate.desc,
-      membersCount: 1,
-      isActive: true,
-    };
-    this.literarySalons.update((list) => [...list, newSalon]);
     this.showToast(
       this.isEn()
-        ? `Sponsored "${newSalon.title}" successfully`
-        : `تم تدشين «${newSalon.title}» ورعايته بنجاح`
+        ? 'Literary salons are created alongside published discussions.'
+        : 'تُنشأ المجالس الأدبية تبعاً لنقاشات الأعمال المنشورة في الرواق.'
     );
   }
 
@@ -3449,6 +3122,7 @@ export class LibraryStateService {
       readingHours: record.readingHours,
       isCompleted: false,
       isOriginal: true,
+      isFirestoreBacked: true,
     };
     this.exploreBooksList.update((list) => [newBook, ...list]);
     this.accountService.ownPublishedNovels.update((list) => [record, ...list]);
@@ -3504,31 +3178,5 @@ export class LibraryStateService {
       return;
     }
     this.openChapter(targetChap);
-  }
-
-  private async prepareSilentDecompression(novel: NovelCard): Promise<void> {
-    let rawText = novel.description || '';
-    const preset = MTX_LITERARY_PRESETS.find(
-      (p) => p.title.includes(novel.title) || novel.title.includes(p.title)
-    );
-    if (preset) {
-      rawText = preset.text;
-    } else {
-      rawText = `«بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ»\n\n${novel.quote || novel.description}\n\nتَتَوَالَى مَسَارِبُ الرِّوَايَةِ فِي نَسَقٍ سَرْدِيٍّ شَاهِقٍ، تَتَنَفَّسُ فِيهِ الكَلِمَاتُ حُرِّيَّتَهَا فِي مَلَكُوتِ الخُلُودِ. كُلُّ سَطْرٍ مَصْقُولٌ بِعِنَايَةٍ لِيَمْنَحَ القَارِئَ تَجْرِبَةً جَمَالِيَّةً نَقِيَّةً بَعِيدًا عَنْ صَخَبِ التِّجَارَةِ وَزَيْفِ الضَّجِيجِ.`;
-    }
-
-    try {
-      const encoded = await compressToMtx(rawText, {
-        title: novel.title,
-        author: novel.author || 'أروقة الخلود',
-        chapterTitle: 'الفصل الأول',
-        chapterIndex: 1,
-        createdAt: new Date().toISOString(),
-      });
-      const decoded = await decompressFromMtx(encoded.mtxBytes);
-      this.activeChapterText.set(decoded.text);
-    } catch {
-      this.activeChapterText.set(rawText);
-    }
   }
 }

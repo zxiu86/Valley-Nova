@@ -50,13 +50,13 @@
           <!-- Editorial Quick Strip Metric -->
           <div class="mt-8 pt-5 border-t border-surface-variant/40 flex flex-wrap items-center gap-6 sm:gap-8 text-on-surface-variant font-label-sm text-xs sm:text-sm">
             <div class="flex items-center gap-2">
-              <span class="text-secondary font-bold text-lg sm:text-xl font-mono tabular-nums">{{ lib.i18n.formatNumber(1480) }}</span>
+              <span class="text-secondary font-bold text-lg sm:text-xl font-mono tabular-nums">{{ lib.i18n.formatNumber(lib.exploreBooksList().length) }}</span>
               <span>{{ t.nav.corridorNovels }}</span>
             </div>
             <div class="w-1 h-1 rounded-full bg-outline-variant opacity-50"></div>
             <div class="flex items-center gap-2">
-              <span class="text-primary font-bold text-lg sm:text-xl font-mono tabular-nums">{{ lib.i18n.formatNumber(42) }}</span>
-              <span>{{ t.nav.collections }}</span>
+              <span class="text-primary font-bold text-lg sm:text-xl font-mono tabular-nums">{{ lib.i18n.formatNumber(lib.totalPublishedChaptersCount()) }}</span>
+              <span>{{ t.details.specChapters }}</span>
             </div>
             <div class="w-1 h-1 rounded-full bg-outline-variant opacity-50"></div>
             <div class="flex items-center gap-2">
@@ -67,72 +67,109 @@
         </div>
 
         <!-- Spotlight Featured Masterpiece Box -->
-        <div class="lg:w-5/12 flex flex-col justify-center">
-          <div class="relative group bg-surface-container-low rounded-2xl p-5 sm:p-6 lg:p-7 overflow-hidden shadow-lg dark:shadow-2xl border border-surface-variant/50 transition-all duration-300 hover:border-primary/40 hover:shadow-[0_20px_50px_rgba(136,19,55,0.18)]">
-            <!-- Accent glow on spotlight box -->
-            <div class="absolute -top-24 -end-24 w-48 h-48 bg-primary/15 dark:bg-primary/20 rounded-full blur-3xl pointer-events-none"></div>
+        @if (lib.featuredSpotlight(); as spot) {
+          <div class="lg:w-5/12 flex flex-col justify-center">
+            <div class="relative group bg-surface-container-low rounded-2xl p-5 sm:p-6 lg:p-7 overflow-hidden shadow-lg dark:shadow-2xl border border-surface-variant/50 transition-all duration-300 hover:border-primary/40 hover:shadow-[0_20px_50px_rgba(136,19,55,0.18)]">
+              <div class="absolute -top-24 -end-24 w-48 h-48 bg-primary/15 dark:bg-primary/20 rounded-full blur-3xl pointer-events-none"></div>
 
-            <div class="flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-6 relative z-10">
-              <!-- Book Artwork Preview (preserves original cover look) -->
-              <div
-                role="button"
-                tabindex="0"
-                (click)="lib.openNovelDetails({ id: lib.spotlight.id, title: lib.spotlight.title, genre: lib.spotlight.genre, coverUrl: lib.spotlight.coverUrl, coverAlt: lib.spotlight.coverAlt, quote: lib.spotlight.quote, description: lib.spotlight.quote })"
-                (keydown.enter)="lib.openNovelDetails({ id: lib.spotlight.id, title: lib.spotlight.title, genre: lib.spotlight.genre, coverUrl: lib.spotlight.coverUrl, coverAlt: lib.spotlight.coverAlt, quote: lib.spotlight.quote, description: lib.spotlight.quote })"
-                class="w-36 sm:w-44 aspect-[2/3] shrink-0 rounded-xl overflow-hidden shadow-xl transition-transform duration-500 group-hover:-translate-y-1.5 cursor-pointer border border-surface-variant/40"
-              >
-                <img
-                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  [src]="lib.spotlight.coverUrl"
-                  [alt]="lib.spotlight.coverAlt"
-                  referrerpolicy="no-referrer"
-                />
-              </div>
-
-              <!-- Spotlight Details -->
-              <div class="flex flex-col justify-between h-full text-start w-full min-w-0">
-                <div>
-                  <div class="inline-flex items-center gap-1.5 text-secondary font-semibold text-xs mb-2">
-                    <span class="material-symbols-outlined text-[16px]">auto_awesome</span>
-                    <span>{{ t.hero.spotlightBadge }}</span>
-                  </div>
-                  <h3 class="text-lg sm:text-xl font-bold text-on-surface mb-2 truncate">
-                    {{ lib.spotlight.title }}
-                  </h3>
-                  <blockquote class="text-xs sm:text-sm text-on-surface-variant italic leading-relaxed mb-5 ps-3 border-s-2 border-primary/40 font-amiri text-justify">
-                    {{ lib.spotlight.quote }}
-                  </blockquote>
+              <div class="flex flex-col sm:flex-row items-center sm:items-start gap-5 sm:gap-6 relative z-10">
+                <div
+                  role="button"
+                  tabindex="0"
+                  (click)="lib.openNovelDetails(spot)"
+                  (keydown.enter)="lib.openNovelDetails(spot)"
+                  class="w-36 sm:w-44 aspect-[2/3] shrink-0 rounded-xl overflow-hidden shadow-xl transition-transform duration-500 group-hover:-translate-y-1.5 cursor-pointer border border-surface-variant/40"
+                >
+                  <img
+                    class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    [src]="spot.coverUrl"
+                    [alt]="spot.coverAlt || spot.title"
+                    referrerpolicy="no-referrer"
+                  />
                 </div>
 
-                <div class="flex flex-wrap items-center gap-3 pt-1">
-                  <!-- Cross-Language Catalog Button: Displays 'ENGLISH' in AR, 'العربية' in EN -->
-                  <button
-                    type="button"
-                    (click)="lib.openExploreByHeroLanguage()"
-                    [attr.aria-label]="t.hero.spotlightBtnAria"
-                    [title]="t.hero.spotlightBtnAria"
-                    class="btn-tactile inline-flex items-center justify-center px-4 sm:px-5 py-2.5 rounded-xl bg-primary text-on-primary font-bold text-xs sm:text-sm hover:bg-primary-fixed-dim shadow-md cursor-pointer gap-1.5 tracking-wide"
-                  >
-                    <span class="material-symbols-outlined text-[18px]">translate</span>
-                    <span>{{ t.hero.spotlightBtn }}</span>
-                  </button>
+                <div class="flex flex-col justify-between h-full text-start w-full min-w-0">
+                  <div>
+                    <div class="inline-flex items-center gap-1.5 text-secondary font-semibold text-xs mb-2">
+                      <span class="material-symbols-outlined text-[16px]">auto_awesome</span>
+                      <span>{{ t.hero.spotlightBadge }}</span>
+                    </div>
+                    <h3 class="text-lg sm:text-xl font-bold text-on-surface mb-2 truncate">
+                      {{ spot.title }}
+                    </h3>
+                    <p class="text-xs sm:text-sm text-on-surface-variant leading-relaxed mb-5 ps-3 border-s-2 border-primary/40 line-clamp-4">
+                      {{ spot.quote || spot.description }}
+                    </p>
+                  </div>
 
-                  <button
-                    type="button"
-                    (click)="lib.openNovelDetails({ id: lib.spotlight.id, title: lib.spotlight.title, genre: lib.spotlight.genre, coverUrl: lib.spotlight.coverUrl, coverAlt: lib.spotlight.coverAlt, quote: lib.spotlight.quote, description: lib.spotlight.quote })"
-                    class="btn-tactile inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-surface-container text-on-surface hover:bg-surface-container-high font-semibold text-xs sm:text-sm border border-surface-variant/40 cursor-pointer"
-                  >
-                    <span>{{ t.explore.detailsBtn }}</span>
-                  </button>
+                  <div class="flex flex-wrap items-center gap-3 pt-1">
+                    <button
+                      type="button"
+                      (click)="lib.openExploreByHeroLanguage()"
+                      [attr.aria-label]="t.hero.spotlightBtnAria"
+                      [title]="t.hero.spotlightBtnAria"
+                      class="btn-tactile inline-flex items-center justify-center px-4 sm:px-5 py-2.5 rounded-xl bg-primary text-on-primary font-bold text-xs sm:text-sm hover:bg-primary-fixed-dim shadow-md cursor-pointer gap-1.5 tracking-wide"
+                    >
+                      <span class="material-symbols-outlined text-[18px]">translate</span>
+                      <span>{{ t.hero.spotlightBtn }}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      (click)="lib.openNovelDetails(spot)"
+                      class="btn-tactile inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-surface-container text-on-surface hover:bg-surface-container-high font-semibold text-xs sm:text-sm border border-surface-variant/40 cursor-pointer"
+                    >
+                      <span>{{ t.explore.detailsBtn }}</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        } @else {
+          <div class="lg:w-5/12 flex flex-col justify-center">
+            <div class="liquid-glass rounded-2xl p-6 sm:p-7 border border-[var(--mtx-glass-border)] space-y-4">
+              <div class="inline-flex items-center gap-2 text-secondary font-semibold text-xs">
+                <span class="material-symbols-outlined text-[18px]">translate</span>
+                <span>{{ t.hero.spotlightBadge }}</span>
+              </div>
+              <h3 class="text-lg sm:text-xl font-bold text-on-surface">
+                {{ lib.i18n.lang() === 'en' ? 'Explore Open Sanctuary Library' : 'استكشف خزانة أروقة الخلود' }}
+              </h3>
+              <p class="text-xs sm:text-sm text-on-surface-variant leading-relaxed">
+                {{
+                  lib.i18n.lang() === 'en'
+                    ? 'Published novels and chapters by verified writers appear here live as soon as they are published.'
+                    : 'تظهر الروايات والفصول المنشورة من الكتّاب المعتمدين هنا مباشرة فور نشرها.'
+                }}
+              </p>
+              <div class="flex flex-wrap items-center gap-3 pt-1">
+                <button
+                  type="button"
+                  (click)="lib.openExploreByHeroLanguage()"
+                  [attr.aria-label]="t.hero.spotlightBtnAria"
+                  [title]="t.hero.spotlightBtnAria"
+                  class="btn-tactile inline-flex items-center justify-center px-4 sm:px-5 py-2.5 rounded-xl bg-primary text-on-primary font-bold text-xs sm:text-sm hover:bg-primary-fixed-dim shadow-md cursor-pointer gap-1.5 tracking-wide"
+                >
+                  <span class="material-symbols-outlined text-[18px]">translate</span>
+                  <span>{{ t.hero.spotlightBtn }}</span>
+                </button>
+                <button
+                  type="button"
+                  (click)="lib.openExplore()"
+                  class="btn-tactile inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-surface-container text-on-surface hover:bg-surface-container-high font-semibold text-xs sm:text-sm border border-surface-variant/40 cursor-pointer"
+                >
+                  <span>{{ t.details.exploreAll }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        }
       </div>
     </section>
 
     <!-- ================= 2. FEATURED MASTERPIECES HORIZONTAL RAIL ================= -->
+    @if (lib.featuredMasterpieces().length > 0) {
     <section class="w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-[1400px] mx-auto">
       <div class="flex items-end justify-between mb-6">
         <div>
@@ -165,7 +202,7 @@
         id="featuredRail"
         class="smooth-horizontal-rail flex flex-row items-stretch overflow-x-auto gap-4 pb-4 snap-x snap-mandatory scrollbar-none"
       >
-        @for (book of lib.featuredMasterpieces; track book.id) {
+        @for (book of lib.featuredMasterpieces(); track book.id) {
           <div
             role="button"
             tabindex="0"
@@ -229,10 +266,12 @@
         }
       </div>
     </section>
+    }
 
     <!-- ================= 3. MULTI-CATEGORY DENSE EDITORIAL GRIDS ================= -->
     <div class="w-full px-4 sm:px-6 lg:px-8 py-8 max-w-[1400px] mx-auto space-y-12 sm:space-y-16">
-      <!-- Category A: Fantasy -->
+      <!-- Category A: Fantasy / Epics -->
+      @if (lib.fantasyNovels().length > 0) {
       <section class="flex flex-col">
         <div class="flex items-center justify-between mb-5 pb-3 border-b border-surface-variant/30">
           <div class="flex items-center gap-2.5">
@@ -250,7 +289,7 @@
         </div>
 
         <div class="smooth-horizontal-rail flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory scrollbar-none sm:grid sm:grid-cols-3 md:grid-cols-5 sm:overflow-visible sm:gap-4 lg:gap-6">
-          @for (novel of lib.fantasyNovels; track novel.id) {
+          @for (novel of lib.fantasyNovels(); track novel.id) {
             <div
               role="button"
               tabindex="0"
@@ -273,8 +312,10 @@
           }
         </div>
       </section>
+      }
 
       <!-- Category B: Mystery -->
+      @if (lib.mysteryNovels().length > 0) {
       <section class="flex flex-col">
         <div class="flex items-center justify-between mb-5 pb-3 border-b border-surface-variant/30">
           <div class="flex items-center gap-2.5">
@@ -292,7 +333,7 @@
         </div>
 
         <div class="smooth-horizontal-rail flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory scrollbar-none sm:grid sm:grid-cols-3 md:grid-cols-5 sm:overflow-visible sm:gap-4 lg:gap-6">
-          @for (novel of lib.mysteryNovels; track novel.id) {
+          @for (novel of lib.mysteryNovels(); track novel.id) {
             <div
               role="button"
               tabindex="0"
@@ -315,8 +356,10 @@
           }
         </div>
       </section>
+      }
 
-      <!-- Category C: Sci-Fi -->
+      <!-- Category C: Sci-Fi / Wisdom & Heritage -->
+      @if (lib.scifiNovels().length > 0) {
       <section class="flex flex-col">
         <div class="flex items-center justify-between mb-5 pb-3 border-b border-surface-variant/30">
           <div class="flex items-center gap-2.5">
@@ -334,7 +377,7 @@
         </div>
 
         <div class="smooth-horizontal-rail flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory scrollbar-none sm:grid sm:grid-cols-3 md:grid-cols-5 sm:overflow-visible sm:gap-4 lg:gap-6">
-          @for (novel of lib.scifiNovels; track novel.id) {
+          @for (novel of lib.scifiNovels(); track novel.id) {
             <div
               role="button"
               tabindex="0"
@@ -357,9 +400,11 @@
           }
         </div>
       </section>
+      }
     </div>
 
     <!-- ================= 4. SERENDIPITY FEATURE ================= -->
+    @if (lib.activeSerendipity().length > 0) {
     <section class="w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-[1400px] mx-auto">
       <div class="relative rounded-2xl">
         <!-- Preserved Ambient Background Illuminations Positioned Behind the Liquid Glass Surface -->
@@ -453,8 +498,10 @@
         </div>
       </div>
     </section>
+    }
 
     <!-- ================= 5. HIGHEST-RATED / MOST READ ================= -->
+    @if (lib.topRankedNovels().length > 0) {
     <section class="w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-12 max-w-[1400px] mx-auto">
       <div class="flex items-end justify-between mb-6">
         <div>
@@ -487,7 +534,7 @@
         id="rankedRail"
         class="smooth-horizontal-rail flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory scrollbar-none sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 sm:overflow-visible sm:gap-4 lg:gap-6"
       >
-        @for (ranked of lib.topRankedNovels; track ranked.id) {
+        @for (ranked of lib.topRankedNovels(); track ranked.id) {
           <div
             role="button"
             tabindex="0"
@@ -515,6 +562,27 @@
         }
       </div>
     </section>
+    }
+
+    @if (lib.catalogLoaded() && lib.exploreBooksList().length === 0) {
+      <section class="w-full px-4 sm:px-6 lg:px-8 py-6 max-w-[1400px] mx-auto">
+        <div class="liquid-glass rounded-3xl p-8 sm:p-10 text-center space-y-4 border border-[var(--mtx-glass-border)]">
+          <div class="w-14 h-14 mx-auto rounded-2xl bg-surface-container-high flex items-center justify-center text-secondary">
+            <span class="material-symbols-outlined text-[30px]">auto_stories</span>
+          </div>
+          <h2 class="text-lg sm:text-xl font-bold text-on-surface">
+            {{ lib.i18n.lang() === 'en' ? 'No published works in the library yet' : 'لا توجد روايات منشورة في المكتبة بعد' }}
+          </h2>
+          <p class="text-xs sm:text-sm text-on-surface-variant max-w-lg mx-auto leading-relaxed">
+            {{
+              lib.i18n.lang() === 'en'
+                ? 'All demo/sample books have been cleared. Verified authors can create novels and publish chapters directly from the Writer Studio.'
+                : 'المكتبة الآن خالية من البيانات التجريبية، وتعرض الأعمال الحقيقية فقط فور نشرها من لوحة الكاتب المعتمد.'
+            }}
+          </p>
+        </div>
+      </section>
+    }
 
     <!-- ================= 6. FAST FILTER & INDEX STRIP ================= -->
     <section class="w-full px-4 sm:px-6 lg:px-8 pt-4 pb-12 max-w-[1400px] mx-auto">

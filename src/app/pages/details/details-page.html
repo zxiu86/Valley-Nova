@@ -1,7 +1,7 @@
-@let novel = lib.selectedNovel() || lib.defaultEchoesSamarkand;
 @let theme = lib.activeNovelTheme();
 @let t = lib.i18n.copy();
 
+@if (lib.selectedNovel(); as novel) {
 <div class="flex flex-col w-full animate-fadeIn" id="book-details">
   <!-- Decorative Ambient Backdrops Dynamic to Realm Theme -->
   <div class="relative w-full overflow-hidden bg-surface">
@@ -36,45 +36,25 @@
       </nav>
     </div>
 
-    <!-- ================= 1. HERO BOOK SPECIMEN (SPLIT ARCHITECTURAL SHOWCASE) ================= -->
+    <!-- ================= 1. HERO BOOK SPECIMEN (CLEAN COVER SHOWCASE) ================= -->
     <section class="w-full px-4 sm:px-6 lg:px-8 pt-6 pb-12 relative z-10 max-w-[1400px] mx-auto">
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
-        <!-- Book 3D Specimen Column (5 cols) -->
+        <!-- Plain Unobstructed Novel Cover Box (5 cols) -->
         <div class="lg:col-span-5 flex flex-col items-center relative">
-          <!-- 3D Book Container with Ambient Halo Glow (original book artwork preserved) -->
-          <div class="relative group w-full max-w-[270px] sm:max-w-[320px] lg:max-w-[350px] aspect-[2/3] mx-auto">
-            <!-- Realm Halo Glow behind the book -->
-            <div
-              [class]="'absolute -inset-4 rounded-3xl blur-2xl opacity-35 dark:opacity-40 group-hover:opacity-65 transition-opacity duration-700 bg-gradient-to-tr ' + theme.glowGradient"
-            ></div>
-
-            <!-- Book 3D Architectural Object -->
-            <div
-              [class]="'relative w-full h-full rounded-2xl overflow-hidden bg-surface-container-high transition-transform duration-500 group-hover:-translate-y-2.5 shadow-[0_25px_55px_-15px_rgba(0,0,0,0.55)] dark:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)] border ' + theme.borderColor"
-            >
-              <!-- Main Cover Image -->
+          <div class="w-full max-w-[270px] sm:max-w-[320px] lg:max-w-[350px] aspect-[2/3] mx-auto rounded-2xl overflow-hidden bg-surface-container-high shadow-md border border-surface-variant/30 flex items-center justify-center">
+            @if (novel.coverUrl) {
               <img
-                class="w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
+                class="w-full h-full object-cover object-center block"
                 [src]="novel.coverUrl"
-                [alt]="novel.coverAlt"
+                [alt]="novel.coverAlt || novel.title"
                 referrerpolicy="no-referrer"
               />
-
-              <!-- Spine Lighting and Depth Shading -->
-              <div class="absolute inset-y-0 end-0 w-8 bg-gradient-to-l from-black/80 via-black/30 to-transparent pointer-events-none"></div>
-              <div class="absolute inset-y-0 end-0 w-1 bg-white/20 pointer-events-none"></div>
-
-              <!-- Ambient Editorial Texture Gradient Overlay -->
-              <div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/15 to-black/30 pointer-events-none"></div>
-
-              <!-- Golden Bookmark Ribbon Hanging from Top -->
-              <div class="absolute top-0 end-8 w-6 h-20 bg-gradient-to-b from-amber-200 via-amber-400 to-amber-700 shadow-md transform -translate-y-1">
-                <div class="w-full h-3 border-b-2 border-amber-900/40"></div>
+            } @else {
+              <div class="flex flex-col items-center justify-center gap-3 p-6 text-center text-on-surface-variant">
+                <span class="material-symbols-outlined text-[48px] opacity-50">menu_book</span>
+                <span class="text-sm font-bold text-on-surface line-clamp-3">{{ novel.title }}</span>
               </div>
-            </div>
-
-            <!-- Pedestal Shadow Beneath Book -->
-            <div class="w-3/4 h-5 mx-auto mt-2 rounded-full bg-black/35 dark:bg-black/80 blur-md"></div>
+            }
           </div>
 
           <!-- Fast Utility Actions Strip Under Cover -->
@@ -233,7 +213,7 @@
             <div class="flex flex-col">
               <span class="text-xs text-on-surface-variant font-medium">{{ t.details.specDuration }}</span>
               <span [class]="'text-base sm:text-lg font-bold font-mono tabular-nums ' + theme.textColor">
-                {{ lib.i18n.formatNumber(novel.readingHours || 8) }} {{ t.details.specHours }}
+                {{ lib.i18n.formatNumber(novel.readingHours || 1) }} {{ t.details.specHours }}
               </span>
             </div>
             <div class="flex flex-col">
@@ -463,7 +443,7 @@
             <div class="flex flex-col min-w-0">
               <span class="text-[11px] text-on-surface-variant font-semibold">{{ t.details.specDuration }}</span>
               <h4 class="text-xs sm:text-sm font-bold text-on-surface truncate font-mono tabular-nums">
-                {{ lib.i18n.formatNumber(novel.readingHours || 8) }} {{ t.details.specHours }}
+                {{ lib.i18n.formatNumber(novel.readingHours || 1) }} {{ t.details.specHours }}
               </h4>
             </div>
           </div>
@@ -941,69 +921,71 @@
     </section>
 
     <!-- ================= 5. RELATED SANCTUARY WORKS ================= -->
-    <section class="w-full px-margin-mobile lg:px-margin py-space-xl border-t border-surface-variant/40 max-w-[1400px] mx-auto">
-      <div class="flex items-end justify-between mb-space-lg">
-        <div class="flex flex-col gap-1">
-          <span [class]="'text-xs font-bold uppercase tracking-wider ' + theme.textColor">{{ theme.realmArabicName }}</span>
-          <h2 class="text-lg sm:text-2xl font-bold text-on-surface">{{ t.details.relatedTitle }}</h2>
-        </div>
-
-        <div class="flex items-center gap-2">
-          <button
-            type="button"
-            [attr.aria-label]="t.explore.prevPage"
-            (click)="lib.scrollContainer('relatedRail', 'prev')"
-            class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-surface-container-low text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors flex items-center justify-center cursor-pointer shadow-sm border border-surface-variant/30"
-          >
-            <span class="material-symbols-outlined text-[18px] sm:text-[20px]">{{ lib.i18n.isRtl() ? 'chevron_right' : 'chevron_left' }}</span>
-          </button>
-          <button
-            type="button"
-            [attr.aria-label]="t.explore.nextPage"
-            (click)="lib.scrollContainer('relatedRail', 'next')"
-            class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-surface-container-low text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors flex items-center justify-center cursor-pointer shadow-sm border border-surface-variant/30"
-          >
-            <span class="material-symbols-outlined text-[18px] sm:text-[20px]">{{ lib.i18n.isRtl() ? 'chevron_left' : 'chevron_right' }}</span>
-          </button>
-          <button
-            type="button"
-            (click)="lib.openExplore()"
-            class="hidden sm:inline-flex items-center gap-1 ms-2 text-xs font-bold text-primary hover:underline cursor-pointer"
-          >
-            <span>{{ t.details.exploreAll }}</span>
-            <span class="material-symbols-outlined text-[16px]">{{ lib.i18n.isRtl() ? 'arrow_back' : 'arrow_forward' }}</span>
-          </button>
-        </div>
-      </div>
-
-      <div
-        id="relatedRail"
-        class="smooth-horizontal-rail flex overflow-x-auto gap-3 pb-3 snap-x snap-mandatory scrollbar-none sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 sm:overflow-visible sm:gap-space-md lg:gap-space-lg"
-      >
-        @for (related of lib.relatedWorks; track related.id) {
-          <div
-            role="button"
-            tabindex="0"
-            (click)="lib.openNovelDetails(related)"
-            (keydown.enter)="lib.openNovelDetails(related)"
-            class="group flex flex-col items-center text-center focus:outline-none shrink-0 snap-start w-[88px] sm:w-auto cursor-pointer"
-          >
-            <div class="relative w-[88px] h-[126px] min-w-[88px] max-w-[88px] sm:w-full sm:h-auto sm:aspect-[1/1.55] rounded-xl overflow-hidden bg-surface-container-high shadow-lg transition-all duration-500 group-hover:-translate-y-2 group-hover:shadow-[0_15px_30px_rgba(0,0,0,0.35)] border border-surface-variant/30">
-              <img
-                class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                [src]="related.coverUrl"
-                [alt]="related.coverAlt"
-                referrerpolicy="no-referrer"
-              />
-              <div class="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent opacity-50 group-hover:opacity-25 transition-opacity pointer-events-none"></div>
-            </div>
-            <h3 class="text-xs sm:text-base font-bold text-on-surface group-hover:text-primary transition-colors line-clamp-2 w-full mt-2 px-0.5 text-center leading-snug">
-              {{ related.title }}
-            </h3>
+    @if (lib.relatedWorks().length > 0) {
+      <section class="w-full px-margin-mobile lg:px-margin py-space-xl border-t border-surface-variant/40 max-w-[1400px] mx-auto">
+        <div class="flex items-end justify-between mb-space-lg">
+          <div class="flex flex-col gap-1">
+            <span [class]="'text-xs font-bold uppercase tracking-wider ' + theme.textColor">{{ theme.realmArabicName }}</span>
+            <h2 class="text-lg sm:text-2xl font-bold text-on-surface">{{ t.details.relatedTitle }}</h2>
           </div>
-        }
-      </div>
-    </section>
+
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              [attr.aria-label]="t.explore.prevPage"
+              (click)="lib.scrollContainer('relatedRail', 'next')"
+              class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-surface-container-low text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors flex items-center justify-center cursor-pointer shadow-sm border border-surface-variant/30"
+            >
+              <span class="material-symbols-outlined text-[18px] sm:text-[20px]">{{ lib.i18n.isRtl() ? 'chevron_right' : 'chevron_left' }}</span>
+            </button>
+            <button
+              type="button"
+              [attr.aria-label]="t.explore.nextPage"
+              (click)="lib.scrollContainer('relatedRail', 'next')"
+              class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-surface-container-low text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors flex items-center justify-center cursor-pointer shadow-sm border border-surface-variant/30"
+            >
+              <span class="material-symbols-outlined text-[18px] sm:text-[20px]">{{ lib.i18n.isRtl() ? 'chevron_left' : 'chevron_right' }}</span>
+            </button>
+            <button
+              type="button"
+              (click)="lib.openExplore()"
+              class="hidden sm:inline-flex items-center gap-1 ms-2 text-xs font-bold text-primary hover:underline cursor-pointer"
+            >
+              <span>{{ t.details.exploreAll }}</span>
+              <span class="material-symbols-outlined text-[16px]">{{ lib.i18n.isRtl() ? 'arrow_back' : 'arrow_forward' }}</span>
+            </button>
+          </div>
+        </div>
+
+        <div
+          id="relatedRail"
+          class="smooth-horizontal-rail flex overflow-x-auto gap-3 pb-3 snap-x snap-mandatory scrollbar-none sm:grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 sm:overflow-visible sm:gap-space-md lg:gap-space-lg"
+        >
+          @for (related of lib.relatedWorks(); track related.id) {
+            <div
+              role="button"
+              tabindex="0"
+              (click)="lib.openNovelDetails(related)"
+              (keydown.enter)="lib.openNovelDetails(related)"
+              class="group flex flex-col items-center text-center focus:outline-none shrink-0 snap-start w-[88px] sm:w-auto cursor-pointer"
+            >
+              <div class="relative w-[88px] h-[126px] min-w-[88px] max-w-[88px] sm:w-full sm:h-auto sm:aspect-[1/1.55] rounded-xl overflow-hidden bg-surface-container-high shadow-lg transition-all duration-500 group-hover:-translate-y-2 group-hover:shadow-[0_15px_30px_rgba(0,0,0,0.35)] border border-surface-variant/30">
+                <img
+                  class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  [src]="related.coverUrl"
+                  [alt]="related.coverAlt"
+                  referrerpolicy="no-referrer"
+                />
+                <div class="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent opacity-50 group-hover:opacity-25 transition-opacity pointer-events-none"></div>
+              </div>
+              <h3 class="text-xs sm:text-base font-bold text-on-surface group-hover:text-primary transition-colors line-clamp-2 w-full mt-2 px-0.5 text-center leading-snug">
+                {{ related.title }}
+              </h3>
+            </div>
+          }
+        </div>
+      </section>
+    }
   </div>
 </div>
 
@@ -1216,6 +1198,41 @@
           </div>
         </form>
       }
+    </div>
+  </div>
+}
+} @else {
+  <div class="w-full px-4 sm:px-6 lg:px-8 py-20 max-w-2xl mx-auto text-center animate-fadeIn">
+    <div class="liquid-glass rounded-3xl p-8 sm:p-10 space-y-5 border border-[var(--mtx-glass-border)]">
+      <div class="w-16 h-16 mx-auto rounded-2xl bg-surface-container-high flex items-center justify-center text-secondary">
+        <span class="material-symbols-outlined text-[34px]">menu_book</span>
+      </div>
+      <h2 class="text-xl font-bold text-on-surface">
+        {{ lib.i18n.lang() === 'en' ? 'Select a novel from the library' : 'اختر رواية من المكتبة' }}
+      </h2>
+      <p class="text-sm text-on-surface-variant leading-relaxed">
+        {{
+          lib.i18n.lang() === 'en'
+            ? 'Browse published works from our verified authors to view full details and chapters.'
+            : 'تصفح الأعمال المنشورة من الكتّاب المعتمدين لعرض التفاصيل والفصول المتاحة.'
+        }}
+      </p>
+      <div class="flex items-center justify-center gap-3 pt-2 flex-wrap">
+        <button
+          type="button"
+          (click)="lib.returnToNovels()"
+          class="btn-tactile px-5 py-2.5 rounded-xl bg-primary text-on-primary text-xs sm:text-sm font-bold cursor-pointer"
+        >
+          {{ t.details.backToCorridor }}
+        </button>
+        <button
+          type="button"
+          (click)="lib.openExplore()"
+          class="btn-tactile px-5 py-2.5 rounded-xl bg-surface-container-high text-on-surface text-xs sm:text-sm font-semibold border border-surface-variant/40 cursor-pointer"
+        >
+          {{ t.details.exploreAll }}
+        </button>
+      </div>
     </div>
   </div>
 }

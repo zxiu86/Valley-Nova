@@ -13,9 +13,229 @@ import { ReadingPage } from './pages/reading/reading-page';
 import { AuthPage } from './pages/auth/auth-page';
 import { ProfilePage } from './pages/profile/profile-page';
 import { LibraryStateService } from './core/services/library-state.service';
+import { WriterStudioService } from './core/services/writer-studio.service';
 import { isArabicCatalogNovel } from './core/mtx-catalog-data';
 import { getChaptersForNovel } from './core/mtx-reader-chapters';
+import { LogicalChapter, NovelCard } from './core/models/library.models';
 import { SiteHeader } from './shared/components/site-header/site-header';
+
+function createTestNovelsAndChapters(): {
+  novels: NovelCard[];
+  chaptersByNovel: Record<string, LogicalChapter[]>;
+} {
+  const bilingualNovel: NovelCard = {
+    id: 'test-bilingual-novel',
+    title: 'أصداء سمرقند',
+    titleEn: 'Echoes of Samarkand',
+    author: 'طارق الأندلسي',
+    genre: 'رواية تاريخية',
+    categoryGroup: 'novels',
+    workType: 'original',
+    languageCode: 'ar',
+    originLanguage: 'العربية',
+    coverUrl: 'https://picsum.photos/seed/testcover/400/600',
+    coverAlt: 'غلاف رواية أصداء سمرقند',
+    description: 'رواية اختبارية ثنائية اللغة لفحص الفصول.',
+    readingHours: 3,
+    publishedChapterCount: 2,
+    isFirestoreBacked: true,
+  };
+
+  const arabicOnlyNovel: NovelCard = {
+    id: 'test-ar-only-novel',
+    title: 'سفر المخطوطات',
+    author: 'زينب القيروانية',
+    genre: 'تراث وأدب',
+    categoryGroup: 'heritage',
+    workType: 'original',
+    languageCode: 'ar',
+    originLanguage: 'العربية',
+    coverUrl: 'https://picsum.photos/seed/testar/400/600',
+    coverAlt: 'غلاف سفر المخطوطات',
+    description: 'مصنف عربي خالص للاختبار.',
+    readingHours: 2,
+    publishedChapterCount: 1,
+    isFirestoreBacked: true,
+  };
+
+  const englishOnlyNovel: NovelCard = {
+    id: 'test-en-only-novel',
+    title: 'Modern Prometheus Notes',
+    titleEn: 'Modern Prometheus Notes',
+    author: 'Clara Vance',
+    genre: 'الغموض والتشويق',
+    categoryGroup: 'novels',
+    workType: 'original',
+    languageCode: 'en',
+    originLanguage: 'English',
+    coverUrl: 'https://picsum.photos/seed/testen/400/600',
+    coverAlt: 'Cover of Modern Prometheus Notes',
+    description: 'English-only test novel.',
+    readingHours: 2,
+    publishedChapterCount: 1,
+    isFirestoreBacked: true,
+  };
+
+  const nowIso = '2026-11-14T00:00:00.000Z';
+
+  const bilingualChapters: LogicalChapter[] = [
+    {
+      id: 'bch-1',
+      novelId: bilingualNovel.id,
+      authorId: 'test-author-1',
+      chapterNumber: 1,
+      chapterType: 'narrative',
+      endStatus: 'ongoing',
+      languageMode: 'both',
+      isPublished: true,
+      title: 'الباب الأول',
+      titleEn: 'The First Gate',
+      revision: 1,
+      wordCountAr: 240,
+      wordCountEn: 210,
+      createdAt: nowIso,
+      updatedAt: nowIso,
+      editions: {
+        ar: {
+          title: 'الباب الأول',
+          blocks: [
+            {
+              id: 'blk-ar-1',
+              type: 'paragraph',
+              text: 'في تلك الليلة الهادئة على مشارف سمرقند، دوّن النساخ أول سطر من السجل.',
+            },
+          ],
+          plainText: 'في تلك الليلة الهادئة على مشارف سمرقند، دوّن النساخ أول سطر من السجل.',
+          wordCount: 240,
+          updatedAt: nowIso,
+        },
+        en: {
+          title: 'The First Gate',
+          blocks: [
+            {
+              id: 'blk-en-1',
+              type: 'paragraph',
+              text: 'On that quiet night outside Samarkand, scribes inked the opening line of the chronicle.',
+            },
+          ],
+          plainText: 'On that quiet night outside Samarkand, scribes inked the opening line of the chronicle.',
+          wordCount: 210,
+          updatedAt: nowIso,
+        },
+      },
+    },
+    {
+      id: 'bch-2',
+      novelId: bilingualNovel.id,
+      authorId: 'test-author-1',
+      chapterNumber: 2,
+      chapterType: 'explanatory',
+      endStatus: 'ongoing',
+      languageMode: 'ar',
+      isPublished: true,
+      title: 'هامش توضيحي',
+      titleEn: 'Explanatory Note',
+      revision: 1,
+      wordCountAr: 120,
+      wordCountEn: 0,
+      createdAt: nowIso,
+      updatedAt: nowIso,
+      editions: {
+        ar: {
+          title: 'هامش توضيحي',
+          blocks: [
+            {
+              id: 'blk-ar-2',
+              type: 'paragraph',
+              text: 'توضيح تاريخي موجز لمصطلحات الرواق.',
+            },
+          ],
+          plainText: 'توضيح تاريخي موجز لمصطلحات الرواق.',
+          wordCount: 120,
+          updatedAt: nowIso,
+        },
+      },
+    },
+  ];
+
+  const arOnlyChapters: LogicalChapter[] = [
+    {
+      id: 'ach-1',
+      novelId: arabicOnlyNovel.id,
+      authorId: 'test-author-2',
+      chapterNumber: 1,
+      chapterType: 'narrative',
+      endStatus: 'ongoing',
+      languageMode: 'ar',
+      isPublished: true,
+      title: 'المفتتح',
+      revision: 1,
+      wordCountAr: 180,
+      wordCountEn: 0,
+      createdAt: nowIso,
+      updatedAt: nowIso,
+      editions: {
+        ar: {
+          title: 'المفتتح',
+          blocks: [
+            {
+              id: 'blk-ach-1',
+              type: 'paragraph',
+              text: 'نص عربي خالص من المخطوطة المحفوظة.',
+            },
+          ],
+          plainText: 'نص عربي خالص من المخطوطة المحفوظة.',
+          wordCount: 180,
+          updatedAt: nowIso,
+        },
+      },
+    },
+  ];
+
+  const enOnlyChapters: LogicalChapter[] = [
+    {
+      id: 'ech-1',
+      novelId: englishOnlyNovel.id,
+      authorId: 'test-author-3',
+      chapterNumber: 1,
+      chapterType: 'narrative',
+      endStatus: 'ongoing',
+      languageMode: 'en',
+      isPublished: true,
+      title: 'Prologue in Ice',
+      titleEn: 'Prologue in Ice',
+      revision: 1,
+      wordCountAr: 0,
+      wordCountEn: 190,
+      createdAt: nowIso,
+      updatedAt: nowIso,
+      editions: {
+        en: {
+          title: 'Prologue in Ice',
+          blocks: [
+            {
+              id: 'blk-ech-1',
+              type: 'paragraph',
+              text: 'Frozen winds crossed the northern ridge as the journal began.',
+            },
+          ],
+          plainText: 'Frozen winds crossed the northern ridge as the journal began.',
+          wordCount: 190,
+          updatedAt: nowIso,
+        },
+      },
+    },
+  ];
+
+  return {
+    novels: [bilingualNovel, arabicOnlyNovel, englishOnlyNovel],
+    chaptersByNovel: {
+      [bilingualNovel.id]: bilingualChapters,
+      [arabicOnlyNovel.id]: arOnlyChapters,
+      [englishOnlyNovel.id]: enOnlyChapters,
+    },
+  };
+}
 
 describe('MTX Compression, Shell, Theme, Bilingual i18n, Chapters & Copy Protection Specs', () => {
   beforeEach(() => {
@@ -52,9 +272,27 @@ describe('MTX Compression, Shell, Theme, Bilingual i18n, Chapters & Copy Protect
     expect(decompressed.metadata.title).toBe(metadata.title);
   });
 
-  it('should instantiate App shell and all 6 modular page components cleanly', () => {
+  it('should start with zero fake/mock data and instantiate App shell and all 6 modular page components cleanly', () => {
     const i18n = TestBed.inject(I18nService);
+    const lib = TestBed.inject(LibraryStateService);
+    const writerStudio = TestBed.inject(WriterStudioService);
     i18n.setLanguage('ar', false);
+
+    // Zero hardcoded/fake catalog, quotes, works, or salons by default
+    expect(lib.exploreBooksList().length).toBe(0);
+    expect(lib.featuredSpotlight()).toBeNull();
+    expect(lib.totalPublishedChaptersCount()).toBe(0);
+    expect(lib.profileQuotes().length).toBe(0);
+    expect(lib.profileWorks().length).toBe(0);
+    expect(lib.literarySalons().length).toBe(0);
+
+    const { novels, chaptersByNovel } = createTestNovelsAndChapters();
+    lib.exploreBooksList.set(novels);
+    writerStudio.publicNovelDetailsCache.set({
+      [novels[0].id]: { sections: [], chapters: chaptersByNovel[novels[0].id] },
+      [novels[1].id]: { sections: [], chapters: chaptersByNovel[novels[1].id] },
+      [novels[2].id]: { sections: [], chapters: chaptersByNovel[novels[2].id] },
+    });
 
     const appFixture = TestBed.createComponent(App);
     const app = appFixture.componentInstance;
@@ -69,16 +307,23 @@ describe('MTX Compression, Shell, Theme, Bilingual i18n, Chapters & Copy Protect
     expect(featuredRail?.className).toContain('flex-row');
     expect(featuredRail?.className).toContain('overflow-x-auto');
 
+    lib.openNovelDetails(novels[0]);
     const detailsFixture = TestBed.createComponent(DetailsPage);
     detailsFixture.detectChanges();
-    expect((detailsFixture.nativeElement as HTMLElement).textContent?.length).toBeGreaterThan(0);
+    const detailsEl = detailsFixture.nativeElement as HTMLElement;
+    expect(detailsEl.textContent?.length).toBeGreaterThan(0);
+    // Cover is plain & unobstructed (no 3D spine gradient overlay or golden ribbon)
+    expect(detailsEl.querySelector('#book-details img')).toBeTruthy();
+    expect(detailsEl.querySelector('#book-details .w-6.h-20')).toBeNull();
+    expect(detailsEl.querySelector('#book-details .w-8.bg-gradient-to-l')).toBeNull();
 
     const exploreFixture = TestBed.createComponent(ExplorePage);
     exploreFixture.detectChanges();
     expect((exploreFixture.nativeElement as HTMLElement).textContent?.length).toBeGreaterThan(0);
 
-    const lib = TestBed.inject(LibraryStateService);
-    lib.openChapter(lib.chapters[0]);
+    const firstChap = lib.availableChaptersForNovel()[0];
+    expect(firstChap).toBeDefined();
+    lib.openChapter(firstChap);
     const readingFixture = TestBed.createComponent(ReadingPage);
     readingFixture.detectChanges();
     const readingHtml = (readingFixture.nativeElement as HTMLElement).innerHTML;
@@ -137,6 +382,8 @@ describe('MTX Compression, Shell, Theme, Bilingual i18n, Chapters & Copy Protect
   it('should render opposite-language Spotlight button copy and filter Explore strictly without changing UI language', () => {
     const i18n = TestBed.inject(I18nService);
     const lib = TestBed.inject(LibraryStateService);
+    const { novels } = createTestNovelsAndChapters();
+    lib.exploreBooksList.set(novels);
 
     i18n.setLanguage('ar', false);
     const arHome = TestBed.createComponent(HomePage);
@@ -167,9 +414,18 @@ describe('MTX Compression, Shell, Theme, Bilingual i18n, Chapters & Copy Protect
   it('should render Details Liquid Glass chapter language copy, resolve genuine linked chapters, and isolate progress per language', () => {
     const i18n = TestBed.inject(I18nService);
     const lib = TestBed.inject(LibraryStateService);
+    const writerStudio = TestBed.inject(WriterStudioService);
+    const { novels, chaptersByNovel } = createTestNovelsAndChapters();
+
+    lib.exploreBooksList.set(novels);
+    writerStudio.publicNovelDetailsCache.set({
+      [novels[0].id]: { sections: [], chapters: chaptersByNovel[novels[0].id] },
+      [novels[1].id]: { sections: [], chapters: chaptersByNovel[novels[1].id] },
+      [novels[2].id]: { sections: [], chapters: chaptersByNovel[novels[2].id] },
+    });
 
     i18n.setLanguage('ar', false);
-    lib.openNovelDetails(lib.defaultEchoesSamarkand);
+    lib.openNovelDetails(novels[0]);
     const arDetails = TestBed.createComponent(DetailsPage);
     arDetails.detectChanges();
     const arDetailsText = (arDetails.nativeElement as HTMLElement).textContent || '';
@@ -177,6 +433,7 @@ describe('MTX Compression, Shell, Theme, Bilingual i18n, Chapters & Copy Protect
     expect(arDetailsText).toContain(
       'يمكنك قراءة الرواية باللغة الإنجليزية، حيث تتحول الفصول إلى نسختها الإنجليزية عند توفرها.'
     );
+    expect(arDetailsText).toContain('الباب الأول');
 
     i18n.setLanguage('en', false);
     const enDetails = TestBed.createComponent(DetailsPage);
@@ -187,17 +444,27 @@ describe('MTX Compression, Shell, Theme, Bilingual i18n, Chapters & Copy Protect
       'Switch the novel chapters to their Arabic versions when available.'
     );
 
-    expect(getChaptersForNovel('echoes-of-samarkand', 'ar').length).toBe(24);
-    expect(getChaptersForNovel('echoes-of-samarkand', 'en').length).toBe(12);
-    expect(getChaptersForNovel('hayy-ibn-yaqzan', 'en').length).toBe(0);
-    expect(getChaptersForNovel('frankenstein-classic', 'ar').length).toBe(0);
-    expect(getChaptersForNovel('frankenstein-classic', 'en').length).toBe(4);
+    expect(
+      getChaptersForNovel(novels[0].id, 'ar', novels[0], chaptersByNovel[novels[0].id]).length
+    ).toBe(2);
+    expect(
+      getChaptersForNovel(novels[0].id, 'en', novels[0], chaptersByNovel[novels[0].id]).length
+    ).toBe(1);
+    expect(
+      getChaptersForNovel(novels[1].id, 'en', novels[1], chaptersByNovel[novels[1].id]).length
+    ).toBe(0);
+    expect(
+      getChaptersForNovel(novels[2].id, 'ar', novels[2], chaptersByNovel[novels[2].id]).length
+    ).toBe(0);
+    expect(
+      getChaptersForNovel(novels[2].id, 'en', novels[2], chaptersByNovel[novels[2].id]).length
+    ).toBe(1);
 
     // Independent progress per (novelId, chapterLanguage, chapterNumber)
-    localStorage.setItem('mtx_last_chap_echoes-of-samarkand_ar', '4');
-    localStorage.setItem('mtx_read_pct_echoes-of-samarkand_ar_4', '50');
-    localStorage.setItem('mtx_last_chap_echoes-of-samarkand_en', '1');
-    localStorage.setItem('mtx_read_pct_echoes-of-samarkand_en_1', '0');
+    localStorage.setItem(`mtx_last_chap_${novels[0].id}_ar`, '1');
+    localStorage.setItem(`mtx_read_pct_${novels[0].id}_ar_1`, '50');
+    localStorage.setItem(`mtx_last_chap_${novels[0].id}_en`, '1');
+    localStorage.setItem(`mtx_read_pct_${novels[0].id}_en_1`, '0');
 
     lib.setNovelChapterLanguage('ar');
     const arProgress = lib.selectedChapterLangProgressPercent();
@@ -206,9 +473,7 @@ describe('MTX Compression, Shell, Theme, Bilingual i18n, Chapters & Copy Protect
     expect(arProgress).toBeGreaterThan(enProgress);
 
     // Directional missing-translation hints for single-language books
-    const arabicOnlyWork = lib.exploreBooksList().find((b) => b.id === 'lisan-al-arab-ibn-manzur')!;
-    expect(arabicOnlyWork).toBeDefined();
-    lib.openNovelDetails(arabicOnlyWork);
+    lib.openNovelDetails(novels[1]);
     i18n.setLanguage('ar', false);
     const arOnlyFixture = TestBed.createComponent(DetailsPage);
     arOnlyFixture.detectChanges();
@@ -216,23 +481,21 @@ describe('MTX Compression, Shell, Theme, Bilingual i18n, Chapters & Copy Protect
       'لا توجد فصول إنجليزية متوفرة لهذا المصنف بعد'
     );
 
-    const frankenstein = lib.exploreBooksList().find((b) => b.id === 'frankenstein-classic')!;
-    expect(frankenstein).toBeDefined();
-    lib.openNovelDetails(frankenstein);
-    const frankFixture = TestBed.createComponent(DetailsPage);
-    frankFixture.detectChanges();
-    expect((frankFixture.nativeElement as HTMLElement).textContent).toContain(
+    lib.openNovelDetails(novels[2]);
+    const enOnlyFixture = TestBed.createComponent(DetailsPage);
+    enOnlyFixture.detectChanges();
+    expect((enOnlyFixture.nativeElement as HTMLElement).textContent).toContain(
       'لا توجد فصول عربية متوفرة لهذا المصنف بعد'
     );
 
-    // Partial Spotlight/Serendipity NovelCard enrichment from canonical catalog
+    // Partial NovelCard enrichment from canonical catalog
     lib.openNovelDetails({
-      id: 'echoes-of-samarkand',
-      title: lib.spotlight.title,
-      genre: lib.spotlight.genre,
-      coverUrl: lib.spotlight.coverUrl,
-      coverAlt: lib.spotlight.coverAlt,
-      description: lib.spotlight.quote,
+      id: novels[0].id,
+      title: novels[0].title,
+      genre: novels[0].genre,
+      coverUrl: novels[0].coverUrl,
+      coverAlt: novels[0].coverAlt,
+      description: novels[0].description,
     });
     expect(lib.selectedNovel()?.author).toBeTruthy();
     expect(lib.selectedNovel()?.languageCode).toBe('ar');
@@ -405,8 +668,19 @@ describe('MTX Compression, Shell, Theme, Bilingual i18n, Chapters & Copy Protect
   it('should render all 3 ReadingPage drawers at z-[60] with localized theme cards, chapter search, and bookmark controls', () => {
     const i18n = TestBed.inject(I18nService);
     const lib = TestBed.inject(LibraryStateService);
+    const writerStudio = TestBed.inject(WriterStudioService);
+    const { novels, chaptersByNovel } = createTestNovelsAndChapters();
+
+    lib.exploreBooksList.set(novels);
+    writerStudio.publicNovelDetailsCache.set({
+      [novels[0].id]: { sections: [], chapters: chaptersByNovel[novels[0].id] },
+    });
+    lib.openNovelDetails(novels[0]);
     i18n.setLanguage('en', false);
-    lib.openChapter(lib.chapters[0]);
+    lib.setNovelChapterLanguage('en');
+    const enChap = lib.availableChaptersForNovel()[0];
+    expect(enChap).toBeDefined();
+    lib.openChapter(enChap);
 
     const readingFixture = TestBed.createComponent(ReadingPage);
     readingFixture.detectChanges();
@@ -451,6 +725,14 @@ describe('MTX Compression, Shell, Theme, Bilingual i18n, Chapters & Copy Protect
   it('should apply fixed-header top clearance on non-reader views and center novel titles beneath covers', () => {
     const i18n = TestBed.inject(I18nService);
     const lib = TestBed.inject(LibraryStateService);
+    const writerStudio = TestBed.inject(WriterStudioService);
+    const { novels, chaptersByNovel } = createTestNovelsAndChapters();
+
+    lib.exploreBooksList.set(novels);
+    writerStudio.publicNovelDetailsCache.set({
+      [novels[0].id]: { sections: [], chapters: chaptersByNovel[novels[0].id] },
+    });
+    lib.openNovelDetails(novels[0]);
     i18n.setLanguage('ar', false);
 
     lib.currentView.set('novels');
@@ -459,7 +741,8 @@ describe('MTX Compression, Shell, Theme, Bilingual i18n, Chapters & Copy Protect
     const mainEl = (appFixture.nativeElement as HTMLElement).querySelector('#main-content');
     expect(mainEl?.className).toContain('pt-[76px]');
 
-    lib.openChapter(lib.chapters[0]);
+    const firstChap = lib.availableChaptersForNovel()[0];
+    lib.openChapter(firstChap);
     appFixture.detectChanges();
     expect(mainEl?.className).not.toContain('pt-[76px]');
 

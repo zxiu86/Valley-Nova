@@ -652,7 +652,10 @@ service cloud.firestore {
 
       // ---- Novel Sections / Volumes ---- //
       match /sections/{sectionId} {
-        allow read: if isValidId(novelId) && isValidId(sectionId) && (
+        allow get: if isValidId(novelId) && isValidId(sectionId) && (
+          isNovelPubliclyVisible(novelId) || isNovelAuthor(novelId) || isAdmin()
+        );
+        allow list: if isValidId(novelId) && (
           isNovelPubliclyVisible(novelId) || isNovelAuthor(novelId) || isAdmin()
         );
         allow create: if isValidId(novelId) && isValidId(sectionId) &&
@@ -677,7 +680,10 @@ service cloud.firestore {
 
       // ---- Atomic Chapter Slot Lock (Unique chapterNumber per novel) ---- //
       match /chapter_slots/{slotId} {
-        allow read: if isValidId(novelId) && slotId.matches('^slot_[1-9][0-9]{0,5}$') && (
+        allow get: if isValidId(novelId) && slotId.matches('^slot_[1-9][0-9]{0,5}$') && (
+          isNovelAuthor(novelId) || isAdmin()
+        );
+        allow list: if isValidId(novelId) && (
           isNovelAuthor(novelId) || isAdmin()
         );
         allow create: if isValidId(novelId) &&
@@ -702,7 +708,12 @@ service cloud.firestore {
 
       // ---- Logical Bilingual Chapters ---- //
       match /chapters/{chapterId} {
-        allow read: if isValidId(novelId) && isValidId(chapterId) && (
+        allow get: if isValidId(novelId) && isValidId(chapterId) && (
+          (resource.data.isPublished == true && isNovelPubliclyVisible(novelId)) ||
+          isNovelAuthor(novelId) ||
+          isAdmin()
+        );
+        allow list: if isValidId(novelId) && (
           (resource.data.isPublished == true && isNovelPubliclyVisible(novelId)) ||
           isNovelAuthor(novelId) ||
           isAdmin()

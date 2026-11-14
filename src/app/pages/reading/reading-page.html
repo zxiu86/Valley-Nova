@@ -26,7 +26,7 @@
 
         <div class="flex flex-col min-w-0">
           <span class="text-[11px] truncate opacity-75">
-            {{ (lib.selectedNovel() || lib.defaultEchoesSamarkand).title }}
+            {{ lib.selectedNovel()?.title || t.site.brand }}
           </span>
           <h2 class="text-xs sm:text-sm font-bold truncate">
             {{ lib.activeReadingChapter()?.title }}
@@ -203,7 +203,7 @@
         <div [class]="'flex flex-col items-center text-center pb-8 sm:pb-12 mb-8 sm:mb-12 border-b ' + lib.readerThemeConfig().cardBorder">
           <div [class]="'inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium mb-3 shadow-xs ' + lib.readerThemeConfig().pillBg">
             <span [class]="'w-1.5 h-1.5 rounded-full ' + lib.readerThemeConfig().accentBg"></span>
-            <span>{{ (lib.selectedNovel() || lib.defaultEchoesSamarkand).title }}</span>
+            <span>{{ lib.selectedNovel()?.title || t.site.brand }}</span>
           </div>
 
           <h1 class="text-2xl sm:text-4xl font-extrabold mb-3 leading-snug tracking-tight">
@@ -393,6 +393,21 @@
           </div>
         </div>
       </article>
+    } @else {
+      <div class="max-w-lg mx-auto my-12 p-8 rounded-3xl border text-center space-y-4 shadow-sm" [class]="lib.readerThemeConfig().cardBg + ' ' + lib.readerThemeConfig().cardBorder">
+        <span class="material-symbols-outlined text-[42px] opacity-60">menu_book</span>
+        <h2 class="text-lg font-bold">{{ lib.i18n.lang() === 'en' ? 'No chapter is currently selected' : 'لا يوجد فصل محدد للقراءة حالياً' }}</h2>
+        <p class="text-xs sm:text-sm opacity-75 leading-relaxed">
+          {{ lib.i18n.lang() === 'en' ? 'Return to the novel details to choose a published chapter.' : 'ارجع إلى صفحة تفاصيل الرواية لاختيار أحد الفصول المنشورة.' }}
+        </p>
+        <button
+          type="button"
+          (click)="lib.exitReader()"
+          [class]="'btn-tactile px-6 py-2.5 rounded-xl text-xs font-bold cursor-pointer ' + lib.readerThemeConfig().accentBg"
+        >
+          {{ t.reader.back }}
+        </button>
+      </div>
     }
   </div>
 
@@ -491,7 +506,7 @@
             <div class="flex flex-col min-w-0">
               <h2 class="font-bold text-base truncate">{{ t.reader.settings }}</h2>
               <span [class]="'text-[11px] truncate ' + lib.readerThemeConfig().textMuted">
-                {{ (lib.selectedNovel() || lib.defaultEchoesSamarkand).title }}
+                {{ lib.selectedNovel()?.title || t.site.brand }}
               </span>
             </div>
           </div>
@@ -815,7 +830,7 @@
                   {{ t.reader.chaptersIndex }} ({{ lib.i18n.formatNumber(lib.availableChaptersForNovel().length) }})
                 </h2>
                 <span [class]="'text-[11px] truncate ' + lib.readerThemeConfig().textMuted">
-                  {{ (lib.selectedNovel() || lib.defaultEchoesSamarkand).title }}
+                  {{ lib.selectedNovel()?.title || t.site.brand }}
                 </span>
               </div>
             </div>

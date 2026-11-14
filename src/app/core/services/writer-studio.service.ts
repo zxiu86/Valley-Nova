@@ -73,6 +73,13 @@ export class WriterStudioService implements OnDestroy {
     Record<string, { sections: NovelSection[]; chapters: LogicalChapter[] }>
   >({});
 
+  // Event signal so public LibraryStateService updates live when author publishes/edits/deletes works or chapters
+  readonly catalogSyncEvent = signal<
+    | { kind: 'upsert'; novel: PublishedNovelRecord }
+    | { kind: 'delete'; novelId: string }
+    | null
+  >(null);
+
   // Dashboard filter & status signals
   readonly wordFilter = signal<'all' | 'ar' | 'en'>('all');
   readonly isLoading = signal<boolean>(false);
@@ -342,12 +349,15 @@ export class WriterStudioService implements OnDestroy {
     const task = (async () => {
       try {
         const [sections, chapters] = await Promise.all([
-          fetchNovelSections(novelId).catch(() => []),
-          fetchNovelChapters(novelId, false).catch(() => []),
+          fetchNovelSections(novelId),
+          fetchNovelChapters(novelId, false),
         ]);
         const payload = { sections, chapters };
         this.publicNovelDetailsCache.update((prev) => ({ ...prev, [novelId]: payload }));
         return payload;
+      } catch (err) {
+        console.warn(`Could not load public novel content for ${novelId}:`, err);
+        return cached || { sections: [], chapters: [] };
       } finally {
         this.inFlightPublicNovelLoads.delete(novelId);
       }
@@ -469,6 +479,9 @@ export class WriterStudioService implements OnDestroy {
         this.loadStudioForAuthor(authorId),
         this.loadNovelWorkspace(record.id),
       ]);
+      const refreshed = this.ownNovels().find((n) => n.id === record.id) || record;
+      this.catalogSyncEvent.set({ kind: 'upsert', novel: refreshed });
+      return refreshed;
     }
 
     return record;
@@ -623,6 +636,11 @@ export class WriterStudioService implements OnDestroy {
         return savedRecord.isPublished ? [savedRecord, ...rest] : rest;
       });
       this.activeNovelId.set(savedRecord.id);
+      if (savedRecord.isPublished && savedRecord.moderationStatus !== 'rejected_removed') {
+        this.catalogSyncEvent.set({ kind: 'upsert', novel: savedRecord });
+      } else {
+        this.catalogSyncEvent.set({ kind: 'delete', novelId: savedRecord.id });
+      }
 
       this.successMessage.set(
         existing
@@ -681,6 +699,13 @@ export class WriterStudioService implements OnDestroy {
         const filtered = list.filter((s) => s.id !== saved.id);
         return [...filtered, saved].sort((a, b) => a.orderIndex - b.orderIndex);
       });
+      this.publicNovelDetailsCache.update((prev) => ({
+        ...prev,
+        [novelId]: {
+          sections: this.activeSections(),
+          chapters: prev[novelId]?.chapters ?? this.activeChapters().filter((c) => c.isPublished === true),
+        },
+      }));
       this.successMessage.set(
         this.i18n.lang() === 'en' ? 'Section saved.' : 'تم حفظ القسم بنجاح.'
       );
@@ -715,6 +740,13 @@ export class WriterStudioService implements OnDestroy {
     try {
       await deleteNovelSection(novelId, sectionId);
       this.activeSections.update((list) => list.filter((s) => s.id !== sectionId));
+      this.publicNovelDetailsCache.update((prev) => ({
+        ...prev,
+        [novelId]: {
+          sections: this.activeSections(),
+          chapters: prev[novelId]?.chapters ?? this.activeChapters().filter((c) => c.isPublished === true),
+        },
+      }));
       this.successMessage.set(
         this.i18n.lang() === 'en' ? 'Section removed.' : 'تم حذف القسم (بقيت الفصول محفوظة بدون قسم).'
       );
@@ -978,17 +1010,25 @@ export class WriterStudioService implements OnDestroy {
       this.ownNovels.update((list) =>
         list.map((n) => (n.id === input.novelId ? { ...n, ...stats } : n))
       );
+      this.accountService.ownPublishedNovels.update((list) =>
+        list.map((n) => (n.id === input.novelId ? { ...n, ...stats } : n))
+      );
       this.clearChapterAutosave(autosaveKey);
       this.conflictState.set(null);
 
-      // Update public reader cache cleanly
-      const cached = this.publicNovelDetailsCache()[input.novelId];
-      if (cached) {
-        const nextPubChapters = this.activeChapters().filter((c) => c.isPublished === true);
-        this.publicNovelDetailsCache.update((prev) => ({
-          ...prev,
-          [input.novelId]: { ...cached, chapters: nextPubChapters },
-        }));
+      // Update public reader cache & live catalog unconditionally
+      const existingCache = this.publicNovelDetailsCache()[input.novelId];
+      const nextPubChapters = this.activeChapters().filter((c) => c.isPublished === true);
+      this.publicNovelDetailsCache.update((prev) => ({
+        ...prev,
+        [input.novelId]: {
+          sections: existingCache?.sections ?? this.activeSections(),
+          chapters: nextPubChapters,
+        },
+      }));
+      const updatedNovel = this.ownNovels().find((n) => n.id === input.novelId);
+      if (updatedNovel && updatedNovel.isPublished && updatedNovel.moderationStatus !== 'rejected_removed') {
+        this.catalogSyncEvent.set({ kind: 'upsert', novel: updatedNovel });
       }
 
       this.successMessage.set(
@@ -1088,6 +1128,21 @@ export class WriterStudioService implements OnDestroy {
       this.ownNovels.update((list) =>
         list.map((n) => (n.id === novelId ? { ...n, ...stats } : n))
       );
+      this.accountService.ownPublishedNovels.update((list) =>
+        list.map((n) => (n.id === novelId ? { ...n, ...stats } : n))
+      );
+      const existingCache = this.publicNovelDetailsCache()[novelId];
+      this.publicNovelDetailsCache.update((prev) => ({
+        ...prev,
+        [novelId]: {
+          sections: existingCache?.sections ?? this.activeSections(),
+          chapters: this.activeChapters().filter((c) => c.isPublished === true),
+        },
+      }));
+      const updatedNovel = this.ownNovels().find((n) => n.id === novelId);
+      if (updatedNovel && updatedNovel.isPublished) {
+        this.catalogSyncEvent.set({ kind: 'upsert', novel: updatedNovel });
+      }
       this.successMessage.set(
         this.i18n.lang() === 'en' ? 'Chapter permanently deleted.' : 'تم حذف الفصل وتحرير رقمه بنجاح.'
       );
@@ -1220,6 +1275,12 @@ export class WriterStudioService implements OnDestroy {
       await deleteNovelTreeFromFirestore(novel.id, novel.coverUrl);
       this.ownNovels.update((list) => list.filter((n) => n.id !== novel.id));
       this.accountService.ownPublishedNovels.update((list) => list.filter((n) => n.id !== novel.id));
+      this.publicNovelDetailsCache.update((prev) => {
+        const next = { ...prev };
+        delete next[novel.id];
+        return next;
+      });
+      this.catalogSyncEvent.set({ kind: 'delete', novelId: novel.id });
       if (this.activeNovelId() === novel.id) {
         const nextFirst = this.ownNovels()[0] || null;
         this.activeNovelId.set(nextFirst?.id || null);
@@ -1261,12 +1322,16 @@ export class WriterStudioService implements OnDestroy {
         this.loadStudioForAuthor(authorId),
         this.loadNovelWorkspace(created.id),
       ]);
+      const refreshed = this.ownNovels().find((n) => n.id === created.id) || created;
+      if (refreshed.isPublished) {
+        this.catalogSyncEvent.set({ kind: 'upsert', novel: refreshed });
+      }
       this.successMessage.set(
         this.i18n.lang() === 'en'
-          ? `Imported "${created.title}" with ${archive.chapters.length} chapter(s).`
-          : `تم استيراد «${created.title}» بكامل فصولها (${archive.chapters.length}) بنجاح.`
+          ? `Imported "${refreshed.title}" with ${archive.chapters.length} chapter(s).`
+          : `تم استيراد «${refreshed.title}» بكامل فصولها (${archive.chapters.length}) بنجاح.`
       );
-      return created;
+      return refreshed;
     } catch (err) {
       this.errorMessage.set(this.formatError(err, 'تعذر استيراد ملف MTX.', 'Could not import MTX archive.'));
       return null;
@@ -1300,6 +1365,10 @@ export class WriterStudioService implements OnDestroy {
     try {
       await resolveReportKeepNovelAsAdmin(novelId, adminUid, note);
       await this.loadAdminModerationQueue();
+      const restored = await fetchNovelByIdFromFirestore(novelId).catch(() => null);
+      if (restored && restored.isPublished) {
+        this.catalogSyncEvent.set({ kind: 'upsert', novel: restored });
+      }
       this.successMessage.set(
         this.i18n.lang() === 'en'
           ? 'Reports cleared and work restored cleanly.'
@@ -1320,6 +1389,7 @@ export class WriterStudioService implements OnDestroy {
     try {
       await resolveReportRemoveNovelAsAdmin(novelId, adminUid, note);
       await this.loadAdminModerationQueue();
+      this.catalogSyncEvent.set({ kind: 'delete', novelId });
       this.successMessage.set(
         this.i18n.lang() === 'en'
           ? 'Work removed from public visibility (author status preserved).'

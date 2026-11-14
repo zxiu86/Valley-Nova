@@ -73,5 +73,14 @@ describe('Firestore Security Rules & Dirty Dozen Spec Verification', () => {
     expect(rulesText).toContain('function isValidUserRolePayload(data, userId)');
     expect(rulesText).toContain('isValidUserRolePayload(incoming(), userId)');
   });
+
+  it('splits sections and chapters allow get and allow list so collection queries never reference unbound document IDs', () => {
+    const sectionsMatch = rulesText.match(/match \/sections\/\{sectionId\}\s*\{([\s\S]*?)\n      \}/);
+    const chaptersMatch = rulesText.match(/match \/chapters\/\{chapterId\}\s*\{([\s\S]*?)\n      \}/);
+    expect(sectionsMatch?.[1]).toContain('allow get: if isValidId(novelId) && isValidId(sectionId)');
+    expect(sectionsMatch?.[1]).toContain('allow list: if isValidId(novelId) && (');
+    expect(chaptersMatch?.[1]).toContain('allow get: if isValidId(novelId) && isValidId(chapterId)');
+    expect(chaptersMatch?.[1]).toContain('allow list: if isValidId(novelId) && (');
+  });
 });
 

@@ -2588,7 +2588,7 @@ export async function fetchNovelSections(novelId: string): Promise<NovelSection[
     if (isPermissionDeniedError(err)) {
       handleFirestoreError(err, OperationType.LIST, `novels/${novelId}/sections`);
     }
-    return [];
+    throw err;
   }
 }
 
@@ -2647,7 +2647,7 @@ export async function fetchNovelChapters(
     if (isPermissionDeniedError(err)) {
       handleFirestoreError(err, OperationType.LIST, `novels/${novelId}/chapters`);
     }
-    return [];
+    throw err;
   }
 }
 

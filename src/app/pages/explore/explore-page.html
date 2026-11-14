@@ -488,7 +488,7 @@
                         {{ book.originLanguage ? lib.i18n.displayOriginLanguage(book.originLanguage) : lib.i18n.displayGenre(book.genre) }}
                       </span>
                       <span class="truncate tabular-nums">
-                        {{ lib.i18n.formatNumber(book.readingHours || 5) }} {{ t.details.specHours }}
+                        {{ lib.i18n.formatNumber(book.readingHours || 1) }} {{ t.details.specHours }}
                       </span>
                     </div>
                   </div>
@@ -536,7 +536,7 @@
                           }
                         </div>
                         <span class="text-xs text-outline shrink-0 font-medium tabular-nums">
-                          {{ lib.i18n.formatNumber(book.readingHours || 5) }} {{ t.details.specHours }}
+                          {{ lib.i18n.formatNumber(book.readingHours || 1) }} {{ t.details.specHours }}
                         </span>
                       </div>
                       <div class="flex items-center gap-1.5 mt-0.5 min-w-0">
