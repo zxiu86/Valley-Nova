@@ -1,15 +1,23 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { describe, expect, it, beforeEach } from 'vitest';
-import { WriterStudioService } from './writer-studio.service';
+import { describe, expect, it, beforeEach, vi } from 'vitest';
+import { CHECK_CHAPTER_SLOT_EXISTS_FN, WriterStudioService } from './writer-studio.service';
 
 describe('WriterStudioService', () => {
   let service: WriterStudioService;
+  let mockCheckChapterSlotExists: ReturnType<typeof vi.fn<(novelId: string, chapterNumber: number) => Promise<boolean>>>;
 
   beforeEach(() => {
     localStorage.clear();
+    mockCheckChapterSlotExists = vi.fn(async () => false);
     TestBed.configureTestingModule({
-      providers: [provideRouter([])],
+      providers: [
+        provideRouter([]),
+        {
+          provide: CHECK_CHAPTER_SLOT_EXISTS_FN,
+          useValue: mockCheckChapterSlotExists,
+        },
+      ],
     });
     service = TestBed.inject(WriterStudioService);
   });
@@ -129,12 +137,27 @@ describe('WriterStudioService', () => {
 
     const duplicateNew = await service.isDuplicateChapterNumber('n1', 3, null);
     expect(duplicateNew).toBe(true);
+    expect(mockCheckChapterSlotExists).not.toHaveBeenCalled();
 
     const sameBeingEdited = await service.isDuplicateChapterNumber('n1', 3, 'ch_1');
     expect(sameBeingEdited).toBe(false);
+    expect(mockCheckChapterSlotExists).not.toHaveBeenCalled();
 
     const unused = await service.isDuplicateChapterNumber('n1', 4, null);
     expect(unused).toBe(false);
+    expect(mockCheckChapterSlotExists).toHaveBeenCalledTimes(1);
+    expect(mockCheckChapterSlotExists).toHaveBeenCalledWith('n1', 4);
+
+    mockCheckChapterSlotExists.mockResolvedValueOnce(true);
+    const remoteConflict = await service.isDuplicateChapterNumber('n1', 5, null);
+    expect(remoteConflict).toBe(true);
+    expect(mockCheckChapterSlotExists).toHaveBeenCalledWith('n1', 5);
+
+    mockCheckChapterSlotExists.mockRejectedValueOnce(new Error('Missing or insufficient permissions.'));
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const resilientFallback = await service.isDuplicateChapterNumber('n1', 6, null);
+    expect(resilientFallback).toBe(false);
+    warnSpy.mockRestore();
   });
 
   it('blocks permanent deletion in Delete Gate until MTX export succeeds and verifies', async () => {

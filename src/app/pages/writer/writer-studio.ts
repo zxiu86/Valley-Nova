@@ -661,9 +661,14 @@ export class WriterStudioPage {
       this.duplicateChapterError.set(false);
       return false;
     }
-    const dup = await this.studio.isDuplicateChapterNumber(novelId, num, this.editingChapterId());
-    this.duplicateChapterError.set(dup);
-    return dup;
+    try {
+      const dup = await this.studio.isDuplicateChapterNumber(novelId, num, this.editingChapterId());
+      this.duplicateChapterError.set(dup);
+      return dup;
+    } catch {
+      this.duplicateChapterError.set(false);
+      return false;
+    }
   }
 
   private getAutosaveKey(chapterNum: number, chapterId: string | null): string {

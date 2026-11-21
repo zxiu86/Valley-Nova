@@ -27,6 +27,7 @@ export class LocalizedTitleStrategy extends TitleStrategy {
       | 'reader'
       | 'auth'
       | 'profile'
+      | 'writer'
       | undefined;
     const dict = this.i18n.copy();
     const resolvedTitle = (key && dict.site.titles[key]) || dict.site.pageTitleDefault;

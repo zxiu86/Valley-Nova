@@ -1,4 +1,4 @@
-import { Injectable, OnDestroy, PLATFORM_ID, computed, inject, signal } from '@angular/core';
+import { Injectable, InjectionToken, OnDestroy, PLATFORM_ID, computed, inject, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import {
   ChapterBlock,
@@ -60,11 +60,22 @@ export const LOCAL_NOVEL_DRAFTS_KEY = 'mtx_writer_local_novels_v1';
 export const LOCAL_CHAPTER_AUTOSAVE_KEY = 'mtx_writer_chapter_autosave_v1';
 export const LOCAL_CHAPTER_PENDING_SYNC_KEY = 'mtx_writer_pending_sync_v1';
 
+export type CheckChapterSlotExistsFn = (novelId: string, chapterNumber: number) => Promise<boolean>;
+
+export const CHECK_CHAPTER_SLOT_EXISTS_FN = new InjectionToken<CheckChapterSlotExistsFn>(
+  'CHECK_CHAPTER_SLOT_EXISTS_FN',
+  {
+    providedIn: 'root',
+    factory: () => checkChapterSlotExists,
+  }
+);
+
 @Injectable({ providedIn: 'root' })
 export class WriterStudioService implements OnDestroy {
   private readonly platformId = inject(PLATFORM_ID);
   private readonly accountService = inject(AccountService);
   private readonly i18n = inject(I18nService);
+  private readonly checkChapterSlotExistsFn = inject(CHECK_CHAPTER_SLOT_EXISTS_FN);
 
   // Author's cloud works (published, drafts, under_review, removed) & strictly-local drafts
   readonly ownNovels = signal<PublishedNovelRecord[]>([]);
@@ -825,7 +836,12 @@ export class WriterStudioService implements OnDestroy {
       }
     }
 
-    return checkChapterSlotExists(novelId, chapterNumber);
+    try {
+      return await this.checkChapterSlotExistsFn(novelId, chapterNumber);
+    } catch (err) {
+      console.warn('Could not verify remote chapter slot uniqueness:', err);
+      return false;
+    }
   }
 
   buildEdition(title: string, blocks: ChapterBlock[], existingUpdatedAt?: string): ChapterLanguageEdition | undefined {
