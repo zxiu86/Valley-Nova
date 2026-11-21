@@ -11,4 +11,6 @@ import { WriterBadge } from '../../shared/components/writer-badge/writer-badge';
 })
 export class ExplorePage {
   readonly lib = inject(LibraryStateService);
+  readonly gridSkeletons = [1, 2, 3, 4, 5, 6, 7, 8];
+  readonly listSkeletons = [1, 2, 3, 4];
 }

@@ -50,6 +50,11 @@ import {
 } from '../mtx-firebase';
 import { AccountService, CroppedImageDraft } from './account.service';
 import { I18nService } from './i18n.service';
+import {
+  clearNovelFromPublicCache,
+  loadCachedPublicNovelContentMap,
+  saveCachedPublicNovelContent,
+} from '../public-catalog-cache';
 
 export const LOCAL_NOVEL_DRAFTS_KEY = 'mtx_writer_local_novels_v1';
 export const LOCAL_CHAPTER_AUTOSAVE_KEY = 'mtx_writer_chapter_autosave_v1';
@@ -72,6 +77,8 @@ export class WriterStudioService implements OnDestroy {
   readonly publicNovelDetailsCache = signal<
     Record<string, { sections: NovelSection[]; chapters: LogicalChapter[] }>
   >({});
+  readonly publicNovelContentStatus = signal<Record<string, 'loading' | 'success' | 'error'>>({});
+  readonly publicNovelContentErrors = signal<Record<string, string | null>>({});
 
   // Event signal so public LibraryStateService updates live when author publishes/edits/deletes works or chapters
   readonly catalogSyncEvent = signal<
@@ -230,6 +237,15 @@ export class WriterStudioService implements OnDestroy {
     } catch {
       this.pendingSyncQueue.set([]);
     }
+
+    const cachedPublicContent = loadCachedPublicNovelContentMap();
+    if (Object.keys(cachedPublicContent).length > 0) {
+      const hydrated: Record<string, { sections: NovelSection[]; chapters: LogicalChapter[] }> = {};
+      for (const [novelId, entry] of Object.entries(cachedPublicContent)) {
+        hydrated[novelId] = { sections: entry.sections, chapters: entry.chapters };
+      }
+      this.publicNovelDetailsCache.set(hydrated);
+    }
   }
 
   private persistLocalDrafts(list: LocalNovelDraft[]): void {
@@ -330,7 +346,8 @@ export class WriterStudioService implements OnDestroy {
   }
 
   /**
-   * Loads sections & published chapters for public Details & Reading pages.
+   * Loads sections & published chapters for public Details & Reading pages
+   * using Cache-First hydration + silent background revalidation.
    */
   async loadPublicNovelContent(
     novelId: string,
@@ -338,6 +355,7 @@ export class WriterStudioService implements OnDestroy {
   ): Promise<{ sections: NovelSection[]; chapters: LogicalChapter[] }> {
     const cached = this.publicNovelDetailsCache()[novelId];
     if (cached && !forceRefresh) {
+      this.publicNovelContentStatus.update((prev) => ({ ...prev, [novelId]: 'success' }));
       return cached;
     }
 
@@ -345,6 +363,12 @@ export class WriterStudioService implements OnDestroy {
     if (inflight) {
       return inflight;
     }
+
+    // Only enter loading status when there is no cached content already displayed
+    if (!cached) {
+      this.publicNovelContentStatus.update((prev) => ({ ...prev, [novelId]: 'loading' }));
+    }
+    this.publicNovelContentErrors.update((prev) => ({ ...prev, [novelId]: null }));
 
     const task = (async () => {
       try {
@@ -354,10 +378,26 @@ export class WriterStudioService implements OnDestroy {
         ]);
         const payload = { sections, chapters };
         this.publicNovelDetailsCache.update((prev) => ({ ...prev, [novelId]: payload }));
+        this.publicNovelContentStatus.update((prev) => ({ ...prev, [novelId]: 'success' }));
+        saveCachedPublicNovelContent(novelId, sections, chapters);
         return payload;
       } catch (err) {
         console.warn(`Could not load public novel content for ${novelId}:`, err);
-        return cached || { sections: [], chapters: [] };
+        if (cached) {
+          // Preserve cached chapters cleanly when background refresh fails
+          this.publicNovelContentStatus.update((prev) => ({ ...prev, [novelId]: 'success' }));
+          return cached;
+        }
+        this.publicNovelContentStatus.update((prev) => ({ ...prev, [novelId]: 'error' }));
+        this.publicNovelContentErrors.update((prev) => ({
+          ...prev,
+          [novelId]: this.formatError(
+            err,
+            'تعذر تحميل فصول الرواية من الخادم.',
+            'Could not load novel chapters from server.'
+          ),
+        }));
+        return { sections: [], chapters: [] };
       } finally {
         this.inFlightPublicNovelLoads.delete(novelId);
       }
@@ -365,6 +405,16 @@ export class WriterStudioService implements OnDestroy {
 
     this.inFlightPublicNovelLoads.set(novelId, task);
     return task;
+  }
+
+  removeNovelFromPublicCache(novelId: string): void {
+    this.publicNovelDetailsCache.update((prev) => {
+      if (!prev[novelId]) return prev;
+      const next = { ...prev };
+      delete next[novelId];
+      return next;
+    });
+    clearNovelFromPublicCache(novelId);
   }
 
   // ================= STRICTLY LOCAL NOVEL DRAFTS ================= //

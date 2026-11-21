@@ -413,17 +413,17 @@
       </div>
     </section>
 
-    <!-- ================= 3. EDITORIAL BENTO SPECS (6x6 GRID MATRIX) ================= -->
+    <!-- ================= 3. EDITORIAL BENTO SPECS (ISOLATED 7x7 GRID MATRIX) ================= -->
     <section class="w-full px-4 sm:px-6 lg:px-8 py-6 max-w-[1400px] mx-auto">
-      <div class="parent w-full border border-surface-variant/50 rounded-2xl overflow-hidden bg-surface-container-low shadow-lg">
-        <!-- Card 1 -->
-        <div class="div1 novel-card-interactive p-4 sm:p-5 border border-surface-variant/25 hover:bg-surface-container transition-all flex flex-col justify-between overflow-hidden">
-          <div class="flex items-start gap-3">
+      <div class="details-specs-bento w-full border border-surface-variant/50 rounded-2xl overflow-hidden bg-surface-container-low shadow-lg">
+        <!-- Card 1 (1 / 1 / 4 / 4): Chapters Count -->
+        <div class="details-spec-1 novel-card-interactive p-4 sm:p-5 border border-surface-variant/25 hover:bg-surface-container transition-all flex flex-col justify-between overflow-hidden">
+          <div class="flex items-start gap-3 min-w-0">
             <div class="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0 shadow-sm border border-amber-500/25">
               <span class="material-symbols-outlined text-[22px]">menu_book</span>
             </div>
             <div class="flex flex-col min-w-0">
-              <span class="text-[11px] text-on-surface-variant font-semibold">{{ t.details.specChapters }}</span>
+              <span class="text-[11px] text-on-surface-variant font-semibold truncate">{{ t.details.specChapters }}</span>
               <h4 class="text-xs sm:text-sm font-bold text-on-surface truncate font-mono tabular-nums">
                 {{ lib.i18n.formatNumber(lib.availableChaptersForNovel().length) }} {{ t.details.chapterCountUnit }}
               </h4>
@@ -434,14 +434,14 @@
           </div>
         </div>
 
-        <!-- Card 2 -->
-        <div class="div2 novel-card-interactive p-4 sm:p-5 border border-surface-variant/25 hover:bg-surface-container transition-all flex flex-col justify-between overflow-hidden">
-          <div class="flex items-start gap-3">
+        <!-- Card 2 (4 / 1 / 8 / 3): Reading Time -->
+        <div class="details-spec-2 novel-card-interactive p-4 sm:p-5 border border-surface-variant/25 hover:bg-surface-container transition-all flex flex-col justify-between overflow-hidden">
+          <div class="flex items-start gap-3 min-w-0">
             <div class="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-emerald-700 dark:text-emerald-400 shrink-0 shadow-sm border border-emerald-500/25">
               <span class="material-symbols-outlined text-[22px]">hourglass_top</span>
             </div>
             <div class="flex flex-col min-w-0">
-              <span class="text-[11px] text-on-surface-variant font-semibold">{{ t.details.specDuration }}</span>
+              <span class="text-[11px] text-on-surface-variant font-semibold truncate">{{ t.details.specDuration }}</span>
               <h4 class="text-xs sm:text-sm font-bold text-on-surface truncate font-mono tabular-nums">
                 {{ lib.i18n.formatNumber(novel.readingHours || 1) }} {{ t.details.specHours }}
               </h4>
@@ -452,74 +452,83 @@
           </div>
         </div>
 
-        <!-- Card 3 -->
-        <div class="div3 novel-card-interactive p-4 sm:p-5 border border-surface-variant/25 hover:bg-surface-container transition-all flex flex-col justify-between overflow-hidden">
-          <div class="flex items-start gap-3">
-            <div class="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-sky-700 dark:text-sky-400 shrink-0 shadow-sm border border-sky-500/25">
-              <span class="material-symbols-outlined text-[22px]">translate</span>
+        <!-- Card 3 (6 / 3 / 8 / 5): Chapter Language -->
+        <div class="details-spec-3 novel-card-interactive p-3.5 sm:p-4 border border-surface-variant/25 hover:bg-surface-container transition-all flex flex-col justify-between overflow-hidden">
+          <div class="flex items-start gap-2.5 min-w-0">
+            <div class="w-9 h-9 rounded-xl bg-surface-container-high flex items-center justify-center text-sky-700 dark:text-sky-400 shrink-0 shadow-sm border border-sky-500/25">
+              <span class="material-symbols-outlined text-[20px]">translate</span>
             </div>
             <div class="flex flex-col min-w-0">
-              <span class="text-[11px] text-on-surface-variant font-semibold">{{ t.details.specEdition }}</span>
+              <span class="text-[11px] text-on-surface-variant font-semibold truncate">{{ t.details.specEdition }}</span>
               <h4 class="text-xs sm:text-sm font-bold text-on-surface truncate">
                 {{ lib.selectedChapterLang() === 'en' ? t.details.editionTagEn : t.details.editionTagAr }}
               </h4>
             </div>
           </div>
-          <div class="pt-2 border-t border-surface-variant/25 mt-2">
-            <p class="text-[11px] text-on-surface-variant leading-relaxed line-clamp-2">
+          <div class="pt-1.5 border-t border-surface-variant/25 mt-1.5">
+            <p class="text-[11px] text-on-surface-variant leading-snug truncate">
               {{ novel.originLanguage ? lib.i18n.displayOriginLanguage(novel.originLanguage) : t.site.brand }}
             </p>
           </div>
         </div>
 
-        <!-- Card 4 -->
-        <div class="div4 novel-card-interactive p-4 sm:p-5 border border-surface-variant/25 hover:bg-surface-container transition-all flex flex-col justify-between overflow-hidden">
-          <div class="flex items-start gap-3">
-            <div class="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-purple-700 dark:text-purple-400 shrink-0 shadow-sm border border-purple-500/25">
-              <span class="material-symbols-outlined text-[22px]">inventory_2</span>
+        <!-- Card 4 (6 / 5 / 8 / 8): Work Status -->
+        <div class="details-spec-4 novel-card-interactive p-3.5 sm:p-4 border border-surface-variant/25 hover:bg-surface-container transition-all flex flex-col justify-between overflow-hidden">
+          <div class="flex items-start gap-2.5 min-w-0">
+            <div class="w-9 h-9 rounded-xl bg-surface-container-high flex items-center justify-center text-purple-700 dark:text-purple-400 shrink-0 shadow-sm border border-purple-500/25">
+              <span class="material-symbols-outlined text-[20px]">inventory_2</span>
             </div>
             <div class="flex flex-col min-w-0">
-              <span class="text-[11px] text-on-surface-variant font-semibold">{{ t.details.specStatus }}</span>
+              <span class="text-[11px] text-on-surface-variant font-semibold truncate">{{ t.details.specStatus }}</span>
               <h4 class="text-xs sm:text-sm font-bold text-on-surface truncate">
                 {{ novel.isCompleted ? t.details.specCompleted : t.details.specOngoing }}
               </h4>
             </div>
           </div>
-          <div class="pt-2 border-t border-surface-variant/25 mt-2">
-            <p class="text-[11px] text-on-surface-variant leading-relaxed line-clamp-2">{{ theme.realmArabicName }}</p>
+          <div class="pt-1.5 border-t border-surface-variant/25 mt-1.5">
+            <p class="text-[11px] text-on-surface-variant leading-snug truncate">{{ theme.realmArabicName }}</p>
           </div>
         </div>
 
-        <!-- Card 5 -->
-        <div class="div5 novel-card-interactive p-4 sm:p-5 border border-surface-variant/25 hover:bg-surface-container transition-all flex flex-col justify-between overflow-hidden">
-          <div class="flex items-start gap-3">
-            <div class="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-secondary shrink-0 shadow-sm border border-secondary/25">
-              <span class="material-symbols-outlined text-[22px]">verified</span>
+        <!-- Card 5 (4 / 5 / 6 / 8): MTX Code -->
+        <div class="details-spec-5 novel-card-interactive p-3.5 sm:p-4 border border-surface-variant/25 hover:bg-surface-container transition-all flex flex-col justify-between overflow-hidden">
+          <div class="flex items-start gap-2.5 min-w-0">
+            <div class="w-9 h-9 rounded-xl bg-surface-container-high flex items-center justify-center text-secondary shrink-0 shadow-sm border border-secondary/25">
+              <span class="material-symbols-outlined text-[20px]">verified</span>
             </div>
             <div class="flex flex-col min-w-0">
-              <span class="text-[11px] text-on-surface-variant font-semibold">MTX</span>
+              <span class="text-[11px] text-on-surface-variant font-semibold truncate">MTX</span>
               <h4 class="text-xs sm:text-sm font-bold text-secondary font-mono truncate">{{ theme.archiveCode }}</h4>
             </div>
           </div>
-          <div class="pt-2 border-t border-surface-variant/25 mt-2">
-            <p class="text-[11px] text-on-surface-variant leading-relaxed line-clamp-2">{{ t.details.verifiedNovel }}</p>
+          <div class="pt-1.5 border-t border-surface-variant/25 mt-1.5">
+            <p class="text-[11px] text-on-surface-variant leading-snug truncate">{{ t.details.verifiedNovel }}</p>
           </div>
         </div>
 
-        <!-- Card 6 -->
-        <div class="div6 novel-card-interactive p-4 sm:p-5 border border-surface-variant/25 hover:bg-surface-container transition-all flex flex-col justify-between overflow-hidden">
-          <div class="flex items-start gap-3">
+        <!-- Card 6 (1 / 4 / 4 / 8): Sanctuary Seal -->
+        <div class="details-spec-6 novel-card-interactive p-4 sm:p-5 border border-surface-variant/25 hover:bg-surface-container transition-all flex flex-col justify-between overflow-hidden">
+          <div class="flex items-start gap-3 min-w-0">
             <div class="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-rose-700 dark:text-rose-400 shrink-0 shadow-sm border border-rose-500/25">
               <span class="material-symbols-outlined text-[22px]">shield</span>
             </div>
             <div class="flex flex-col min-w-0">
-              <span class="text-[11px] text-on-surface-variant font-semibold">{{ t.site.brand }}</span>
+              <span class="text-[11px] text-on-surface-variant font-semibold truncate">{{ t.site.brand }}</span>
               <h4 class="text-xs sm:text-sm font-bold text-on-surface truncate">{{ t.details.verifiedNovel }}</h4>
             </div>
           </div>
           <div class="pt-2 border-t border-surface-variant/25 mt-2">
-            <p class="text-[11px] text-on-surface-variant leading-relaxed line-clamp-2">{{ t.site.tagline }}</p>
+            <p class="text-[11px] text-on-surface-variant leading-relaxed line-clamp-2">{{ t.statusStates.specsVerifiedTag }}</p>
           </div>
+        </div>
+
+        <!-- Intentional Architectural Void (4 / 3 / 6 / 5) -->
+        <div
+          aria-hidden="true"
+          class="details-spec-center-void border border-surface-variant/20 bg-surface-container/35 flex flex-col items-center justify-center gap-1 p-2 text-center select-none pointer-events-none"
+        >
+          <span class="material-symbols-outlined text-[20px] text-outline/50">auto_stories</span>
+          <span class="text-[9px] font-mono uppercase tracking-[0.2em] text-outline/60">{{ theme.archiveCode }}</span>
         </div>
       </div>
     </section>
@@ -641,7 +650,53 @@
 
         <!-- Chapters List Partition Column (8 cols) -->
         <div class="lg:col-span-8 flex flex-col space-y-6 sm:space-y-8">
-          @if (lib.availableChaptersForNovel().length === 0) {
+          @if (lib.selectedNovelContentStatus() === 'loading') {
+            <div class="flex flex-col space-y-3" aria-busy="true">
+              <div class="mtx-skeleton-line h-10 w-full rounded-xl"></div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                @for (item of chapterSkeletons; track item) {
+                  <div class="mtx-skeleton-surface p-4 rounded-xl flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3 min-w-0 flex-1">
+                      <div class="mtx-skeleton-block w-8 h-8 rounded-lg shrink-0"></div>
+                      <div class="flex flex-col gap-2 flex-1 min-w-0">
+                        <div class="mtx-skeleton-line h-3.5 w-3/4 rounded-md"></div>
+                        <div class="mtx-skeleton-line h-2.5 w-1/2 rounded-md"></div>
+                      </div>
+                    </div>
+                    <div class="mtx-skeleton-block w-7 h-7 rounded-lg shrink-0"></div>
+                  </div>
+                }
+              </div>
+            </div>
+          } @else if (lib.selectedNovelContentStatus() === 'error') {
+            <div class="p-8 sm:p-10 rounded-2xl liquid-glass border border-rose-500/25 text-center space-y-4 shadow-sm">
+              <div class="w-14 h-14 mx-auto rounded-2xl bg-rose-500/12 border border-rose-500/25 flex items-center justify-center text-rose-600 dark:text-rose-400">
+                <span class="material-symbols-outlined text-[28px]">cloud_off</span>
+              </div>
+              <h3 class="text-base sm:text-lg font-bold text-on-surface">{{ t.statusStates.chaptersErrorTitle }}</h3>
+              <p class="text-xs sm:text-sm text-on-surface-variant max-w-md mx-auto leading-relaxed">
+                {{ t.statusStates.chaptersErrorDesc }}
+              </p>
+              <button
+                type="button"
+                (click)="lib.retrySelectedNovelChapters()"
+                class="btn-tactile px-5 py-2.5 rounded-xl bg-primary text-on-primary text-xs sm:text-sm font-bold hover:opacity-90 transition-all cursor-pointer inline-flex items-center gap-2 shadow-md"
+              >
+                <span class="material-symbols-outlined text-[18px]">refresh</span>
+                <span>{{ t.statusStates.retryBtn }}</span>
+              </button>
+            </div>
+          } @else if (lib.selectedNovelAnyLanguageChaptersCount() === 0) {
+            <div class="p-8 sm:p-10 rounded-2xl bg-surface-container-low border border-surface-variant/40 text-center space-y-4 shadow-sm">
+              <div class="w-14 h-14 mx-auto rounded-2xl bg-surface-container flex items-center justify-center text-outline border border-surface-variant/40">
+                <span class="material-symbols-outlined text-[28px]">auto_stories</span>
+              </div>
+              <h3 class="text-base sm:text-lg font-bold text-on-surface">{{ t.statusStates.chaptersEmptyNovelTitle }}</h3>
+              <p class="text-xs sm:text-sm text-on-surface-variant max-w-md mx-auto leading-relaxed">
+                {{ t.statusStates.chaptersEmptyNovelDesc }}
+              </p>
+            </div>
+          } @else if (lib.availableChaptersForNovel().length === 0) {
             <div class="p-8 sm:p-10 rounded-2xl bg-surface-container-low border border-surface-variant/40 text-center space-y-4 shadow-sm">
               <div class="w-14 h-14 mx-auto rounded-2xl bg-surface-container flex items-center justify-center text-secondary border border-surface-variant/40">
                 <span class="material-symbols-outlined text-[28px]">translate</span>
@@ -662,9 +717,17 @@
               }
             </div>
           } @else if (lib.filteredChaptersList().length === 0) {
-            <div class="p-8 rounded-2xl bg-surface-container-low border border-surface-variant/40 text-center space-y-2 shadow-sm">
+            <div class="p-8 rounded-2xl bg-surface-container-low border border-surface-variant/40 text-center space-y-3 shadow-sm">
               <span class="material-symbols-outlined text-4xl text-outline/50">search_off</span>
               <p class="text-sm text-on-surface-variant font-medium">{{ t.details.noChapterSearchResults }}</p>
+              <button
+                type="button"
+                (click)="lib.chapterSearchControl.setValue('')"
+                class="btn-tactile px-4 py-2 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-bold border border-surface-variant/40 cursor-pointer inline-flex items-center gap-1.5"
+              >
+                <span class="material-symbols-outlined text-[16px]">close</span>
+                <span>{{ t.statusStates.clearChapterSearch }}</span>
+              </button>
             </div>
           } @else if (lib.groupedDetailsSections().length > 0) {
             @for (group of lib.groupedDetailsSections(); track group.section?.id || 'unsectioned') {
@@ -1202,37 +1265,78 @@
   </div>
 }
 } @else {
-  <div class="w-full px-4 sm:px-6 lg:px-8 py-20 max-w-2xl mx-auto text-center animate-fadeIn">
-    <div class="liquid-glass rounded-3xl p-8 sm:p-10 space-y-5 border border-[var(--mtx-glass-border)]">
-      <div class="w-16 h-16 mx-auto rounded-2xl bg-surface-container-high flex items-center justify-center text-secondary">
-        <span class="material-symbols-outlined text-[34px]">menu_book</span>
+  @if (lib.isRestoringSelectedNovel()) {
+    <div class="w-full px-4 sm:px-6 lg:px-8 py-8 max-w-[1400px] mx-auto space-y-8" aria-busy="true">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        <div class="lg:col-span-4 flex flex-col items-center">
+          <div class="mtx-skeleton-block w-56 sm:w-64 aspect-[2/3] rounded-2xl"></div>
+        </div>
+        <div class="lg:col-span-8 space-y-4">
+          <div class="flex gap-2">
+            <div class="mtx-skeleton-line h-6 w-24 rounded-full"></div>
+            <div class="mtx-skeleton-line h-6 w-28 rounded-full"></div>
+          </div>
+          <div class="mtx-skeleton-line h-10 w-3/4 rounded-xl"></div>
+          <div class="mtx-skeleton-line h-5 w-1/3 rounded-lg"></div>
+          <div class="mtx-skeleton-surface rounded-2xl p-5 space-y-2.5">
+            <div class="mtx-skeleton-line h-3.5 w-full rounded-md"></div>
+            <div class="mtx-skeleton-line h-3.5 w-11/12 rounded-md"></div>
+            <div class="mtx-skeleton-line h-3.5 w-3/4 rounded-md"></div>
+          </div>
+        </div>
       </div>
-      <h2 class="text-xl font-bold text-on-surface">
-        {{ lib.i18n.lang() === 'en' ? 'Select a novel from the library' : 'اختر رواية من المكتبة' }}
-      </h2>
-      <p class="text-sm text-on-surface-variant leading-relaxed">
-        {{
-          lib.i18n.lang() === 'en'
-            ? 'Browse published works from our verified authors to view full details and chapters.'
-            : 'تصفح الأعمال المنشورة من الكتّاب المعتمدين لعرض التفاصيل والفصول المتاحة.'
-        }}
-      </p>
-      <div class="flex items-center justify-center gap-3 pt-2 flex-wrap">
-        <button
-          type="button"
-          (click)="lib.returnToNovels()"
-          class="btn-tactile px-5 py-2.5 rounded-xl bg-primary text-on-primary text-xs sm:text-sm font-bold cursor-pointer"
-        >
-          {{ t.details.backToCorridor }}
-        </button>
-        <button
-          type="button"
-          (click)="lib.openExplore()"
-          class="btn-tactile px-5 py-2.5 rounded-xl bg-surface-container-high text-on-surface text-xs sm:text-sm font-semibold border border-surface-variant/40 cursor-pointer"
-        >
-          {{ t.details.exploreAll }}
-        </button>
+
+      <div class="mtx-skeleton-surface rounded-2xl p-6 space-y-4">
+        <div class="mtx-skeleton-line h-7 w-48 rounded-lg"></div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          @for (item of chapterSkeletons; track item) {
+            <div class="mtx-skeleton-surface p-4 rounded-xl flex items-center justify-between gap-3">
+              <div class="flex items-center gap-3 flex-1 min-w-0">
+                <div class="mtx-skeleton-block w-8 h-8 rounded-lg shrink-0"></div>
+                <div class="space-y-2 flex-1 min-w-0">
+                  <div class="mtx-skeleton-line h-3.5 w-3/4 rounded-md"></div>
+                  <div class="mtx-skeleton-line h-2.5 w-1/2 rounded-md"></div>
+                </div>
+              </div>
+              <div class="mtx-skeleton-block w-7 h-7 rounded-lg shrink-0"></div>
+            </div>
+          }
+        </div>
       </div>
     </div>
-  </div>
+  } @else {
+    <div class="w-full px-4 sm:px-6 lg:px-8 py-20 max-w-2xl mx-auto text-center animate-fadeIn">
+      <div class="liquid-glass rounded-3xl p-8 sm:p-10 space-y-5 border border-[var(--mtx-glass-border)]">
+        <div class="w-16 h-16 mx-auto rounded-2xl bg-surface-container-high flex items-center justify-center text-secondary">
+          <span class="material-symbols-outlined text-[34px]">menu_book</span>
+        </div>
+        <h2 class="text-xl font-bold text-on-surface">
+          {{ lib.i18n.lang() === 'en' ? 'Select a novel from the library' : 'اختر رواية من المكتبة' }}
+        </h2>
+        <p class="text-sm text-on-surface-variant leading-relaxed">
+          {{
+            lib.i18n.lang() === 'en'
+              ? 'Browse published works from our verified authors to view full details and chapters.'
+              : 'تصفح الأعمال المنشورة من الكتّاب المعتمدين لعرض التفاصيل والفصول المتاحة.'
+          }}
+        </p>
+        <div class="flex items-center justify-center gap-3 pt-2 flex-wrap">
+          <button
+            type="button"
+            (click)="lib.returnToNovels()"
+            class="btn-tactile px-5 py-2.5 rounded-xl bg-primary text-on-primary text-xs sm:text-sm font-bold cursor-pointer"
+          >
+            {{ t.details.backToCorridor }}
+          </button>
+          <button
+            type="button"
+            (click)="lib.openExplore()"
+            class="btn-tactile px-5 py-2.5 rounded-xl bg-surface-container-high text-on-surface text-xs sm:text-sm font-semibold border border-surface-variant/40 cursor-pointer"
+          >
+            {{ t.details.exploreAll }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
 }

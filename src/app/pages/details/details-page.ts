@@ -13,6 +13,7 @@ import { WriterBadge } from '../../shared/components/writer-badge/writer-badge';
 export class DetailsPage {
   readonly lib = inject(LibraryStateService);
   readonly accountService = inject(AccountService);
+  readonly chapterSkeletons = [1, 2, 3, 4];
 
   isHttpUrl(value: string | undefined): boolean {
     if (!value) return false;

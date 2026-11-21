@@ -2168,7 +2168,7 @@ export async function fetchAllPublishedNovels(): Promise<PublishedNovelRecord[]>
     if (isPermissionDeniedError(err)) {
       handleFirestoreError(err, OperationType.LIST, 'novels');
     }
-    return [];
+    throw err;
   }
 }
 

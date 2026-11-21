@@ -53,6 +53,11 @@ import { AccountService } from './account.service';
 import { ThemeService } from './theme.service';
 import { I18nService } from './i18n.service';
 import { WriterStudioService } from './writer-studio.service';
+import {
+  areCatalogListsEquivalent,
+  loadCachedPublicCatalog,
+  saveCachedPublicCatalog,
+} from '../public-catalog-cache';
 
 const NAV_STORAGE_KEY = 'mtx_nav_state_v1';
 
@@ -137,9 +142,11 @@ export class LibraryStateService {
       if (!ev) return;
       if (ev.kind === 'delete') {
         this.exploreBooksList.update((list) => list.filter((b) => b.id !== ev.novelId));
+        this.writerStudio.removeNovelFromPublicCache(ev.novelId);
         if (this.selectedNovel()?.id === ev.novelId) {
           this.selectedNovel.set(null);
         }
+        saveCachedPublicCatalog(this.exploreBooksList());
       } else if (ev.kind === 'upsert') {
         const card = this.mapPublishedRecordToNovelCard(ev.novel);
         this.exploreBooksList.update((list) => {
@@ -154,6 +161,7 @@ export class LibraryStateService {
         if (this.selectedNovel()?.id === card.id) {
           this.selectedNovel.set(card);
         }
+        saveCachedPublicCatalog(this.exploreBooksList());
       }
     });
   }
@@ -212,6 +220,24 @@ export class LibraryStateService {
 
   readonly exploreBooksList = signal<NovelCard[]>([]);
   readonly catalogLoaded = signal<boolean>(false);
+  readonly catalogStatus = signal<'idle' | 'loading' | 'refreshing' | 'success' | 'error'>('idle');
+  readonly catalogErrorMessage = signal<string | null>(null);
+  readonly hasCatalogCache = signal<boolean>(false);
+  readonly backgroundRefreshNotice = signal<string | null>(null);
+  readonly isRestoringSelectedNovel = signal<boolean>(false);
+
+  readonly isInitialCatalogLoading = computed<boolean>(
+    () =>
+      !this.hasCatalogCache() &&
+      this.exploreBooksList().length === 0 &&
+      (this.catalogStatus() === 'idle' || this.catalogStatus() === 'loading')
+  );
+  readonly isCatalogErrorEmpty = computed<boolean>(
+    () => !this.hasCatalogCache() && this.exploreBooksList().length === 0 && this.catalogStatus() === 'error'
+  );
+  readonly isCatalogGenuinelyEmpty = computed<boolean>(
+    () => this.catalogStatus() === 'success' && this.exploreBooksList().length === 0
+  );
 
   // Publishing Modal State
   readonly isPublishModalOpen = signal<boolean>(false);
@@ -548,6 +574,25 @@ export class LibraryStateService {
 
   readonly hasOppositeChapterLang = computed<boolean>(() => this.oppositeChaptersCount() > 0);
 
+  readonly selectedNovelContentStatus = computed<'loading' | 'success' | 'error'>(() => {
+    const id = this.selectedNovel()?.id;
+    if (!id) return 'success';
+    if (this.writerStudio.publicNovelDetailsCache()[id]) {
+      return 'success';
+    }
+    return this.writerStudio.publicNovelContentStatus()[id] || 'loading';
+  });
+
+  readonly selectedNovelAnyLanguageChaptersCount = computed<number>(() => {
+    const novel = this.selectedNovel();
+    if (!novel) return 0;
+    const dbChapters = this.activeNovelFirestoreChapters();
+    const dbSections = this.activeNovelSections();
+    const arCount = getChaptersForNovel(novel.id, 'ar', novel, dbChapters, dbSections).length;
+    const enCount = getChaptersForNovel(novel.id, 'en', novel, dbChapters, dbSections).length;
+    return arCount + enCount;
+  });
+
   // Explore Computed Signals
   readonly filteredExploreBooks = computed<NovelCard[]>(() => {
     const q = (this.exploreSearchSignal() || '').trim().toLowerCase();
@@ -882,10 +927,40 @@ export class LibraryStateService {
 
     if (!isPlatformBrowser(this.platformId)) return;
 
+    // Step 1: Hydrate safe public catalog cache immediately before network I/O
+    const cachedCatalog = loadCachedPublicCatalog();
+    if (cachedCatalog && cachedCatalog.novels.length > 0) {
+      this.exploreBooksList.set(cachedCatalog.novels);
+      this.hasCatalogCache.set(true);
+      this.catalogLoaded.set(true);
+      this.catalogStatus.set('refreshing');
+    } else {
+      this.catalogStatus.set('loading');
+      this.catalogLoaded.set(false);
+    }
+
     this.restoreLocalBookmarks();
     this.loadSavedReaderSettings();
     this.restoreNavigationState();
     this.i18n.syncDocumentMeta(this.currentView());
+
+    // Hydrate selected novel chapter language from local cache immediately if available
+    const initialSelected = this.selectedNovel();
+    if (initialSelected) {
+      const cachedNovelContent = this.writerStudio.publicNovelDetailsCache()[initialSelected.id];
+      const scope = this.exploreLanguageScope();
+      const preferred: ChapterLanguage | undefined =
+        scope === 'non-ar' ? 'en' : scope === 'ar' ? 'ar' : this.i18n.lang();
+      const chapLang = getDefaultChapterLanguageForNovel(
+        initialSelected,
+        preferred,
+        cachedNovelContent?.chapters
+      );
+      this.selectedChapterLang.set(chapLang);
+      this.syncNovelChapterProgress(initialSelected, chapLang);
+    } else if (this.pendingRestoreNovelId && this.currentView() === 'details') {
+      this.isRestoringSelectedNovel.set(true);
+    }
 
     // Sync view signal with Angular Router NavigationEnd events (Back/Forward browser buttons)
     this.routerEventsSub?.unsubscribe();
@@ -925,21 +1000,16 @@ export class LibraryStateService {
     });
 
     try {
-      const [, cached, publishedNovels] = await Promise.all([
-        this.authSession.init(),
+      const [, cached] = await Promise.all([
+        this.authSession.init().catch(() => undefined),
         fetchCloudVaultBooks().catch(() => []),
-        fetchAllPublishedNovels().catch(() => []),
+        this.fetchAndSyncPublicCatalog({ background: this.hasCatalogCache() }),
       ]);
       if (cached && cached.length > 0) {
         const nextSet = new Set(this.bookmarkedIds());
         cached.forEach((b) => nextSet.add(b.id));
         this.bookmarkedIds.set(nextSet);
       }
-      if (publishedNovels) {
-        const mapped: NovelCard[] = publishedNovels.map((n) => this.mapPublishedRecordToNovelCard(n));
-        this.exploreBooksList.set(mapped);
-      }
-      this.catalogLoaded.set(true);
 
       // Hydrate restored novel & chapter on page reload (/details or /reading)
       const restoreId = this.selectedNovel()?.id || this.pendingRestoreNovelId;
@@ -978,9 +1048,82 @@ export class LibraryStateService {
         this.pendingRestoreNovelId = null;
         this.pendingRestoreChapterNumber = null;
       }
-    } catch {
-      this.catalogLoaded.set(true);
+    } finally {
+      this.isRestoringSelectedNovel.set(false);
     }
+  }
+
+  async fetchAndSyncPublicCatalog(options: { background?: boolean } = {}): Promise<void> {
+    const hasExistingData = this.exploreBooksList().length > 0;
+    this.catalogErrorMessage.set(null);
+    this.catalogStatus.set(options.background || hasExistingData ? 'refreshing' : 'loading');
+
+    try {
+      const publishedNovels = await fetchAllPublishedNovels();
+      const mapped: NovelCard[] = publishedNovels.map((n) => this.mapPublishedRecordToNovelCard(n));
+
+      if (!areCatalogListsEquivalent(this.exploreBooksList(), mapped)) {
+        this.exploreBooksList.set(mapped);
+        const currentSel = this.selectedNovel();
+        if (currentSel) {
+          const updatedSelected = mapped.find((n) => n.id === currentSel.id);
+          if (updatedSelected) {
+            this.selectedNovel.set(updatedSelected);
+          }
+        }
+      }
+
+      saveCachedPublicCatalog(mapped);
+      this.hasCatalogCache.set(mapped.length > 0);
+      this.catalogStatus.set('success');
+      this.catalogLoaded.set(true);
+      this.backgroundRefreshNotice.set(null);
+    } catch (err) {
+      this.catalogLoaded.set(true);
+      if (hasExistingData || this.exploreBooksList().length > 0) {
+        // Keep cached data intact; show a subtle non-intrusive notice
+        this.catalogStatus.set('success');
+        this.backgroundRefreshNotice.set(this.i18n.copy().statusStates.backgroundSyncWarning);
+      } else {
+        this.catalogStatus.set('error');
+        this.catalogErrorMessage.set(
+          formatFirestoreErrorForUser(
+            err,
+            this.i18n.lang(),
+            'تعذر جلب الروايات من الخادم حالياً.',
+            'Could not fetch published novels from server.'
+          )
+        );
+      }
+    }
+  }
+
+  async retryCatalogLoad(): Promise<void> {
+    this.backgroundRefreshNotice.set(null);
+    await this.fetchAndSyncPublicCatalog({ background: false });
+  }
+
+  dismissBackgroundRefreshNotice(): void {
+    this.backgroundRefreshNotice.set(null);
+  }
+
+  async retrySelectedNovelChapters(): Promise<void> {
+    const novel = this.selectedNovel();
+    if (!novel) return;
+    const { chapters } = await this.writerStudio.loadPublicNovelContent(novel.id, true);
+    if (this.selectedNovel()?.id !== novel.id) return;
+    const scope = this.exploreLanguageScope();
+    const preferred: ChapterLanguage | undefined =
+      scope === 'non-ar' ? 'en' : scope === 'ar' ? 'ar' : this.i18n.lang();
+    const currentPool = getChaptersForNovel(novel.id, this.selectedChapterLang(), novel, chapters);
+    const nextLang =
+      currentPool.length > 0
+        ? this.selectedChapterLang()
+        : getDefaultChapterLanguageForNovel(novel, preferred, chapters);
+    if (nextLang !== this.selectedChapterLang()) {
+      this.selectedChapterLang.set(nextLang);
+    }
+    this.syncNovelChapterProgress(novel, nextLang);
   }
 
   destroy(): void {
