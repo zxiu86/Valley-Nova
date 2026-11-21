@@ -209,16 +209,16 @@
 
 <!-- ================= UNIFIED SANCTUARY NAVIGATION DRAWER ================= -->
 @if (lib.isMobileNavOpen()) {
-  <div class="fixed inset-0 z-[60] flex justify-start animate-fadeIn">
-    <!-- Scrim Backdrop -->
+  <div class="fixed inset-0 z-[60] flex justify-start">
+    <!-- Scrim Backdrop (opacity-only so drawer backdrop-filter samples page directly) -->
     <button
       type="button"
-      class="fixed inset-0 w-full h-full bg-black/25 dark:bg-black/45 backdrop-blur-[2px] border-none cursor-default"
+      class="fixed inset-0 w-full h-full bg-black/15 dark:bg-black/32 border-none cursor-default animate-scrimFade"
       [attr.aria-label]="t.drawer.closeQuickNav"
       (click)="lib.isMobileNavOpen.set(false)"
     ></button>
 
-    <!-- Slide-Over Sanctuary Drawer Panel (Exact Header Liquid Glass Extension) -->
+    <!-- Slide-Over Sanctuary Drawer Panel (Exact Header Optical Light-Scattering Liquid Glass) -->
     <aside
       role="dialog"
       aria-modal="true"

@@ -39,25 +39,20 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: 'npm'
 
       - name: Upgrade npm to latest stable
         run: npm install -g npm@latest
 
       - name: Install dependencies
-        run: |
-          if [ -f package-lock.json ]; then
-            npm ci --legacy-peer-deps || npm ci || npm install --legacy-peer-deps --no-audit --no-fund
-          else
-            npm install --legacy-peer-deps --no-audit --no-fund
-          fi
+        run: npm ci --no-audit --no-fund || npm ci --legacy-peer-deps --no-audit --no-fund
 
       - name: Validate all 9 Firebase Repository Secrets
         run: node scripts/write-firebase-config.js
 
-      - name: Lint and run Firebase & App unit tests
-        run: npm run lint && npx ng test --watch=false --include src/app/core/firebase-config.spec.ts --include src/app/app.spec.ts
+      - name: Lint and run unit tests
+        run: npm run lint && npm test -- --watch=false
 
       - name: Build and verify bundle for GitHub Pages
         run: npm run build:gh-pages

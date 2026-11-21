@@ -52,8 +52,8 @@
 
   /* Apple Liquid Glass & Surface Elevation */
   --mtx-glass-bg: rgba(255, 255, 255, 0.72);
-  --mtx-glass-header-bg: rgba(247, 247, 250, 0.76);
-  --mtx-glass-drawer-bg: rgba(255, 255, 255, 0.86);
+  --mtx-glass-header-bg: rgba(247, 247, 250, 0.62);
+  --mtx-glass-drawer-bg: rgba(247, 247, 250, 0.62);
   --mtx-glass-border: rgba(33, 29, 43, 0.08);
   --mtx-glass-specular: inset 0 1px 0 rgba(255, 255, 255, 0.92), inset 0 -1px 0 rgba(33, 29, 43, 0.05);
   --mtx-glass-shadow: 0 10px 32px -10px rgba(33, 29, 43, 0.12), 0 2px 8px -2px rgba(33, 29, 43, 0.06);
@@ -104,8 +104,8 @@
 
   /* Apple Liquid Glass & Surface Elevation */
   --mtx-glass-bg: rgba(20, 19, 23, 0.72);
-  --mtx-glass-header-bg: rgba(16, 15, 19, 0.72);
-  --mtx-glass-drawer-bg: rgba(22, 21, 26, 0.84);
+  --mtx-glass-header-bg: rgba(16, 15, 20, 0.58);
+  --mtx-glass-drawer-bg: rgba(16, 15, 20, 0.58);
   --mtx-glass-border: rgba(255, 255, 255, 0.1);
   --mtx-glass-specular: inset 0 1px 0 rgba(255, 255, 255, 0.14), inset 0 -1px 0 rgba(0, 0, 0, 0.35);
   --mtx-glass-shadow: 0 12px 36px -8px rgba(0, 0, 0, 0.65), 0 0 1px rgba(255, 255, 255, 0.08);
@@ -205,15 +205,33 @@
     box-shadow: var(--mtx-glass-specular), var(--mtx-glass-shadow);
   }
 
-  /* Shared Header Liquid Glass System (exact visual parity with site header) */
+  /* Shared Header & Hamburger Drawer Liquid Glass System (Optical Light-Scattering Blur Parity) */
   .liquid-glass-header,
   .liquid-glass-header-match,
   .liquid-glass-drawer.liquid-glass-header-match {
-    background: var(--mtx-glass-header-bg);
-    backdrop-filter: blur(26px) saturate(190%);
-    -webkit-backdrop-filter: blur(26px) saturate(190%);
+    background-color: var(--mtx-glass-header-bg);
+    background-image: linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.34) 0%,
+      rgba(255, 255, 255, 0.06) 45%,
+      rgba(255, 255, 255, 0.16) 100%
+    );
+    backdrop-filter: blur(32px) saturate(205%) brightness(1.04);
+    -webkit-backdrop-filter: blur(32px) saturate(205%) brightness(1.04);
     border: 1px solid var(--mtx-glass-border);
     box-shadow: var(--mtx-glass-specular), var(--mtx-glass-shadow);
+  }
+  .dark .liquid-glass-header,
+  .dark .liquid-glass-header-match,
+  .dark .liquid-glass-drawer.liquid-glass-header-match {
+    background-image: linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.08) 0%,
+      rgba(255, 255, 255, 0.015) 48%,
+      rgba(255, 255, 255, 0.04) 100%
+    );
+    backdrop-filter: blur(32px) saturate(195%) brightness(1.05);
+    -webkit-backdrop-filter: blur(32px) saturate(195%) brightness(1.05);
   }
 
   .liquid-glass-pill {
@@ -727,6 +745,19 @@ img {
   scroll-padding-inline-start: 1rem;
 }
 
+@keyframes scrimFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-scrimFade {
+  animation: scrimFadeIn 0.22s ease-out forwards;
+}
+
 @keyframes sanctuaryDrawerSlideStart {
   from {
     opacity: 0;
@@ -734,7 +765,7 @@ img {
   }
   to {
     opacity: 1;
-    transform: translate3d(0, 0, 0);
+    transform: none;
   }
 }
 
@@ -745,7 +776,7 @@ img {
   }
   to {
     opacity: 1;
-    transform: translate3d(0, 0, 0);
+    transform: none;
   }
 }
 
