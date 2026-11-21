@@ -754,25 +754,71 @@ img {
   }
 }
 
+@keyframes scrimFadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
 .animate-scrimFade {
-  animation: scrimFadeIn 0.22s ease-out forwards;
+  animation: scrimFadeIn 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.animate-scrimFadeOut {
+  animation: scrimFadeOut 0.24s cubic-bezier(0.4, 0, 1, 1) forwards;
 }
 
 @keyframes sanctuaryDrawerSlideStart {
-  from {
+  0% {
     opacity: 0;
-    transform: translate3d(-18px, 0, 0);
+    transform: translate3d(-34px, 0, 0) scale(0.985);
   }
-  to {
+  100% {
     opacity: 1;
     transform: none;
   }
 }
 
 @keyframes sanctuaryDrawerSlideEnd {
+  0% {
+    opacity: 0;
+    transform: translate3d(34px, 0, 0) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes sanctuaryDrawerExitStart {
+  0% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-32px, 0, 0) scale(0.98);
+  }
+}
+
+@keyframes sanctuaryDrawerExitEnd {
+  0% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(32px, 0, 0) scale(0.98);
+  }
+}
+
+@keyframes drawerContentStaggerIn {
   from {
     opacity: 0;
-    transform: translate3d(18px, 0, 0);
+    transform: translate3d(0, 8px, 0);
   }
   to {
     opacity: 1;
@@ -780,18 +826,34 @@ img {
   }
 }
 
+.drawer-stagger-body > * {
+  animation: drawerContentStaggerIn 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.drawer-stagger-body > *:nth-child(1) { animation-delay: 0.03s; }
+.drawer-stagger-body > *:nth-child(2) { animation-delay: 0.06s; }
+.drawer-stagger-body > *:nth-child(3) { animation-delay: 0.09s; }
+.drawer-stagger-body > *:nth-child(4) { animation-delay: 0.12s; }
+.drawer-stagger-body > *:nth-child(5) { animation-delay: 0.15s; }
+
 html[dir="rtl"] .animate-drawer-start {
-  animation: sanctuaryDrawerSlideEnd 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: sanctuaryDrawerSlideEnd 0.32s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 html[dir="ltr"] .animate-drawer-start {
-  animation: sanctuaryDrawerSlideStart 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: sanctuaryDrawerSlideStart 0.32s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+html[dir="rtl"] .animate-drawer-exit-start {
+  animation: sanctuaryDrawerExitEnd 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+html[dir="ltr"] .animate-drawer-exit-start {
+  animation: sanctuaryDrawerExitStart 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 html[dir="rtl"] .animate-drawer-end {
-  animation: sanctuaryDrawerSlideStart 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: sanctuaryDrawerSlideStart 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 html[dir="ltr"] .animate-drawer-end {
-  animation: sanctuaryDrawerSlideEnd 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: sanctuaryDrawerSlideEnd 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 /* English literary serif typography applies wherever English prose is rendered */
@@ -875,7 +937,11 @@ html[lang="en"] body {
   .group:hover .cover-zoom-img,
   .liquid-glass-crimson-glow,
   .animate-drawer-start,
+  .animate-drawer-exit-start,
   .animate-drawer-end,
+  .animate-scrimFade,
+  .animate-scrimFadeOut,
+  .drawer-stagger-body > *,
   .mtx-skeleton-block::after,
   .mtx-skeleton-line::after {
     transform: none !important;

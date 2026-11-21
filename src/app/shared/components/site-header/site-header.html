@@ -11,7 +11,11 @@
         (click)="lib.toggleMobileNav()"
         class="lg:hidden w-10 h-10 rounded-xl liquid-glass-pill flex items-center justify-center text-on-surface hover:text-primary transition-colors cursor-pointer active:scale-95 shrink-0"
       >
-        <span class="material-symbols-outlined text-[21px]">
+        <span
+          class="material-symbols-outlined text-[21px] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+          [class.rotate-90]="lib.isMobileNavOpen()"
+          [class.scale-95]="lib.isMobileNavOpen()"
+        >
           {{ lib.isMobileNavOpen() ? 'close' : 'menu' }}
         </span>
       </button>
@@ -198,7 +202,11 @@
         (click)="lib.toggleMobileNav()"
         class="hidden lg:flex w-10 h-10 rounded-xl liquid-glass-pill items-center justify-center text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:scale-95 shrink-0"
       >
-        <span class="material-symbols-outlined text-[20px]">
+        <span
+          class="material-symbols-outlined text-[20px] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]"
+          [class.rotate-90]="lib.isMobileNavOpen()"
+          [class.scale-95]="lib.isMobileNavOpen()"
+        >
           {{ lib.isMobileNavOpen() ? 'close' : 'widgets' }}
         </span>
       </button>
@@ -208,14 +216,21 @@
 </header>
 
 <!-- ================= UNIFIED SANCTUARY NAVIGATION DRAWER ================= -->
-@if (lib.isMobileNavOpen()) {
-  <div class="fixed inset-0 z-[60] flex justify-start">
+@if (isDrawerRendered()) {
+  <div
+    class="fixed inset-0 z-[60] flex justify-start"
+    [class.pointer-events-none]="isDrawerExiting()"
+  >
     <!-- Scrim Backdrop (opacity-only so drawer backdrop-filter samples page directly) -->
     <button
       type="button"
-      class="fixed inset-0 w-full h-full bg-black/15 dark:bg-black/32 border-none cursor-default animate-scrimFade"
+      [class]="
+        isDrawerExiting()
+          ? 'fixed inset-0 w-full h-full bg-black/15 dark:bg-black/32 border-none cursor-default animate-scrimFadeOut'
+          : 'fixed inset-0 w-full h-full bg-black/15 dark:bg-black/32 border-none cursor-default animate-scrimFade'
+      "
       [attr.aria-label]="t.drawer.closeQuickNav"
-      (click)="lib.isMobileNavOpen.set(false)"
+      (click)="closeDrawer()"
     ></button>
 
     <!-- Slide-Over Sanctuary Drawer Panel (Exact Header Optical Light-Scattering Liquid Glass) -->
@@ -223,7 +238,11 @@
       role="dialog"
       aria-modal="true"
       [attr.aria-label]="t.drawer.quickNav"
-      class="relative z-10 w-[min(92vw,390px)] h-full liquid-glass-drawer liquid-glass-header-match sm:rounded-e-3xl flex flex-col overflow-hidden animate-drawer-start"
+      [class]="
+        isDrawerExiting()
+          ? 'relative z-10 w-[min(92vw,390px)] h-full liquid-glass-drawer liquid-glass-header-match sm:rounded-e-3xl flex flex-col overflow-hidden animate-drawer-exit-start'
+          : 'relative z-10 w-[min(92vw,390px)] h-full liquid-glass-drawer liquid-glass-header-match sm:rounded-e-3xl flex flex-col overflow-hidden animate-drawer-start'
+      "
     >
       <!-- Sticky Drawer Header -->
       <div class="flex items-center justify-between gap-3 px-5 py-4 border-b border-[var(--mtx-glass-border)] bg-transparent shrink-0">
@@ -239,7 +258,7 @@
 
         <button
           type="button"
-          (click)="lib.isMobileNavOpen.set(false)"
+          (click)="closeDrawer()"
           [attr.aria-label]="t.drawer.closeQuickNav"
           class="w-10 h-10 rounded-xl liquid-glass-pill flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer shrink-0 active:scale-95"
         >
@@ -248,7 +267,7 @@
       </div>
 
       <!-- Scrollable Body -->
-      <div class="flex-1 min-h-0 overflow-y-auto px-4 sm:px-5 py-5 space-y-6">
+      <div class="drawer-stagger-body flex-1 min-h-0 overflow-y-auto px-4 sm:px-5 py-5 space-y-6">
         <!-- Account Card -->
         <button
           type="button"
@@ -347,7 +366,7 @@
 
             <button
               type="button"
-              (click)="lib.isMobileNavOpen.set(false); lib.onHeaderBookmarkClick()"
+              (click)="closeDrawer(); lib.onHeaderBookmarkClick()"
               class="col-span-2 min-h-[44px] px-3.5 py-2.5 rounded-xl bg-surface-container-low/40 dark:bg-white/[0.04] hover:bg-surface-container-low/70 dark:hover:bg-white/[0.08] border border-[var(--mtx-glass-border)] text-on-surface text-xs flex items-center justify-between gap-2 transition-all cursor-pointer"
             >
               <span class="flex items-center gap-2 truncate">
@@ -503,7 +522,7 @@
         </button>
         <button
           type="button"
-          (click)="lib.isMobileNavOpen.set(false)"
+          (click)="closeDrawer()"
           class="min-h-[44px] px-4 rounded-xl bg-primary text-on-primary text-xs font-bold hover:opacity-95 transition-opacity cursor-pointer"
         >
           {{ t.reader.done }}
